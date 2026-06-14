@@ -158,4 +158,4 @@ AgentShield scores your configurations on a scale from `A` to `F`:
 
 - Skill: [[security-and-hardening]] (for secure coding boundaries)
 - Skill: [[security-best-practices]] (for language audits)
-- Skill: [[audit-repo-for-agents]] (for workspace integrity checking)
+- Skill: [[agent-repo-security]] (for workspace integrity checking)

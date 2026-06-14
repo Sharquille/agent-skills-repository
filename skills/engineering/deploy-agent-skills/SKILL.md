@@ -22,7 +22,7 @@ Deploy and symlink agent skills from this repository to your global configuratio
 ## When NOT to use
 
 - Trying to build or audit a single skill file → use `vet-skill`.
-- Setting up project-specific configs or scanning workspace security → use `audit-repo-for-agents`.
+- Setting up project-specific configs or scanning workspace security → use `agent-repo-security`.
 
 ## Workflow
 

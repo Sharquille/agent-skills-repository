@@ -1,5 +1,5 @@
 ---
-name: audit-repo-for-agents
+name: agent-repo-security
 description: "Check a repository's integrity and security posture BEFORE (or while) letting AI coding agents — Claude Code, Codex, Gemini CLI, Cursor, aider — work in it. Sanity-checks for leaked secrets, PII/identity exposure, unsafe agent config and permissions, prompt-injection surface, and risky execution/network boundaries, then gives intuitive remediation and a go/no-go verdict. Keeps the repo private-by-default but functional. Trigger when the user wants to secure a repo for agent use, audit repo security posture, prep a repo to go public, or vet what an agent can access/leak. Do not trigger for auditing a single skill file (use vet-skill) or app-level threat modeling (use security-threat-model)."
 # --- provenance ---
 category: engineering
@@ -12,7 +12,7 @@ retrieved: 2026-06-14
 # GitHub secret push-protection, .gitignore deny-by-default).
 ---
 
-# Audit Repo for Agents
+# Agent Repo Security
 
 Before an AI agent (Claude Code, Codex, Gemini CLI, Cursor, aider, …) works in a
 repo, make sure the repo can't leak secrets or personal data, can't be steered by

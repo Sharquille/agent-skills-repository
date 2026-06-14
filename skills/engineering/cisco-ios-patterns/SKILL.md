@@ -148,4 +148,4 @@ For routing changes, also capture neighbor state and route tables before and aft
 
 ## See Also
 
-These are companion skills/agents from the original author's set (not included in this repository): `network-config-reviewer`, `network-troubleshooter`, `network-config-validation`, `network-interface-health`.
+Companion skills now in this repository: `network-config-validation`, `network-interface-health`. Related skills/agents from the original author's set not (yet) included here: `network-config-reviewer`, `network-troubleshooter`.

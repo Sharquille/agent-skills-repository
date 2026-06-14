@@ -6,7 +6,7 @@ This repository uses a **mixed-licensing model**.
 
 The root [LICENSE](LICENSE) (MIT) covers all original content:
 
-- **Self-authored skills:** `audit-repo-for-agents`, `build-security-policy`,
+- **Self-authored skills:** `agent-repo-security`, `build-security-policy`,
   `deploy-agent-skills`, `enhance-skill`, `name-skill`,
   `powershell-enterprise-app`, `vet-skill`.
 - **Curation & tooling:** `REGISTRY.md`, `install.sh`, `scripts/`,
