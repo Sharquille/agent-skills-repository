@@ -66,6 +66,15 @@ verdict. Triage every finding — it flags, you judge.
 - If a secret was ever committed: **rotate it first** (assume it's compromised),
   then purge from history (`git filter-repo`), then add the scanner.
 
+**Allowlist discipline (important).** Suppressing a false positive can create an
+invisible blind spot — today's false positive can become tomorrow's *real* leak
+in the same place. Never allowlist by **file/path** or by **rule** (that disables
+the detector for everything in that scope, so a genuine secret added later scans
+clean). If you must suppress noise, allowlist **only the exact literal value**
+(e.g. the placeholder `YOUR_API_KEY`) — it carries zero entropy and can never be
+a real secret, so a real key in the same line still trips the scanner. When in
+doubt, don't allowlist: keep detection at full strength and triage the finding.
+
 ### 3) Privacy / PII / identity
 - No real home paths (`/Users/<you>`, `/home/<you>`), internal hostnames, or real
   emails in tracked files or commit messages.
