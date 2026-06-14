@@ -16,6 +16,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | Skill | Category | Author | Source | License | Added |
 |-------|----------|--------|--------|---------|-------|
 | [enhance-skill](skills/engineering/enhance-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
+| [gcp-well-architected-security](skills/engineering/gcp-well-architected-security/) | engineering | Google (google/skills) | [github.com/google/skills](https://github.com/google/skills/blob/main/skills/cloud/google-cloud-waf-security/SKILL.md) | Apache-2.0 | 2026-06-13 |
 | [name-skill](skills/engineering/name-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [brainstorm-ideas-existing](skills/productivity/brainstorm-ideas-existing/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skills/brainstorm-ideas-existing) | MIT | 2026-06-13 |
 | [knowledge-capture-obsidian](skills/productivity/knowledge-capture-obsidian/) | productivity | Notion (notion-cookbook), adapted for Obsidian+GoodNotes | [github.com/makenotion/notion-cookbook](https://github.com/makenotion/notion-cookbook/tree/main/skills/claude/knowledge-capture) | MIT | 2026-06-13 |
