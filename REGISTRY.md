@@ -15,6 +15,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 
 | Skill | Category | Author | Source | License | Added |
 |-------|----------|--------|--------|---------|-------|
+| [enhance-skill](skills/engineering/enhance-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [name-skill](skills/engineering/name-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [vet-skill](skills/engineering/vet-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [security-best-practices](skills/engineering/security-best-practices/) | engineering | OpenAI (openai/skills) | [github.com/openai/skills](https://github.com/openai/skills/tree/main/skills/.curated/security-best-practices) | Apache-2.0 | 2026-06-13 |
