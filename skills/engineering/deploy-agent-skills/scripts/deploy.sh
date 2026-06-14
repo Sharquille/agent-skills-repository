@@ -30,24 +30,49 @@ deploy_claude() {
   local SKILLS_DEST="$HOME/.claude/skills"
   echo "--- Deploying to Claude Code / Desktop ---"
   echo "Destination: $SKILLS_DEST"
-  
+
   mkdir -p "$HOME/.claude"
 
-  # If destination already exists and is not a symlink, back it up
-  if [ -e "$SKILLS_DEST" ] && [ ! -L "$SKILLS_DEST" ]; then
+  # Claude discovers skills at ~/.claude/skills/<name>/SKILL.md — ONE level deep.
+  # This repo nests skills under categories (skills/<category>/<name>/), so a
+  # whole-dir symlink (~/.claude/skills -> repo/skills) buries every skill one
+  # level too deep and NONE of them load. Use FLAT per-skill symlinks instead,
+  # exactly like the Gemini path below (same 1-deep limit).
+
+  # Migrate a legacy whole-dir symlink from older installs into a real directory.
+  if [ -L "$SKILLS_DEST" ]; then
+    echo "  Removing legacy whole-dir symlink (it nested skills too deep to load)."
+    rm "$SKILLS_DEST"
+  elif [ -e "$SKILLS_DEST" ] && [ ! -d "$SKILLS_DEST" ]; then
     local BACKUP="$SKILLS_DEST.backup.$(date +%Y%m%d%H%M%S)"
-    echo "  Backup existing ~/.claude/skills -> $BACKUP"
+    echo "  Backing up existing ~/.claude/skills -> $BACKUP"
     mv "$SKILLS_DEST" "$BACKUP"
   fi
+  mkdir -p "$SKILLS_DEST"
 
-  # Link if not already linked to correct source
-  if [ -L "$SKILLS_DEST" ] && [ "$(readlink "$SKILLS_DEST")" = "$SKILLS_SRC" ]; then
-    echo "  Claude skills already linked correctly."
-  else
-    [ -L "$SKILLS_DEST" ] && rm "$SKILLS_DEST"
-    ln -s "$SKILLS_SRC" "$SKILLS_DEST"
-    echo "  Linked: $SKILLS_DEST -> $SKILLS_SRC"
-  fi
+  local linked_count=0
+  for skill_dir in "$SKILLS_SRC"/*/*; do
+    [ -d "$skill_dir" ] || continue
+    local skill_name
+    skill_name=$(basename "$skill_dir")
+    [ "$skill_name" = ".gitkeep" ] && continue
+    [ "$skill_name" = "_template" ] && continue
+    [[ "$skill_name" =~ ^\. ]] && continue
+    [ -f "$skill_dir/SKILL.md" ] || continue   # only real skills
+
+    local abs_path
+    abs_path="$(cd "$skill_dir" && pwd)"
+    ln -sfn "$abs_path" "$SKILLS_DEST/$skill_name"
+    linked_count=$((linked_count + 1))
+  done
+
+  # Prune stale links that no longer resolve to a skill (e.g. renamed/removed).
+  for existing in "$SKILLS_DEST"/*; do
+    [ -L "$existing" ] || continue
+    [ -e "$existing/SKILL.md" ] || { echo "  Pruning stale link: $(basename "$existing")"; rm -f "$existing"; }
+  done
+
+  echo "  Successfully linked $linked_count skills to Claude (~/.claude/skills)."
   echo ""
 }
 
