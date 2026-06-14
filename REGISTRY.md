@@ -17,6 +17,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 |-------|----------|--------|--------|---------|-------|
 | [enhance-skill](skills/engineering/enhance-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [name-skill](skills/engineering/name-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
+| [brainstorm-experiments-existing](skills/productivity/brainstorm-experiments-existing/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skills/brainstorm-experiments-existing) | MIT | 2026-06-13 |
 | [brainstorm-experiments-new](skills/productivity/brainstorm-experiments-new/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skills/brainstorm-experiments-new) | MIT | 2026-06-13 |
 | [brainstorm-ideas-existing](skills/productivity/brainstorm-ideas-existing/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skills/brainstorm-ideas-existing) | MIT | 2026-06-13 |
 | [vet-skill](skills/engineering/vet-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
