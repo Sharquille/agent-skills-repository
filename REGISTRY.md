@@ -57,7 +57,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [ai-slop-cleaner](skills/engineering/ai-slop-cleaner/) | engineering | Yeachan Heo (adapted) | [skillrepo.dev](https://skillrepo.dev/skills/Yeachan-Heo/ai-slop-cleaner) | MIT | 2026-06-14 |
 | [api-and-interface-design](skills/engineering/api-and-interface-design/) | engineering | Addy Osmani | [skillrepo.dev](https://skillrepo.dev/skills/addyosmani/api-and-interface-design) | MIT | 2026-06-14 |
 | [cisco-ios-patterns](skills/engineering/cisco-ios-patterns/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev) | MIT | 2026-06-14 |
-| [audit-repo-for-agents](skills/engineering/audit-repo-for-agents/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
+| [agent-repo-security](skills/engineering/agent-repo-security/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [frontend-ui-engineering](skills/engineering/frontend-ui-engineering/) | engineering | Addy Osmani | [skillrepo.dev](https://skillrepo.dev/skills/addyosmani/frontend-ui-engineering) | MIT | 2026-06-14 |
 | [deploy-agent-skills](skills/engineering/deploy-agent-skills/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [homelab-network-readiness](skills/engineering/homelab-network-readiness/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/homelab-network-readiness) | MIT | 2026-06-14 |
@@ -73,3 +73,4 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [security-scan](skills/engineering/security-scan/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/security-scan) | MIT | 2026-06-14 |
 | [site-architecture](skills/design/site-architecture/) | design | Corey Haines | [skillrepo.dev](https://skillrepo.dev/skills/coreyhaines31/site-architecture) | MIT | 2026-06-14 |
 | [powershell-enterprise-app](skills/engineering/powershell-enterprise-app/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
+| [modern-web-ui](skills/design/modern-web-ui/) | design | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
