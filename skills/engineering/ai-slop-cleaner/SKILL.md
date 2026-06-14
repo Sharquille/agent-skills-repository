@@ -7,6 +7,7 @@ source: https://skillrepo.dev/skills/Yeachan-Heo/ai-slop-cleaner
 author: Yeachan Heo (adapted — genericized from the oh-my-claudecode/Ralph ecosystem to standalone)
 license: MIT
 retrieved: 2026-06-14
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 ---
 
 # AI Slop Cleaner

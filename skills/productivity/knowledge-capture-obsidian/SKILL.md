@@ -7,6 +7,7 @@ source: https://github.com/makenotion/notion-cookbook/tree/main/skills/claude/kn
 author: Notion (notion-cookbook) — adapted for Obsidian + GoodNotes
 license: MIT
 retrieved: 2026-06-13
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 # note: ported from the Notion knowledge-capture skill. Storage layer fully
 # retargeted from the Notion API to Obsidian vault files; GoodNotes path added.
 ---

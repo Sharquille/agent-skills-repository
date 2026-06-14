@@ -7,6 +7,7 @@ source: https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skill
 author: Pawel Huryn (phuryn/pm-skills)
 license: MIT
 retrieved: 2026-06-13
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 ---
 
 ## Brainstorm Product Ideas (Existing Product)

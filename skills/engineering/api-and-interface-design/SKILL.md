@@ -7,6 +7,7 @@ source: https://skillrepo.dev/skills/addyosmani/api-and-interface-design
 author: Addy Osmani
 license: MIT
 retrieved: 2026-06-14
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 ---
 
 # API and Interface Design

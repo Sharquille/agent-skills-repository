@@ -14,6 +14,7 @@ source: https://github.com/google/skills/blob/main/skills/cloud/google-cloud-waf
 author: Google (google/skills)
 license: Apache-2.0
 retrieved: 2026-06-13
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 ---
 
 # Google Cloud Well-Architected Framework skill for the Performance Optimization pillar

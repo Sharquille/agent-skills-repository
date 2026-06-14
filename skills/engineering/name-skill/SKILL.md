@@ -4,8 +4,8 @@ description: "Propose the most intuitive, discoverable name for a skill based on
 # --- provenance ---
 category: engineering
 source: self-authored (this repository)
-author: agent-skills-repository
-license: same-as-repo
+author: Sharquille Andrew
+license: MIT
 retrieved: 2026-06-13
 ---
 

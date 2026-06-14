@@ -7,6 +7,7 @@ source: skillrepo.dev (Affaan Mustafa) — pasted by user
 author: Affaan Mustafa
 license: MIT
 retrieved: 2026-06-14
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 ---
 
 # Cisco IOS Patterns

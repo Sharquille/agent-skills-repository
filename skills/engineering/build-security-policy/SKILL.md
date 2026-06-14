@@ -4,8 +4,8 @@ description: "Draft a concise, enforceable security policy for an application th
 # --- provenance ---
 category: engineering
 source: self-authored (this repository)
-author: agent-skills-repository
-license: same-as-repo
+author: Sharquille Andrew
+license: MIT
 retrieved: 2026-06-13
 # concept note: inspired by the general idea of a normative app "security policy book";
 # written from scratch grounded in public standards (OWASP ASVS, NIST CSF/800-53,

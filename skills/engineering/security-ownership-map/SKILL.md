@@ -7,6 +7,7 @@ source: https://github.com/openai/skills/tree/main/skills/.curated/security-owne
 author: OpenAI (openai/skills)
 license: Apache-2.0
 retrieved: 2026-06-13
+modified-by: Sharquille Andrew (enhancements/adaptation — MIT, see provenance note)
 # note: bundles Python scripts (require `pip install networkx`, invoke read-only `git log`).
 ---
 
