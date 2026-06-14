@@ -56,3 +56,4 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [build-security-policy](skills/engineering/build-security-policy/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [ai-slop-cleaner](skills/engineering/ai-slop-cleaner/) | engineering | Yeachan Heo (adapted) | [skillrepo.dev](https://skillrepo.dev/skills/Yeachan-Heo/ai-slop-cleaner) | MIT | 2026-06-14 |
 | [api-and-interface-design](skills/engineering/api-and-interface-design/) | engineering | Addy Osmani | [skillrepo.dev](https://skillrepo.dev/skills/addyosmani/api-and-interface-design) | MIT | 2026-06-14 |
+| [cisco-ios-patterns](skills/engineering/cisco-ios-patterns/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev) | MIT | 2026-06-14 |
