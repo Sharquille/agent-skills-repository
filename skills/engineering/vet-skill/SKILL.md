@@ -1,5 +1,5 @@
 ---
-name: skill-security-audit
+name: vet-skill
 description: "Static security audit of an untrusted skill (or any downloaded Markdown/agent files) BEFORE installing it. Vets for hidden/bidi/zero-width Unicode, external URLs and chained side-load dependencies, embedded shell/eval code, and prompt-injection or instruction-hijack phrasing. Trigger when the user wants to vet, audit, review, or safely install a skill pulled from the internet, GitHub, or any untrusted source. Do not trigger for auditing the security of an application's own source code — that is threat modeling, not skill vetting."
 # --- provenance ---
 category: engineering

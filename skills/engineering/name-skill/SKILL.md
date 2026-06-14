@@ -1,5 +1,5 @@
 ---
-name: skill-namer
+name: name-skill
 description: "Propose the most intuitive, discoverable name for a skill based on what it actually does, and check the name is not already taken. Trigger when importing a skill whose name is cryptic, vendor-specific, or non-obvious, when renaming an existing skill, or when the user asks what to call a skill. Produces a recommended kebab-case name plus alternatives, and the exact rename steps (directory, frontmatter name, REGISTRY entry). Do not trigger for naming variables, files, or anything that is not a Claude skill."
 # --- provenance ---
 category: engineering
