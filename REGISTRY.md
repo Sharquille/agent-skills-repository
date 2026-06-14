@@ -18,6 +18,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [enhance-skill](skills/engineering/enhance-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [name-skill](skills/engineering/name-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [brainstorm-ideas-existing](skills/productivity/brainstorm-ideas-existing/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skills/brainstorm-ideas-existing) | MIT | 2026-06-13 |
+| [review-pm-resume](skills/productivity/review-pm-resume/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-toolkit/skills/review-resume) | MIT | 2026-06-13 |
 | [vet-skill](skills/engineering/vet-skill/) | engineering | agent-skills-repository (self-authored) | this repo | same-as-repo | 2026-06-13 |
 | [security-best-practices](skills/engineering/security-best-practices/) | engineering | OpenAI (openai/skills) | [github.com/openai/skills](https://github.com/openai/skills/tree/main/skills/.curated/security-best-practices) | Apache-2.0 | 2026-06-13 |
 | [security-ownership-map](skills/engineering/security-ownership-map/) | engineering | OpenAI (openai/skills) | [github.com/openai/skills](https://github.com/openai/skills/tree/main/skills/.curated/security-ownership-map) | Apache-2.0 | 2026-06-13 |
