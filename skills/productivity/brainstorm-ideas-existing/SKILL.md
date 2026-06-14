@@ -1,6 +1,6 @@
 ---
 name: brainstorm-ideas-existing
-description: "Brainstorm product ideas for an existing product using multi-perspective ideation from PM, Designer, and Engineer viewpoints. Use when generating new feature ideas, brainstorming solutions for an identified opportunity, or ideating with a product trio."
+description: "Brainstorm product ideas for an existing product using multi-perspective ideation from PM, Designer, and Engineer viewpoints. Use when generating new feature ideas, brainstorming solutions for an identified opportunity, or ideating with a product trio. Do not trigger for new or greenfield products — use brainstorm-ideas-new instead."
 # --- provenance (added on import; ignored by skill loader) ---
 category: productivity
 source: https://github.com/phuryn/pm-skills/tree/main/pm-product-discovery/skills/brainstorm-ideas-existing
@@ -17,7 +17,11 @@ Multi-perspective ideation for continuous product discovery. Generates ideas fro
 
 You are supporting a product trio performing continuous product discovery for **$ARGUMENTS**.
 
+If `$ARGUMENTS` is empty, ask the user: "Which existing product are we ideating for?" before proceeding.
+
 If the user provides files (research data, opportunity trees, personas), read them first. If they mention a product URL, use web search to understand the product.
+
+> **Sibling skill:** for a new or greenfield product, use `brainstorm-ideas-new` instead.
 
 ### Domain Context
 
@@ -27,7 +31,12 @@ If the user provides files (research data, opportunity trees, personas), read th
 
 The user will describe their objective, target segment, and desired outcomes. Work through these steps:
 
-1. **Understand the opportunity**: Confirm the product, objective, market segment, and desired outcomes. Ask for clarification if anything is ambiguous.
+1. **Understand the opportunity**: Confirm the following before ideating. Ask only for what is missing:
+   - **Product:** what is it, who uses it, what problem does it solve today?
+   - **Objective:** what outcome are we trying to improve (retention, activation, revenue, NPS…)?
+   - **Target segment:** which user group or persona is the focus?
+   - **Desired outcomes:** how will we know an idea worked? (metric / behaviour change)
+   - **Constraints:** any areas that are out of scope, technically locked, or already decided?
 
 2. **Ideate from three perspectives** — generate 5 ideas each from:
    - **Product Manager**: Focus on business value, strategic alignment, and customer impact
