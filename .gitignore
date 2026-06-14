@@ -1,3 +1,35 @@
+# --- OS / editor noise ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# --- Python build artifacts (skill scripts) ---
 __pycache__/
 *.pyc
-.DS_Store
+*.pyo
+
+# --- Claude Code: deny-by-default for .claude/ ---
+# .claude/ can hold credentials, local overrides, transcripts, and caches.
+# Ignore everything in it, then allow ONLY the shareable project settings.
+.claude/*
+!.claude/settings.json
+# Never commit local/personal or credential files, even if force-added:
+.claude/settings.local.json
+**/.credentials.json
+**/credentials.json
+
+# --- Secrets / credentials (general) ---
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+secrets.*
+*.secret
+
+# --- Skill runtime output (e.g. security-ownership-map) ---
+ownership-map-out/
