@@ -58,3 +58,18 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [api-and-interface-design](skills/engineering/api-and-interface-design/) | engineering | Addy Osmani | [skillrepo.dev](https://skillrepo.dev/skills/addyosmani/api-and-interface-design) | MIT | 2026-06-14 |
 | [cisco-ios-patterns](skills/engineering/cisco-ios-patterns/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev) | MIT | 2026-06-14 |
 | [audit-repo-for-agents](skills/engineering/audit-repo-for-agents/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
+| [frontend-ui-engineering](skills/engineering/frontend-ui-engineering/) | engineering | Addy Osmani | [skillrepo.dev](https://skillrepo.dev/skills/addyosmani/frontend-ui-engineering) | MIT | 2026-06-14 |
+| [deploy-agent-skills](skills/engineering/deploy-agent-skills/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
+| [homelab-network-readiness](skills/engineering/homelab-network-readiness/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/homelab-network-readiness) | MIT | 2026-06-14 |
+| [hipaa-compliance](skills/engineering/hipaa-compliance/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/hipaa-compliance) | MIT | 2026-06-14 |
+| [homelab-vlan-segmentation](skills/engineering/homelab-vlan-segmentation/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/homelab-vlan-segmentation) | MIT | 2026-06-14 |
+| [literature-review](skills/productivity/literature-review/) | productivity | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/literature-review) | MIT | 2026-06-14 |
+| [naming-analyzer](skills/engineering/naming-analyzer/) | engineering | Leonardo Flores | [skillrepo.dev](https://skillrepo.dev/skills/softaworks/naming-analyzer) | MIT | 2026-06-14 |
+| [network-bgp-diagnostics](skills/engineering/network-bgp-diagnostics/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/network-bgp-diagnostics) | MIT | 2026-06-14 |
+| [network-config-validation](skills/engineering/network-config-validation/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/network-config-validation) | MIT | 2026-06-14 |
+| [network-interface-health](skills/engineering/network-interface-health/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/network-interface-health) | MIT | 2026-06-14 |
+| [security-and-hardening](skills/engineering/security-and-hardening/) | engineering | Addy Osmani | [skillrepo.dev](https://skillrepo.dev/skills/addyosmani/security-and-hardening) | MIT | 2026-06-14 |
+| [security-bounty-hunter](skills/engineering/security-bounty-hunter/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/security-bounty-hunter) | MIT | 2026-06-14 |
+| [security-scan](skills/engineering/security-scan/) | engineering | Affaan Mustafa | [skillrepo.dev](https://skillrepo.dev/skills/affaan-m/security-scan) | MIT | 2026-06-14 |
+| [site-architecture](skills/design/site-architecture/) | design | Corey Haines | [skillrepo.dev](https://skillrepo.dev/skills/coreyhaines31/site-architecture) | MIT | 2026-06-14 |
+| [powershell-enterprise-app](skills/engineering/powershell-enterprise-app/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
