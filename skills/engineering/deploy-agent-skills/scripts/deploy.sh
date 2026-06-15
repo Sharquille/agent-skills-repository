@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # deploy.sh — automates deployment and symlinking of agent skills to global
-# environment folders for Claude Code/Desktop (~/.claude/skills) and Gemini CLI (~/.gemini/skills).
+# environment folders for Claude Code/Desktop (~/.claude/skills), Gemini CLI
+# (~/.gemini/skills), and Codex CLI (~/.codex/skills).
 #
-# Usage:   deploy.sh [--gemini-only | --claude-only]
+# All three discover skills one level deep (<dest>/<name>/SKILL.md), so skills
+# are exposed as FLAT per-skill symlinks regardless of this repo's category
+# nesting (skills/<category>/<name>/).
+#
+# Usage:   deploy.sh [--claude-only] [--gemini-only] [--codex-only]
+#          (no flag = deploy to all three; flags combine)
 # Exit:    0 = success, 1 = failure.
 
 set -euo pipefail
@@ -17,11 +23,13 @@ echo ""
 
 CLAUDE_ONLY=false
 GEMINI_ONLY=false
+CODEX_ONLY=false
 
 for arg in "$@"; do
   case "$arg" in
     --claude-only) CLAUDE_ONLY=true ;;
     --gemini-only) GEMINI_ONLY=true ;;
+    --codex-only)  CODEX_ONLY=true ;;
     *) echo "Unknown argument: $arg" >&2; exit 1 ;;
   esac
 done
@@ -112,13 +120,51 @@ deploy_gemini() {
   echo ""
 }
 
-if [ "$CLAUDE_ONLY" = false ] && [ "$GEMINI_ONLY" = false ]; then
+deploy_codex() {
+  local CODEX_DEST="$HOME/.codex/skills"
+  echo "--- Deploying to Codex CLI ---"
+  echo "Destination: $CODEX_DEST"
+
+  mkdir -p "$CODEX_DEST"
+
+  # Codex discovers skills one level deep (~/.codex/skills/<name>/SKILL.md), so
+  # use FLAT per-skill symlinks — same approach as Claude and Gemini.
+  local linked_count=0
+  for skill_dir in "$SKILLS_SRC"/*/*; do
+    [ -d "$skill_dir" ] || continue
+    local skill_name
+    skill_name=$(basename "$skill_dir")
+    [ "$skill_name" = ".gitkeep" ] && continue
+    [ "$skill_name" = "_template" ] && continue
+    [[ "$skill_name" =~ ^\. ]] && continue
+    [ -f "$skill_dir/SKILL.md" ] || continue   # only real skills
+
+    local abs_path
+    abs_path="$(cd "$skill_dir" && pwd)"
+    ln -sfn "$abs_path" "$CODEX_DEST/$skill_name"
+    linked_count=$((linked_count + 1))
+  done
+
+  # Prune stale links that no longer resolve to a skill.
+  for existing in "$CODEX_DEST"/*; do
+    [ -L "$existing" ] || continue
+    [ -e "$existing/SKILL.md" ] || { echo "  Pruning stale link: $(basename "$existing")"; rm -f "$existing"; }
+  done
+
+  echo "  Successfully linked $linked_count skills to Codex (~/.codex/skills)."
+  echo ""
+}
+
+# Dispatch: with no --*-only flag, deploy to all three. Flags combine, so
+# e.g. `--claude-only --codex-only` deploys to Claude and Codex but not Gemini.
+if [ "$CLAUDE_ONLY" = false ] && [ "$GEMINI_ONLY" = false ] && [ "$CODEX_ONLY" = false ]; then
   deploy_claude
   deploy_gemini
-elif [ "$CLAUDE_ONLY" = true ]; then
-  deploy_claude
-elif [ "$GEMINI_ONLY" = true ]; then
-  deploy_gemini
+  deploy_codex
+else
+  if [ "$CLAUDE_ONLY" = true ]; then deploy_claude; fi
+  if [ "$GEMINI_ONLY" = true ]; then deploy_gemini; fi
+  if [ "$CODEX_ONLY" = true ]; then deploy_codex; fi
 fi
 
 echo "Deployment complete! Skills are now globally available."
