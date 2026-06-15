@@ -20,7 +20,7 @@ flag(){ FINDINGS=$((FINDINGS+1)); }
 # --- 1. Secrets in tracked files / history -------------------------------------
 line; echo "1. SECRETS & CREDENTIALS"; line
 if command -v gitleaks >/dev/null 2>&1; then
-  if gitleaks detect --no-banner -q 2>/dev/null; then echo "  gitleaks: CLEAN (tree + history)"
+  if gitleaks detect --no-banner --log-level error >/dev/null 2>&1; then echo "  gitleaks: CLEAN (tree + history)"
   else echo "  gitleaks: FINDINGS — run 'gitleaks detect --no-banner' for detail"; flag; fi
 elif command -v trufflehog >/dev/null 2>&1; then
   echo "  trufflehog present — run: trufflehog git file://. --only-verified"

@@ -1,0 +1,11 @@
+title = "agent-skills-repository gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow exact documented API key placeholder literals only."
+regexes = [
+  '''\bYOUR_API_KEY\b''',
+  '''\bYOUR_VT_API_KEY\b''',
+]
