@@ -74,3 +74,5 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [site-architecture](skills/design/site-architecture/) | design | Corey Haines | [skillrepo.dev](https://skillrepo.dev/skills/coreyhaines31/site-architecture) | MIT | 2026-06-14 |
 | [powershell-enterprise-app](skills/engineering/powershell-enterprise-app/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [modern-web-ui](skills/design/modern-web-ui/) | design | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
+| [ui-styling](skills/design/ui-styling/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
+| [design-tokens](skills/design/design-tokens/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
