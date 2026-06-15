@@ -59,8 +59,15 @@ study packet. A study packet can include:
 - Certification exam objectives mapped to that section.
 - Lab, simulator, activity, or practice-question expectations.
 
-When the user gives only a chapter/topic or a rough outline, ask once for the
-per-section study content packet before creating the session:
+Treat a table of contents, module outline, lesson list, or copied course menu as
+a rough outline even if the user calls it "objectives." It is not a complete
+study packet unless it includes at least one of these per-section expectation
+types: learning outcomes/guiding questions, key terms with definitions,
+certification exam objective mappings, or lab/simulator expectations.
+
+When the user gives only a chapter/topic, objective list, course menu, or rough
+outline, ask once for the per-section study content packet before creating any
+session file or updating `_study/state.json`:
 
 ```text
 Please paste the per-section breakdown if you have it: learning outcomes, key terms, certification objectives, and lab/simulator expectations. If you do not have it, say "skip" and I will create the session from the outline you already gave me.

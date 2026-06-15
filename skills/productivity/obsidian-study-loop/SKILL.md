@@ -24,11 +24,41 @@ When installing the workflow into a vault, read
 `STUDY-PROTOCOL.md`, replacing only the documented placeholders. Do not
 reconstruct the protocol from memory when the reference is available.
 
+If the user needs to roll back a mistaken install, wrong-workspace scaffold, or
+false-start session, use the companion `undo-obsidian-study-loop` skill instead
+of improvising deletion steps.
+
+## Global Invocation Model
+
+This skill is globally available after deployment, so it may be called from any
+working directory. The vault-local files still belong inside the target Obsidian
+vault. They are what make later sessions seamless when an agent is opened inside
+that vault.
+
+When the skill is called from any workspace:
+
+1. Resolve the target vault before writing:
+   - Use the current working directory if it already contains `STUDY-PROTOCOL.md`,
+     `_study/state.json`, or an `.obsidian/` directory.
+   - Use an explicit `VAULT_PATH` if the user provides one.
+   - If a previous vault path is visible in the current conversation, confirm it
+     before using it.
+   - Otherwise, ask for `VAULT_PATH`.
+2. Never assume an arbitrary working directory is the vault just because the
+   skill was invoked there.
+3. After the vault is resolved, create or update the vault-local scaffolding
+   there: `STUDY-PROTOCOL.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, and
+   `_study/`.
+4. For daily study, prefer operating inside the vault once it has been
+   scaffolded, because the local pointer files are automatically visible to
+   agents that read project instructions.
+
 ## Setup a Vault
 
 When the user asks to install or set up the study loop:
 
-1. Ask for `VAULT_PATH`, the Obsidian vault root, before writing files.
+1. Resolve `VAULT_PATH`, the Obsidian vault root, using the Global Invocation
+   Model above before writing files.
 2. Confirm `NOTES_DIR`; default to `<VAULT_PATH>/Notes`.
 3. Create this structure:
 
@@ -79,7 +109,14 @@ packet. A study packet may include section titles, learning outcomes or guiding
 questions, key terms and definitions, certification exam objectives, and lab,
 simulator, activity, or practice-question expectations.
 
-If the user gives only a topic or rough outline, ask once:
+Treat a table of contents, module outline, lesson list, or copied course menu as
+a rough outline even if the user calls it "objectives." It is not a complete
+study packet unless it includes at least one of these per-section expectation
+types: learning outcomes/guiding questions, key terms with definitions,
+certification exam objective mappings, or lab/simulator expectations.
+
+If the user gives only a topic, objective list, course menu, or rough outline,
+ask once before creating any session file or updating `_study/state.json`:
 
 ```text
 Please paste the per-section breakdown if you have it: learning outcomes, key terms, certification objectives, and lab/simulator expectations. If you do not have it, say "skip" and I will create the session from the outline you already gave me.
