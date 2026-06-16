@@ -32,6 +32,23 @@ Treat the vault as precious. Never delete or overwrite notes without asking
 first. Every state change must be recorded in the session file, which is the
 audit trail.
 
+## Helper Skills
+
+When available, use these helper skills while following this protocol:
+
+- `knowledge-capture-obsidian` for frontmatter, tags, `[[wikilinks]]`, MOC/index
+  hygiene, and clean Obsidian note structure.
+- `humanizer` for a final prose pass on completed `solid` and `partial` note
+  sections. Keep technical reference notes neutral, direct, and accurate.
+- `study-research-queries` when the user asks for help researching a gap. It
+  should produce search queries and a source plan, not fill the gap note unless
+  the user explicitly asks for that.
+- `literature-review` only for formal, citation-backed research. Routine
+  certification notes should stay lighter.
+
+Helper skills do not change the safety rules: do not call external LLM APIs, do
+not add API keys, and do not invent facts or citations.
+
 ## Status Values
 
 Session frontmatter `status` must be one of:
@@ -165,6 +182,10 @@ Trigger examples:
 - "I'm done"
 - "Quiz me"
 - "Ready for the quiz"
+- "Quiz me on 1.1"
+- "Quiz section 1.2"
+- "Quiz Security Controls"
+- "Quiz everything"
 
 When the user asks to be quizzed:
 
@@ -172,54 +193,78 @@ When the user asks to be quizzed:
 2. If `active_session` is `null`, ask the user to start a study session first.
 3. Load the active session file and read its `topic`, `status`, `objectives`,
    and any `## Study content`.
-4. Quiz thoroughly, covering every objective. If `## Study content` exists, use
-   the learning outcomes, key terms, certification objectives, and lab
-   expectations as the quiz blueprint.
-5. Mix question formats:
+4. Resolve the quiz scope:
+   - If the user says only "quiz me", "I'm done", or "ready for the quiz", quiz
+     the full active session.
+   - If the user names a section, chapter, objective number, or title, quiz only
+     that matching scope.
+   - If the user says "quiz everything", quiz the full active session.
+   - If the requested scope is ambiguous, ask one clarifying question and do not
+     start the quiz yet.
+5. Quiz thoroughly, covering every objective in scope. If `## Study content`
+   exists, use only the in-scope learning outcomes, key terms, certification
+   objectives, and lab expectations as the quiz blueprint.
+6. Mix question formats:
    - Direct recall: "What does X stand for and what does it do?"
    - Fill-in-the-blank: "In ___ access control, permissions attach to roles, not users."
    - Conceptual or compare-contrast: "When would you choose X over Y, and why?"
    - One applied/scenario question per major objective where it makes sense.
-6. Ask one section at a time, grouped by objective or by `### Section` from
+7. Ask one section at a time, grouped by objective or by `### Section` from
    `## Study content`.
-7. Wait for the user's answers before moving to the next section.
-8. Do not reveal answers until the user has responded to that section.
-9. After each section, tell the user what they got right, what they got wrong,
+8. Wait for the user's answers before moving to the next section.
+9. Do not reveal answers until the user has responded to that section.
+10. After each section, tell the user what they got right, what they got wrong,
    and the correct answer.
-10. Keep enough notes during the quiz to assess each objective later.
-11. When key terms are provided, include term-definition recall and at least one
+11. Keep enough notes during the quiz to assess each objective later.
+12. When key terms are provided, include term-definition recall and at least one
    question requiring the user to distinguish similar terms.
-12. When certification objectives are provided, include questions that map the
+13. When certification objectives are provided, include questions that map the
    user's understanding back to those exam objectives.
-13. When lab or simulator expectations are provided, include practical or
+14. When lab or simulator expectations are provided, include practical or
    scenario questions about what the user would do in that environment.
+15. Record the resolved scope for assessment and notes. Examples: `full-session`,
+   `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
 ## Phase 4 - Assess
 
 After the quiz is complete:
 
-1. Grade each objective into exactly one bucket:
+1. Grade each in-scope objective into exactly one bucket:
    - `solid` - The user demonstrated competence.
    - `partial` - The user got the gist but missed key details.
    - `gap` - The user could not recall it or got it materially wrong.
-2. Append or update a `## Assessment` heading in the active session file using
+2. Append or update a scoped assessment heading in the active session file using
    this format:
 
 ```markdown
-## Assessment
+## Assessment — <scope>
 
 - <objective 1>: solid - <brief evidence from quiz>
 - <objective 2>: partial - <brief evidence from quiz>
 - <objective 3>: gap - <brief evidence from quiz>
 ```
 
-3. Set frontmatter `status: quizzed`.
-4. Append an audit entry:
+3. If the scope is not the full session, do not imply that the entire session
+   has been quizzed. Update or append a unit progress table:
+
+```markdown
+## Unit progress
+
+| Scope | Quiz | Notes | Review |
+|---|---|---|---|
+| <scope> | quizzed | pending | pending |
+```
+
+4. Set frontmatter `status: quizzed` when the full session has been quizzed or
+   when at least one scoped quiz has completed and the latest action is quiz
+   assessment. The scoped assessment heading and unit progress table are the
+   source of truth for which units were actually covered.
+5. Append an audit entry:
 
 ```markdown
 ## Session log
 
-- <ISO datetime> - Quiz completed. Status: quizzed.
+- <ISO datetime> - Quiz completed for <scope>. Status: quizzed.
 ```
 
 If `## Session log` already exists, append the new bullet under the existing
@@ -227,8 +272,12 @@ heading instead of creating a duplicate heading.
 
 ## Phase 5 - Write Notes
 
-After assessment, write markdown notes into `NOTES_DIR`, one file per session
-topic. Example:
+After assessment, write markdown notes into `NOTES_DIR` for the assessed scope,
+not necessarily the whole session. If the latest quiz covered only `1.1`, write
+only the `1.1` note sections and gap stubs. If the latest quiz covered the full
+session, write all assessed objectives.
+
+Use one note file per session topic. Example:
 
 ```text
 Notes/Security+ - Ch3 - Access Control.md
@@ -237,11 +286,37 @@ Notes/Security+ - Ch3 - Access Control.md
 Before writing:
 
 1. Determine the intended note path from the topic.
-2. If `NOTES_DIR` does not exist, create it.
-3. If the notes file already exists, do not overwrite it silently. Ask the user
+2. Search the vault for existing notes about the topic, key terms, and related
+   concepts. Avoid duplicate notes.
+3. If `NOTES_DIR` does not exist, create it.
+4. If the notes file already exists, do not overwrite it silently. Ask the user
    whether to append a new dated section or update in place.
 
-For each objective, write one `##` section.
+New notes must begin with frontmatter in this shape:
+
+```text
+---
+title: <note title>
+type: learning
+course: <course or certification name>
+domain: <domain or chapter>
+section: <scope>
+status: draft
+tags:
+  - study
+  - security-plus
+  - <normalized-topic-tag>
+created: <YYYY-MM-DD>
+updated: <YYYY-MM-DD>
+source: study-session
+related: []
+---
+```
+
+Use lower-case kebab-case tags. If the vault already has a visible tag style,
+match it.
+
+For each assessed in-scope objective, write one `##` section.
 
 For `solid` objectives:
 
@@ -257,6 +332,26 @@ For `partial` objectives:
 - Include relevant key terms and certification objective mappings from
   `## Study content` when they were supplied.
 
+For `solid` and `partial`, use this section shape when the content supports it:
+
+```markdown
+## <objective name>
+
+<One or two plain paragraphs explaining the concept accurately.>
+
+### Key terms
+
+- **<term>**: <definition>
+
+### Exam focus
+
+- <exam objective mapping or likely test angle>
+
+### Example
+
+- <short scenario or applied example>
+```
+
 For `gap` objectives, write only this placeholder:
 
 ```markdown
@@ -271,24 +366,54 @@ For `gap` objectives, write only this placeholder:
 The `<!-- gap:<objective-slug> -->` HTML comment is a machine marker. Do not
 remove it during note writing.
 
-After writing notes:
+After drafting full sections, run a note quality pass:
 
-1. Append a `## Notes written` entry to the session log listing which objectives
-   received full notes and which received gap stubs:
+- Remove chatbot phrasing such as "here is," "let's dive in," generic
+  conclusions, inflated importance, and vague attributions.
+- Prefer concise paragraphs, direct wording, and concrete examples.
+- Preserve course wording for definitions and exam objectives when supplied.
+- Do not cite sources unless a real source was consulted and can be named.
+- If a technical detail is uncertain, add a `> [!warning]` callout instead of
+  guessing.
+
+Add discovery metadata near the end when useful:
 
 ```markdown
-## Notes written
+## Related
+
+- [[<existing related note>]]
+
+## Mind map seeds
+
+- Parent: [[<course or domain note>]]
+- Related: [[<concept>]], [[<concept>]]
+- Children:
+```
+
+After writing notes:
+
+1. Append a scoped `## Notes written` entry to the session log listing which
+   objectives received full notes and which received gap stubs:
+
+```markdown
+## Notes written — <scope>
 
 - <ISO datetime> - Wrote `Notes/<note-file>.md`.
 - Full notes: <objective 1>, <objective 2>
 - Gap stubs: <objective 3>
 ```
 
-2. Set frontmatter `status: notes-written`.
-3. Append an audit entry under `## Session log`:
+2. Update `## Unit progress` for the scope:
 
 ```markdown
-- <ISO datetime> - Notes written. Status: notes-written.
+| <scope> | quizzed | notes-written | pending |
+```
+
+3. Set frontmatter `status: notes-written`.
+4. Append an audit entry under `## Session log`:
+
+```markdown
+- <ISO datetime> - Notes written for <scope>. Status: notes-written.
 ```
 
 ## Phase 6 - User Research
@@ -299,6 +424,11 @@ marker.
 
 Do not do this research for the user unless explicitly asked. The learning value
 comes from the user filling the gap.
+
+If the user asks for research help, generate a focused plan with search queries,
+preferred source types, and a capture checklist. Prefer official course
+materials, exam objectives, standards bodies, vendor documentation, and reputable
+technical references over generic SEO articles.
 
 ## Phase 7 - Review
 
@@ -326,6 +456,10 @@ When the user asks for review:
    - If wrong or incomplete, edit it to be correct and complete.
    - If uncertain about a technical detail, do not guess. Add a
      `> [!warning]` callout explaining what needs verification.
+   - Check frontmatter, tags, `[[wikilinks]]`, and related/mind-map metadata for
+     consistency with the rest of the vault.
+   - Apply a light humanizing edit so the note reads like durable study
+     material, not a transcript.
 8. Append a changelog to the session file under this exact heading format:
 
 ```markdown
@@ -351,6 +485,9 @@ When the user asks for review:
   `> [!warning]`.
 - Use `[[wikilinks]]` when a concept references another note that already exists
   in the vault.
+- Use lower-case kebab-case tags and keep them consistent across the course.
+- Add `## Related` and `## Mind map seeds` when they help future graph or mind
+  map views.
 - Never invent citations or facts.
 - If unsure about a technical detail, flag it in a `> [!warning]` callout
   instead of guessing.

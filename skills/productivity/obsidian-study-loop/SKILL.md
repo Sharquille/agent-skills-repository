@@ -1,6 +1,6 @@
 ---
 name: obsidian-study-loop
-description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz section-by-section, assess objective mastery, write Obsidian notes with gap placeholders, or review user-filled gap notes. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
+description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz the full session or a scoped unit like 1.1 / Security Controls, assess objective mastery, write professional tagged Obsidian notes with gap placeholders, or review user-filled gap notes. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
 # --- provenance ---
 category: productivity
 source: self-authored from the ComptiaSec+ Obsidian study-loop protocol
@@ -27,6 +27,25 @@ reconstruct the protocol from memory when the reference is available.
 If the user needs to roll back a mistaken install, wrong-workspace scaffold, or
 false-start session, use the companion `undo-obsidian-study-loop` skill instead
 of improvising deletion steps.
+
+## Helper Skill Routing
+
+This skill is the study orchestrator. Use these helper skills when available:
+
+- `knowledge-capture-obsidian`: apply its vault hygiene conventions before
+  writing notes. Search the vault first, use consistent frontmatter, tags,
+  `[[wikilinks]]`, and MOC/index links when they fit the vault.
+- `humanizer`: run a prose pass on completed `solid` and `partial` note
+  sections so they read like concise study notes, not chatbot output. Preserve
+  technical accuracy and do not add personality to reference material.
+- `study-research-queries`: when the user asks for help researching a `gap`, or
+  when a gap note needs better search strings, generate a source-aware research
+  plan and query set. Do not do the user's offline research unless asked.
+- `literature-review`: use only for formal, citation-backed deep research. It is
+  too heavy for routine certification notes.
+
+Helper skills never replace the safety rules in this workflow. Do not add API
+keys, do not call LLM APIs, and do not invent citations or facts.
 
 ## Global Invocation Model
 
@@ -193,48 +212,86 @@ machine. State lives on disk.
 
 ## Phase 3 - Quiz
 
-Trigger examples: "I'm done", "quiz me", "ready for the quiz".
+Trigger examples:
+
+- "I'm done"
+- "quiz me"
+- "ready for the quiz"
+- "quiz me on 1.1"
+- "quiz section 1.2"
+- "quiz Security Controls"
+- "quiz everything"
 
 1. Read `_study/state.json`.
 2. If `active_session` is `null`, ask the user to start a study session first.
 3. Load the active session and read `topic`, `status`, `objectives`, and any
    `## Study content`.
-4. Quiz thoroughly, covering every objective.
-5. If `## Study content` exists, use learning outcomes, key terms, certification
-   objectives, and lab expectations as the quiz blueprint.
-6. Ask one section at a time, grouped by objective or by `### Section`.
-7. Wait for the user's answer before moving on. Do not reveal answers early.
-8. After each section, explain what was right, what was wrong, and the correct
+4. Resolve the quiz scope:
+   - If the user says only "quiz me", "I'm done", or "ready for the quiz", quiz
+     the full active session.
+   - If the user names a section, chapter, objective number, or title, quiz only
+     that matching scope.
+   - If the user says "quiz everything", quiz the full active session.
+   - If the requested scope is ambiguous, ask one clarifying question and do not
+     start the quiz yet.
+5. Quiz thoroughly, covering every objective in scope.
+6. If `## Study content` exists, use only the in-scope learning outcomes, key
+   terms, certification objectives, and lab expectations as the quiz blueprint.
+7. Ask one section at a time, grouped by objective or by `### Section`.
+8. Wait for the user's answer before moving on. Do not reveal answers early.
+9. After each section, explain what was right, what was wrong, and the correct
    answer.
-9. Mix direct recall, fill-in-the-blank, compare-contrast, and applied/scenario
-   questions. Include term-definition recall and at least one distinguish-similar
-   terms question when key terms are provided.
+10. Mix direct recall, fill-in-the-blank, compare-contrast, and applied/scenario
+   questions. Include term-definition recall and at least one
+   distinguish-similar-terms question when key terms are provided.
+11. Record the resolved scope for assessment and notes. Examples: `full-session`,
+   `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
 ## Phase 4 - Assess
 
-After the quiz, grade each objective:
+After the quiz, grade each in-scope objective:
 
 - `solid` - The user demonstrated competence.
 - `partial` - The user got the gist but missed key details.
 - `gap` - The user could not recall it or got it materially wrong.
 
-Record results under `## Assessment`:
+Record results under a scoped assessment heading:
 
 ```markdown
-## Assessment
+## Assessment — <scope>
 
 - <objective 1>: solid - <brief evidence from quiz>
 - <objective 2>: partial - <brief evidence from quiz>
 - <objective 3>: gap - <brief evidence from quiz>
 ```
 
-Set frontmatter `status: quizzed` and append to `## Session log`:
+If the scope is not the full session, do not imply that the entire session has
+been quizzed. Update or append a unit progress table:
 
 ```markdown
-- <ISO datetime> - Quiz completed. Status: quizzed.
+## Unit progress
+
+| Scope | Quiz | Notes | Review |
+|---|---|---|---|
+| <scope> | quizzed | pending | pending |
+```
+
+Set frontmatter `status: quizzed` when the full session has been quizzed or when
+at least one scoped quiz has completed and the latest action is quiz assessment.
+The scoped assessment heading and unit progress table are the source of truth
+for which units were actually covered.
+
+Append to `## Session log`:
+
+```markdown
+- <ISO datetime> - Quiz completed for <scope>. Status: quizzed.
 ```
 
 ## Phase 5 - Write Notes
+
+Write notes for the assessed scope, not necessarily the whole session. If the
+latest quiz covered only `1.1`, write only the `1.1` note sections and gap stubs.
+If the latest quiz covered the full session, write all assessed objectives.
 
 Write one note per session topic in `NOTES_DIR`, for example:
 
@@ -245,7 +302,37 @@ Notes/Security+ - Ch3 - Access Control.md
 Never overwrite an existing notes file silently. If the file exists, ask whether
 to append a new dated section or update in place.
 
-For each objective, write one `##` section:
+Before drafting, search the vault for related notes and existing concept pages.
+Use `[[wikilinks]]` only for notes that exist or for concepts the user clearly
+wants to grow into their own notes. Keep the vault clean: no duplicate topic
+notes, no orphaned notes when an obvious MOC or course index exists, and no
+unstructured dumps.
+
+New notes must start with Obsidian frontmatter:
+
+```text
+---
+title: <note title>
+type: learning
+course: <course or certification name>
+domain: <domain or chapter>
+section: <scope>
+status: draft
+tags:
+  - study
+  - security-plus
+  - <normalized-topic-tag>
+created: <YYYY-MM-DD>
+updated: <YYYY-MM-DD>
+source: study-session
+related: []
+---
+```
+
+Use lower-case kebab-case tags. Add or adjust tags to match the vault's existing
+tag style when one is visible.
+
+For each assessed in-scope objective, write one `##` section:
 
 - For `solid`, write complete, accurate notes.
 - For `partial`, write complete, accurate notes and add a `> [!tip]` callout
@@ -265,26 +352,82 @@ For `solid` and `partial`, include relevant key terms and certification-objectiv
 mappings from `## Study content` when supplied. Use `[[wikilinks]]` only for
 concepts that reference existing notes in the vault.
 
-Append a `## Notes written` entry:
+For `solid` and `partial`, use this section shape when the content supports it:
 
 ```markdown
-## Notes written
+## <objective name>
+
+<One or two plain paragraphs explaining the concept accurately.>
+
+### Key terms
+
+- **<term>**: <definition>
+
+### Exam focus
+
+- <exam objective mapping or likely test angle>
+
+### Example
+
+- <short scenario or applied example>
+```
+
+After drafting, do a note quality pass:
+
+- Remove chatbot phrasing such as "here is," "let's dive in," generic
+  conclusions, inflated importance, and vague attributions.
+- Prefer simple, direct sentences and concrete examples.
+- Preserve course wording for definitions and exam objectives when the user
+  supplied it.
+- Do not cite sources unless a real source was consulted and can be named.
+- If a technical detail is uncertain, add a `> [!warning]` callout instead of
+  guessing.
+
+Add a short discovery block near the end of the note when useful:
+
+```markdown
+## Related
+
+- [[<existing related note>]]
+
+## Mind map seeds
+
+- Parent: [[<course or domain note>]]
+- Related: [[<concept>]], [[<concept>]]
+- Children:
+```
+
+Append a scoped `## Notes written` entry:
+
+```markdown
+## Notes written — <scope>
 
 - <ISO datetime> - Wrote `Notes/<note-file>.md`.
 - Full notes: <objective 1>, <objective 2>
 - Gap stubs: <objective 3>
 ```
 
+Update `## Unit progress` for the scope:
+
+```markdown
+| <scope> | quizzed | notes-written | pending |
+```
+
 Set frontmatter `status: notes-written` and append:
 
 ```markdown
-- <ISO datetime> - Notes written. Status: notes-written.
+- <ISO datetime> - Notes written for <scope>. Status: notes-written.
 ```
 
 ## Phase 6 - User Research
 
 The user researches `gap` objectives offline and fills in content under the
 placeholder. Do not do this work for the user unless explicitly asked.
+
+If the user asks for help planning that research, use `study-research-queries`
+to produce targeted search queries, preferred source types, and a capture
+checklist. The output should help the user research the gap without filling the
+note for them.
 
 ## Phase 7 - Review Additions
 
@@ -300,6 +443,10 @@ Trigger examples: "review my additions", "check my gap notes".
    - If correct, leave it and mark approved.
    - If wrong or incomplete, edit it to be correct and complete.
    - If unsure, add a `> [!warning]` callout rather than guessing.
+   - Check frontmatter, tags, `[[wikilinks]]`, and related/mind-map metadata for
+     consistency with the rest of the vault.
+   - Apply a light humanizer pass so the final note reads like durable study
+     material, not an AI transcript.
 5. Append and print this changelog:
 
 ```markdown
