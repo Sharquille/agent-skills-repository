@@ -156,6 +156,12 @@ wrong vault.
 Use this when the user says "clear state" or wants to stop tracking the active
 session without deleting logs.
 
+Do not suggest state-only undo merely because a session is `reviewed`. A
+reviewed session should normally remain active so the next agent can recover
+what was studied, reviewed, and written. Before clearing state, report the active
+session topic, status, and latest unit progress, then confirm the user really
+wants no active session.
+
 Set `_study/state.json` to:
 
 ```text

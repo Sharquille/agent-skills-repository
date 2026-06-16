@@ -58,6 +58,29 @@ Session frontmatter `status` must be one of:
 - `notes-written`
 - `reviewed`
 
+## Session Lifecycle and Recovery
+
+`_study/state.json` is the handoff point between agent sessions. A reviewed
+session is still the active session until the user explicitly starts a new
+session, clears state, or runs an undo flow. Do not set `active_session` to
+`null` just because a scope or session reached `status: reviewed`.
+
+At the start of every study-loop action:
+
+1. Read `_study/state.json` if it exists.
+2. If `active_session` points at an existing session, treat that as the current
+   study context even when its frontmatter status is `reviewed`.
+3. If `active_session` is `null` but `_study/sessions/*.md` exists, inspect the
+   most recent session file before asking the user to start over. Tell the user
+   what was found and ask whether to resume it, make it active again, or start a
+   new session.
+4. If the user is starting a new topic while another session is active, preserve
+   the existing session file. Ask whether to replace the active pointer with the
+   new session. Never delete or clear the previous session as part of normal
+   setup.
+5. Only write `{ "active_session": null }` when the user explicitly asks to
+   clear, close, undo, or remove active state.
+
 ## Phase 1 - Setup
 
 Trigger examples:
@@ -95,13 +118,17 @@ continue setup.
 
 When creating the session:
 
-1. Create a slug from the topic:
+1. Read `_study/state.json` first. If it points at an existing session, report
+   the active topic and status. If the user is clearly starting a new study
+   session, preserve the existing session file and ask for confirmation before
+   replacing the active pointer.
+2. Create a slug from the topic:
    - Lowercase the topic.
    - Replace spaces and punctuation with hyphens.
    - Collapse repeated hyphens.
    - Trim leading and trailing hyphens.
-2. Create `_study/sessions/<YYYY-MM-DD>-<slug>.md`.
-3. Write this exact frontmatter shape at the top:
+3. Create `_study/sessions/<YYYY-MM-DD>-<slug>.md`.
+4. Write this exact frontmatter shape at the top:
 
 ```text
 ---
@@ -114,9 +141,9 @@ objectives:
 ---
 ```
 
-4. Treat `objectives` as the top-level lesson or section objectives. If the user
+5. Treat `objectives` as the top-level lesson or section objectives. If the user
    provided section numbers, preserve them in the objective names.
-5. Add a structured study packet below the frontmatter when the user supplied
+6. Add a structured study packet below the frontmatter when the user supplied
    one:
 
 ```markdown
@@ -149,7 +176,7 @@ Use only the study content the user provides. Clean up obvious paste artifacts,
 but do not invent missing definitions, outcomes, or exam objectives during
 setup.
 
-6. Add an audit entry below the frontmatter or below `## Study content`:
+7. Add an audit entry below the frontmatter or below `## Study content`:
 
 ```markdown
 ## Session log
@@ -157,7 +184,7 @@ setup.
 - <ISO datetime> - Session created. Status: studying.
 ```
 
-7. Write `_study/state.json` so it points at the session file:
+8. Write `_study/state.json` so it points at the session file:
 
 ```text
 {
@@ -165,9 +192,9 @@ setup.
 }
 ```
 
-8. Confirm the objectives back to the user in one short list. If a study packet
+9. Confirm the objectives back to the user in one short list. If a study packet
    was captured, also confirm the section titles captured, but keep it brief.
-9. Stop. Do not quiz the user yet.
+10. Stop. Do not quiz the user yet.
 
 ## Phase 2 - Study Break
 
@@ -190,7 +217,10 @@ Trigger examples:
 When the user asks to be quizzed:
 
 1. Read `_study/state.json`.
-2. If `active_session` is `null`, ask the user to start a study session first.
+2. If `active_session` is `null`, inspect `_study/sessions/*.md` for the most
+   recent session. If one exists, report its topic, status, and latest unit
+   progress, then ask whether to resume that session and restore the pointer.
+   If no session exists, ask the user to start a study session first.
 3. Load the active session file and read its `topic`, `status`, `objectives`,
    and any `## Study content`.
 4. Resolve the quiz scope:
@@ -441,8 +471,10 @@ Trigger examples:
 When the user asks for review:
 
 1. Read `_study/state.json`.
-2. If there is an active session, use it. If `active_session` is `null`, find
-   the most recent session in `_study/sessions/`.
+2. If there is an active session, use it. If `active_session` is `null`, inspect
+   `_study/sessions/` and use the most recent session only after telling the
+   user what was recovered. Restore `_study/state.json` to that vault-relative
+   session path before editing review output, unless the user says not to.
 3. Open the notes file or files listed in that session's `## Notes written`
    entry.
 4. Find every section that previously had a `<!-- gap:<objective-slug> -->`
@@ -477,6 +509,11 @@ When the user asks for review:
 - <ISO datetime> - Review completed. Status: reviewed.
 ```
 
+12. Keep `_study/state.json` pointing at the reviewed session. Do not clear the
+    active pointer after review. The next agent should be able to see what was
+    just reviewed and whether the user wants to continue, start the next unit,
+    or start the next chapter.
+
 ## Obsidian Markdown Rules
 
 - Use clean Obsidian-flavored markdown.
@@ -500,6 +537,10 @@ When the user asks for review:
   them.
 - Keep `_study/state.json` valid JSON at all times.
 - Keep one active session pointer or `null`.
+- A reviewed session may remain active. This is expected and helps the next
+  agent recover context.
+- Never clear `active_session` after review unless the user explicitly asks to
+  clear or close state.
 - Record every state change in the session file.
 - The agent reading this protocol is the tutor. Do not call Anthropic, OpenAI,
   Gemini, or other LLM APIs directly.
@@ -520,4 +561,5 @@ unambiguous:
    `partial`, writes exact gap stubs for `gap`, and sets `status: notes-written`.
 6. User Research happens offline.
 7. Review reopens the written notes, checks the former gap sections, appends the
-   required changelog, and sets `status: reviewed`.
+   required changelog, sets `status: reviewed`, and keeps `_study/state.json`
+   pointed at the reviewed session.

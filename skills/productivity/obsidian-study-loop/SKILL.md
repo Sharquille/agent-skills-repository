@@ -72,6 +72,29 @@ When the skill is called from any workspace:
    scaffolded, because the local pointer files are automatically visible to
    agents that read project instructions.
 
+## Session Lifecycle and Recovery
+
+`_study/state.json` is the handoff point between agent sessions. A reviewed
+session is still the active session until the user explicitly starts a new
+session, clears state, or runs an undo flow. Do not set `active_session` to
+`null` just because a scope or session reached `status: reviewed`.
+
+At the start of every study-loop action:
+
+1. Read `_study/state.json` if it exists.
+2. If `active_session` points at an existing session, treat that as the current
+   study context even when its frontmatter status is `reviewed`.
+3. If `active_session` is `null` but `_study/sessions/*.md` exists, inspect the
+   most recent session file before asking the user to start over. Tell the user
+   what was found and ask whether to resume it, make it active again, or start a
+   new session.
+4. If the user is starting a new topic while another session is active, preserve
+   the existing session file. Ask whether to replace the active pointer with the
+   new session. Never delete or clear the previous session as part of normal
+   setup.
+5. Only write `{ "active_session": null }` when the user explicitly asks to
+   clear, close, undo, or remove active state.
+
 ## Setup a Vault
 
 When the user asks to install or set up the study loop:
@@ -143,8 +166,12 @@ Please paste the per-section breakdown if you have it: learning outcomes, key te
 
 If the user already included the packet, or says to skip it:
 
-1. Create `_study/sessions/<YYYY-MM-DD>-<slug>.md`.
-2. Use this exact frontmatter shape:
+1. Read `_study/state.json` first. If it points at an existing session, report
+   the active topic and status. If the user is clearly starting a new study
+   session, preserve the existing session file and ask for confirmation before
+   replacing the active pointer.
+2. Create `_study/sessions/<YYYY-MM-DD>-<slug>.md`.
+3. Use this exact frontmatter shape:
 
 ```text
 ---
@@ -157,9 +184,9 @@ objectives:
 ---
 ```
 
-3. Treat `objectives` as top-level lesson or section objectives. Preserve
+4. Treat `objectives` as top-level lesson or section objectives. Preserve
    section numbers when provided.
-4. If the user supplied a study packet, add it below frontmatter:
+5. If the user supplied a study packet, add it below frontmatter:
 
 ```markdown
 ## Study content
@@ -187,7 +214,7 @@ objectives:
 Use only the content the user supplies. Clean obvious paste artifacts, but do
 not invent missing definitions, outcomes, or exam objectives during setup.
 
-5. Add the audit log:
+6. Add the audit log:
 
 ```markdown
 ## Session log
@@ -195,7 +222,7 @@ not invent missing definitions, outcomes, or exam objectives during setup.
 - <ISO datetime> - Session created. Status: studying.
 ```
 
-6. Point `_study/state.json` at the session using a vault-relative path:
+7. Point `_study/state.json` at the session using a vault-relative path:
 
 ```text
 {
@@ -203,7 +230,7 @@ not invent missing definitions, outcomes, or exam objectives during setup.
 }
 ```
 
-7. Confirm the objectives in one short list and stop. Do not quiz yet.
+8. Confirm the objectives in one short list and stop. Do not quiz yet.
 
 ## Phase 2 - Study Break
 
@@ -223,7 +250,10 @@ Trigger examples:
 - "quiz everything"
 
 1. Read `_study/state.json`.
-2. If `active_session` is `null`, ask the user to start a study session first.
+2. If `active_session` is `null`, inspect `_study/sessions/*.md` for the most
+   recent session. If one exists, report its topic, status, and latest unit
+   progress, then ask whether to resume that session and restore the pointer.
+   If no session exists, ask the user to start a study session first.
 3. Load the active session and read `topic`, `status`, `objectives`, and any
    `## Study content`.
 4. Resolve the quiz scope:
@@ -433,8 +463,10 @@ note for them.
 
 Trigger examples: "review my additions", "check my gap notes".
 
-1. Read `_study/state.json`; if it is `null`, use the most recent session in
-   `_study/sessions/`.
+1. Read `_study/state.json`; if it is `null`, inspect `_study/sessions/` and
+   use the most recent session only after telling the user what was recovered.
+   Restore `_study/state.json` to that vault-relative session path before
+   editing review output, unless the user says not to.
 2. Open the notes listed in that session's `## Notes written` entry.
 3. Find sections that had `<!-- gap:<objective-slug> -->` markers. If the marker
    was deleted, use the session assessment and objective heading to locate the
@@ -462,10 +494,19 @@ Trigger examples: "review my additions", "check my gap notes".
 - <ISO datetime> - Review completed. Status: reviewed.
 ```
 
+7. Keep `_study/state.json` pointing at the reviewed session. Do not clear the
+   active pointer after review. The next agent should be able to see what was
+   just reviewed and whether the user wants to continue, start the next unit, or
+   start the next chapter.
+
 ## Safety Rules
 
 - Treat the vault as precious. Never delete or overwrite notes without asking.
 - Keep `_study/state.json` valid JSON with exactly one active session or `null`.
+- A reviewed session may remain active. This is expected and helps the next
+  agent recover context.
+- Never clear `active_session` after review unless the user explicitly asks to
+  clear or close state.
 - Log every status change in the session file.
 - Never invent citations or facts.
 - If unsure about a technical detail, add a `> [!warning]` callout.
