@@ -58,6 +58,33 @@ Session frontmatter `status` must be one of:
 - `notes-written`
 - `reviewed`
 
+## Timestamp and Link Discipline
+
+Before writing any timestamped frontmatter or session-log entry, get the real
+current time from the system. Do not invent, round, reuse, or default timestamps
+to midnight.
+
+- For ISO datetime fields and session log bullets, run:
+
+```text
+date -u +%Y-%m-%dT%H:%M:%SZ
+```
+
+- For date-only fields such as note `created` and `updated`, run:
+
+```text
+date -u +%F
+```
+
+Paste the exact command output into the file. If the shell/date command is not
+available, ask the user for the current timestamp before writing.
+
+Before adding any `[[wikilink]]`, verify that the target note already exists in
+the vault. Use `rg --files` or another file listing and match the note basename
+without `.md`. If the target note does not exist, write the concept as plain text
+instead of a wikilink. Only create a wikilink to a not-yet-existing concept when
+the user explicitly asks to create future concept pages.
+
 ## Session Lifecycle and Recovery
 
 `_study/state.json` is the handoff point between agent sessions. A reviewed
@@ -80,6 +107,29 @@ At the start of every study-loop action:
    setup.
 5. Only write `{ "active_session": null }` when the user explicitly asks to
    clear, close, undo, or remove active state.
+
+## Scope Boundary Rules
+
+For a scoped quiz or note, the section's learning outcomes, key terms, labs,
+activities, and practice expectations define the teaching scope. Certification
+exam objective mappings are exam-alignment metadata, not permission to pull in
+full content from a later section.
+
+When the packet maps a broad exam objective to more than one lesson:
+
+1. Quiz only the parts of that exam objective that are directly supported by the
+   in-scope section's learning outcomes or key terms.
+2. If a mapped exam objective contains topics taught in a later section, mention
+   them only as a brief forward reference, for example: "Covered in 1.2 Security
+   Controls." Do not quiz, grade, or write full notes for that later material.
+3. Before writing notes, classify each candidate note section as `in-scope`,
+   `brief cross-reference`, or `out-of-scope`. Write full sections only for
+   `in-scope` material.
+4. If out-of-scope material was accidentally quizzed, record it as a scope issue
+   in the session log and do not use it to mark the current scope as `gap` or
+   `partial`.
+5. If an existing note already contains out-of-scope material, do not silently
+   move or delete it. Flag the overlap and ask before restructuring the note.
 
 ## Phase 1 - Setup
 
@@ -232,27 +282,35 @@ When the user asks to be quizzed:
    - If the requested scope is ambiguous, ask one clarifying question and do not
      start the quiz yet.
 5. Quiz thoroughly, covering every objective in scope. If `## Study content`
-   exists, use only the in-scope learning outcomes, key terms, certification
-   objectives, and lab expectations as the quiz blueprint.
+   exists, use the in-scope learning outcomes, key terms, labs, activities, and
+   practice expectations as the quiz blueprint. Use certification exam objective
+   mappings only to align question wording to the exam, not to introduce
+   future-section content.
 6. Mix question formats:
    - Direct recall: "What does X stand for and what does it do?"
    - Fill-in-the-blank: "In ___ access control, permissions attach to roles, not users."
    - Conceptual or compare-contrast: "When would you choose X over Y, and why?"
    - One applied/scenario question per major objective where it makes sense.
-7. Ask one section at a time, grouped by objective or by `### Section` from
-   `## Study content`.
-8. Wait for the user's answers before moving to the next section.
-9. Do not reveal answers until the user has responded to that section.
-10. After each section, tell the user what they got right, what they got wrong,
-   and the correct answer.
-11. Keep enough notes during the quiz to assess each objective later.
-12. When key terms are provided, include term-definition recall and at least one
+7. Ask exactly one quiz question at a time. Do not list the full quiz or multiple
+   lettered questions in one message. Keep the remaining questions as an
+   internal queue.
+8. If a section has several planned prompts, ask only the next prompt, wait for
+   the user's answer, give brief feedback, record assessment notes, and then ask
+   the next prompt.
+9. Group the hidden question queue by objective or by `### Section` from
+   `## Study content`, but keep the chat experience conversational and
+   one-question-at-a-time.
+10. Do not reveal an answer until the user has responded to that question.
+11. After each answer, tell the user what was right, what was wrong or missing,
+   and the correct answer before moving on.
+12. Keep enough notes during the quiz to assess each objective later.
+13. When key terms are provided, include term-definition recall and at least one
    question requiring the user to distinguish similar terms.
-13. When certification objectives are provided, include questions that map the
+14. When certification objectives are provided, include questions that map the
    user's understanding back to those exam objectives.
-14. When lab or simulator expectations are provided, include practical or
+15. When lab or simulator expectations are provided, include practical or
    scenario questions about what the user would do in that environment.
-15. Record the resolved scope for assessment and notes. Examples: `full-session`,
+16. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
 ## Phase 4 - Assess
@@ -318,8 +376,11 @@ Before writing:
 1. Determine the intended note path from the topic.
 2. Search the vault for existing notes about the topic, key terms, and related
    concepts. Avoid duplicate notes.
-3. If `NOTES_DIR` does not exist, create it.
-4. If the notes file already exists, do not overwrite it silently. Ask the user
+3. Build a short list of verified existing note basenames that may be linked.
+   Do not add `[[wikilinks]]` for concepts that are not on this verified list
+   unless the user explicitly asked for future concept pages.
+4. If `NOTES_DIR` does not exist, create it.
+5. If the notes file already exists, do not overwrite it silently. Ask the user
    whether to append a new dated section or update in place.
 
 New notes must begin with frontmatter in this shape:
@@ -352,15 +413,17 @@ For `solid` objectives:
 
 - Write complete, accurate notes.
 - Use clean Obsidian-flavored markdown.
-- Include relevant key terms and certification objective mappings from
-  `## Study content` when they were supplied.
+- Include in-scope key terms and certification objective mappings from
+  `## Study content` when they are anchored to the current section's learning
+  outcomes.
 
 For `partial` objectives:
 
 - Write complete, accurate notes.
 - Add a `> [!tip]` callout flagging the specific detail the user was shaky on.
-- Include relevant key terms and certification objective mappings from
-  `## Study content` when they were supplied.
+- Include in-scope key terms and certification objective mappings from
+  `## Study content` when they are anchored to the current section's learning
+  outcomes.
 
 For `solid` and `partial`, use this section shape when the content supports it:
 
@@ -381,6 +444,9 @@ For `solid` and `partial`, use this section shape when the content supports it:
 
 - <short scenario or applied example>
 ```
+
+If a certification mapping points to a later section, add at most a short
+forward reference instead of full notes.
 
 For `gap` objectives, write only this placeholder:
 
@@ -411,12 +477,12 @@ Add discovery metadata near the end when useful:
 ```markdown
 ## Related
 
-- [[<existing related note>]]
+- [[<verified existing related note>]]
 
 ## Mind map seeds
 
-- Parent: [[<course or domain note>]]
-- Related: [[<concept>]], [[<concept>]]
+- Parent: [[<verified existing course or domain note>]]
+- Related: [[<verified existing note>]], <plain-text concept without a note yet>
 - Children:
 ```
 
@@ -520,8 +586,8 @@ When the user asks for review:
 - Use `##` headings for objective sections.
 - Use callouts such as `> [!note]`, `> [!tip]`, `> [!todo]`, and
   `> [!warning]`.
-- Use `[[wikilinks]]` when a concept references another note that already exists
-  in the vault.
+- Use `[[wikilinks]]` only after verifying that the target note already exists
+  in the vault. If the target note does not exist, use plain text instead.
 - Use lower-case kebab-case tags and keep them consistent across the course.
 - Add `## Related` and `## Mind map seeds` when they help future graph or mind
   map views.
@@ -563,3 +629,7 @@ unambiguous:
 7. Review reopens the written notes, checks the former gap sections, appends the
    required changelog, sets `status: reviewed`, and keeps `_study/state.json`
    pointed at the reviewed session.
+8. Any timestamp written to frontmatter or the session log came from the system
+   date command, not from a guessed or placeholder value.
+9. Every `[[wikilink]]` in newly written notes resolves to an existing note, or
+   the user explicitly asked for future concept-page links.
