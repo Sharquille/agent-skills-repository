@@ -99,6 +99,29 @@ without `.md`. If the target note does not exist, write the concept as plain tex
 instead of a wikilink. Only create a wikilink to a not-yet-existing concept when
 the user explicitly asks to create future concept pages.
 
+
+## Sync Existing Vault Protocol
+
+When the user asks to sync, refresh, update, or check whether a working vault is
+stale relative to this skill, run the bundled helper script instead of manually
+rewriting `STUDY-PROTOCOL.md`:
+
+```text
+scripts/sync_study_protocol.py <VAULT_PATH>
+```
+
+The helper compares the bundled `references/study-protocol-template.md` to the
+vault-local `STUDY-PROTOCOL.md` after rendering `<VAULT_PATH>` and `<NOTES_DIR>`.
+It dry-runs by default and prints a unified diff. Apply only when the user asks
+to update/sync or after they approve the dry run:
+
+```text
+scripts/sync_study_protocol.py <VAULT_PATH> --apply
+```
+
+The helper updates only `STUDY-PROTOCOL.md`. It must not touch `Notes/`,
+`_study/state.json`, or `_study/sessions/`.
+
 ## Session Lifecycle and Recovery
 
 `_study/state.json` is the handoff point between agent sessions. A reviewed

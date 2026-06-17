@@ -85,6 +85,20 @@ without `.md`. If the target note does not exist, write the concept as plain tex
 instead of a wikilink. Only create a wikilink to a not-yet-existing concept when
 the user explicitly asks to create future concept pages.
 
+
+## Syncing This Protocol
+
+If this vault may be stale relative to the source `obsidian-study-loop` skill,
+ask the agent to run the skill's bundled sync helper in dry-run mode first:
+
+```text
+scripts/sync_study_protocol.py <VAULT_PATH>
+```
+
+The helper compares the source template to this `STUDY-PROTOCOL.md` and prints a
+diff. It updates only this protocol file when run with `--apply`; it does not
+touch `Notes/`, `_study/state.json`, or `_study/sessions/`.
+
 ## Session Lifecycle and Recovery
 
 `_study/state.json` is the handoff point between agent sessions. A reviewed
