@@ -1,6 +1,6 @@
 ---
 name: obsidian-study-loop
-description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz the full session or a scoped unit like 1.1 / Security Controls, assess objective mastery, write professional tagged Obsidian notes with gap placeholders, or review user-filled gap notes. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
+description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz the full session or a scoped unit like 1.1 / Security Controls, assess objective mastery, write professional tagged Obsidian notes with gap placeholders and applied checkbox exercises, or review user-filled gaps and applied reasoning. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
 # --- provenance ---
 category: productivity
 source: self-authored from the ComptiaSec+ Obsidian study-loop protocol
@@ -167,6 +167,108 @@ When the packet maps a broad exam objective to more than one lesson:
    `partial`.
 5. If an existing note already contains out-of-scope material, do not silently
    move or delete it. Flag the overlap and ask before restructuring the note.
+
+## Context-Anchored Examples and Mastery Checks
+
+Applied examples must identify the protected context instead of using vague
+phrases such as "the same asset." Use this reasoning chain:
+
+```text
+Subject or asset -> situation or threat -> relevant facts -> decision or answer -> why it fits -> limitation or alternative
+```
+
+Adapt the chain to the topic. A subject may be an asset set, command, protocol,
+role, process, architecture, incident, risk, control, or troubleshooting
+symptom. Every claimed answer must have a defensible relationship to the stated
+context.
+
+Distinguish two example types:
+
+- A **worked example** includes the answer and teaches the reasoning. It is not
+  mastery evidence because the learner did not produce the answer.
+- A **mastery check** withholds the answer and requires the learner to select,
+  classify, compare, sequence, diagnose, calculate, configure, or explain. Every
+  answered mastery check is evidence for grading and confidence.
+
+Where meaningful, include at least one mastery check per objective. Use
+checkboxes when multiple selections or distractors help; use short-answer fields
+when reasoning matters more than selection.
+
+Use this general machine-readable structure:
+
+```markdown
+<!-- study-check:start id=<stable-id> type=<check-type> scope=<scope> objective=<objective-slug> -->
+### Mastery check: <short title>
+
+> [!question] Scenario
+> <context and task without the answer>
+
+#### Your answer
+
+- [ ] <candidate option when useful>
+- [ ] <candidate option or distractor>
+- Response:
+- Reasoning:
+- Limitation, alternative, or rejected options:
+
+#### Your confidence before review
+
+- [ ] Low
+- [ ] Medium
+- [ ] High
+
+<!-- study-check:end id=<stable-id> -->
+```
+
+Do not reveal the answer key in the exercise. Use a stable ID that includes the
+section and concept, such as `1.2-control-category-fit`. Check types may include
+`selection`, `classification`, `compare-contrast`, `sequence`, `diagnosis`,
+`calculation`, `configuration`, `scenario-response`, or a narrower subtype such
+as `asset-control-fit`.
+
+## Mastery Evidence and Confidence
+
+Use all learner-produced evidence, not only the final quiz score. Evidence
+includes quiz answers, answered `study-check` blocks, corrected gap research,
+lab decisions, and later review explanations.
+
+Score each evidence item out of 8 with this topic-neutral rubric:
+
+- Accuracy or correctness: `0-2`
+- Context or application fit: `0-2`
+- Reasoning or explanation: `0-2`
+- Transfer, limitations, alternatives, or distractor rejection: `0-2`
+
+Map scores to mastery: `solid` = 7-8, `partial` = 4-6, `gap` = 0-3.
+
+Keep two confidence signals separate:
+
+- **Learner confidence**: Low, Medium, or High, selected before feedback.
+- **Tutor confidence in mastery**:
+  - `high`: at least two independent evidence items support mastery, including
+    one applied or transfer item, with no unresolved critical misconception.
+  - `medium`: evidence is limited, mixed, or based on one strong item.
+  - `low`: evidence is weak, contradictory, below 4/8, or absent.
+
+Judge calibration after scoring:
+
+- `well-calibrated`: learner confidence matches demonstrated mastery.
+- `overconfident`: learner confidence materially exceeds demonstrated mastery.
+- `underconfident`: demonstrated mastery materially exceeds learner confidence.
+- `unknown`: learner confidence was not supplied.
+
+Append or update this session ledger:
+
+```markdown
+## Mastery evidence
+
+| Date | Scope | Objective | Evidence | Score | Mastery | Tutor confidence | Learner confidence | Calibration | Notes |
+|---|---|---|---:|---:|---|---|---|---|---|
+| <date> | <scope> | <objective> | <quiz or study-check-id> | <0-8> | <solid|partial|gap> | <low|medium|high> | <low|medium|high|unknown> | <calibration> | <brief evidence> |
+```
+
+Historical evidence remains in the ledger. New evidence may update the current
+tutor confidence, but must not rewrite what the learner originally answered.
 
 ## Setup a Vault
 
@@ -361,7 +463,12 @@ Trigger examples:
    user's understanding back to those exam objectives.
 15. When lab or simulator expectations are provided, include practical or
    scenario questions about what the user would do in that environment.
-16. Record the resolved scope for assessment and notes. Examples: `full-session`,
+16. For applied questions, state a concrete subject or asset, situation or
+    failure path, and relevant facts. Ask the user to explain why the answer or
+    decision fits that context, not merely name a term.
+17. When practical, ask for learner confidence before giving feedback. Record
+    each answer as mastery evidence using the universal 8-point rubric.
+18. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
 ## Phase 4 - Assess
@@ -403,6 +510,11 @@ Append to `## Session log`:
 ```markdown
 - <ISO datetime> - Quiz completed for <scope>. Status: quizzed.
 ```
+
+Append the quiz evidence to `## Mastery evidence` using the universal 8-point
+rubric. Use `unknown` learner confidence when confidence was not collected.
+Calculate tutor confidence from all evidence currently available for that
+objective, not from the newest answer alone.
 
 ## Phase 5 - Write Notes
 
@@ -491,6 +603,11 @@ For `solid` and `partial`, use this section shape when the content supports it:
 - <short scenario or applied example>
 ```
 
+For applied examples, replace vague claims with the full context chain: asset,
+situation, relevant facts, answer or decision, fit, and limitation. Add a
+`study-check` mastery exercise when application would reveal more understanding
+than another definition question.
+
 After drafting, do a note quality pass:
 
 - Remove chatbot phrasing such as "here is," "let's dive in," generic
@@ -560,7 +677,10 @@ Trigger examples: "review my additions", "check my gap notes".
 3. Find sections that had `<!-- gap:<objective-slug> -->` markers. If the marker
    was deleted, use the session assessment and objective heading to locate the
    former gap.
-4. Check the user's content for accuracy and completeness:
+4. Find `<!-- study-check:start ... -->` blocks. Review a block when at least
+   one checkbox is selected or the reasoning fields contain user text. Leave
+   untouched checks pending.
+5. Check the user's gap content for accuracy and completeness:
    - If correct, leave it and mark approved.
    - If wrong or incomplete, edit it to be correct and complete.
    - If unsure, add a `> [!warning]` callout rather than guessing.
@@ -568,22 +688,40 @@ Trigger examples: "review my additions", "check my gap notes".
      consistency with the rest of the vault.
    - Apply a light humanizer pass so the final note reads like durable study
      material, not an AI transcript.
-5. Append and print this changelog:
+6. Score each answered mastery check before editing the user's selections:
+   - Accuracy or correctness: `0-2`
+   - Context or application fit: `0-2`
+   - Reasoning or explanation: `0-2`
+   - Transfer, limitations, alternatives, or distractor rejection: `0-2`
+   - `solid`: 7-8, `partial`: 4-6, `gap`: 0-3
+7. After scoring, explain every false positive, false negative, and weak
+   rationale. Preserve the user's original checkbox choices. Add feedback below
+   the exercise or in the session review log rather than silently correcting
+   their answers.
+8. Append and print this changelog:
 
 ```markdown
 ## Review — <date>
 
 - <objective>: EDITED — <what changed>. Reason: <why>.
 - <objective>: APPROVED — no changes.
+- <study-check-id>: <score>/8 — <solid|partial|gap>; tutor confidence <level>;
+  learner confidence <level>; calibration <result>. <reasoning feedback>
 ```
 
-6. Set frontmatter `status: reviewed` and append:
+9. Add every answered check to `## Mastery evidence`. Recalculate tutor
+   confidence for the objective from all available independent evidence. Do not
+   rewrite the historical quiz assessment.
+10. If no gap content changed and no applied check was answered, report that
+    there is nothing new to review. Do not change frontmatter, unit progress, or
+    the session log.
+11. Set frontmatter `status: reviewed` and append:
 
 ```markdown
 - <ISO datetime> - Review completed. Status: reviewed.
 ```
 
-7. Keep `_study/state.json` pointing at the reviewed session. Do not clear the
+12. Keep `_study/state.json` pointing at the reviewed session. Do not clear the
    active pointer after review. The next agent should be able to see what was
    just reviewed and whether the user wants to continue, start the next unit, or
    start the next chapter.
