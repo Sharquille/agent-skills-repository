@@ -27,6 +27,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [humanizer](skills/productivity/humanizer/) | productivity | blader | [github.com/blader/humanizer](https://github.com/blader/humanizer) | MIT | 2026-06-13 |
 | [knowledge-capture-obsidian](skills/productivity/knowledge-capture-obsidian/) | productivity | Notion (notion-cookbook), adapted for Obsidian+GoodNotes | [github.com/makenotion/notion-cookbook](https://github.com/makenotion/notion-cookbook/tree/main/skills/claude/knowledge-capture) | MIT | 2026-06-13 |
 | [obsidian-study-loop](skills/productivity/obsidian-study-loop/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
+| [portable-markdown](skills/productivity/portable-markdown/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-18 |
 | [review-pm-resume](skills/productivity/review-pm-resume/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-toolkit/skills/review-resume) | MIT | 2026-06-13 |
 | [study-research-queries](skills/productivity/study-research-queries/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
 | [undo-obsidian-study-loop](skills/productivity/undo-obsidian-study-loop/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
