@@ -61,28 +61,28 @@ Session frontmatter `status` must be one of:
 ## Timestamp and Link Discipline
 
 Before writing any timestamped frontmatter or session-log entry, get the real
-current time from the system. Do not invent, round, reuse, or default timestamps
-to midnight.
+current time from the system. Always use **local time**, never UTC: a UTC stamp
+(`date -u`) can land on the next calendar day and make notes look dated a day
+ahead. Do not invent, round, reuse, or default timestamps to midnight.
 
-- For ISO datetime fields and session log bullets, run:
+- For ISO datetime fields and session log bullets, use local time with offset:
 
 ```text
-date -u +%Y-%m-%dT%H:%M:%SZ
+date +%Y-%m-%dT%H:%M:%S%z
 ```
 
 - For human-facing date-only fields such as note `created`, `updated`, review
-  headings, and mastery-evidence dates, use the current system's local calendar
-  date only when no explicit user or vault timezone is configured:
+  headings, and mastery-evidence dates, use the local calendar date:
 
 ```text
 date +%F
 ```
 
-Also inspect the active offset or abbreviation with `date +%z` or `date +%Z`.
-If the user or vault specifies an IANA timezone, use it explicitly, for example
-`TZ=America/Dominica date +%F`. Do not infer a named timezone from an offset or
-truncate a UTC timestamp for a local note date; either can produce the wrong
-calendar day. If the timezone source is ambiguous or conflicts with the current
+Inspect the active offset or abbreviation with `date +%z` or `date +%Z` to
+confirm the zone before writing. If the user or vault specifies an IANA timezone,
+use it explicitly, for example `TZ=America/Dominica date +%F`. Never use `date -u`
+or a trailing `Z` for note/log timestamps, and do not infer a named timezone from
+a bare offset. If the timezone source is ambiguous or conflicts with the current
 system, ask before writing a date-only field. Paste the exact command output
 into the file.
 
@@ -188,8 +188,8 @@ use `### Example` for a short scenario because it clutters the note outline and
 renders more prominently than the content warrants. Use a compact callout:
 
 ```markdown
-> [!example] Worked example
-> **Context:** <concrete subject or asset and situation>
+> [!NOTE]
+> **Worked example** — <concrete subject or asset and situation>
 > **Reasoning:** <answer or decision and why it fits>
 > **Limit:** <what it does not cover, or a relevant alternative>
 ```
@@ -201,11 +201,11 @@ complete. Reserve `###` headings for durable subsections such as `Key terms` or
 Use this general machine-readable structure:
 
 ```markdown
-%% study-check:start id=<stable-id> type=<check-type> scope=<scope> objective=<objective-slug> %%
+<!-- study-check:start id=<stable-id> type=<check-type> scope=<scope> objective=<objective-slug> -->
 ### Mastery check: <short title>
 
-> [!question] Scenario
-> <context and task without the answer>
+> [!NOTE]
+> **Scenario** — <context and task without the answer>
 
 #### Your answer
 
@@ -213,14 +213,14 @@ Use this general machine-readable structure:
 - [ ] <candidate option or distractor>
 
 Replace `Write here.` on each relevant line. Keep the field label and the
-Obsidian-native hidden marker on the line above it so a later review can locate
+HTML hidden marker on the line above it so a later review can locate
 your exact response.
 
-%% learner-answer:response %%
+<!-- learner-answer:response -->
 - **Response:** Write here.
-%% learner-answer:reasoning %%
+<!-- learner-answer:reasoning -->
 - **Reasoning:** Write here.
-%% learner-answer:transfer %%
+<!-- learner-answer:transfer -->
 - **Limitation, alternative, or rejected options:** Write here.
 
 #### Your confidence before review
@@ -229,7 +229,7 @@ your exact response.
 - [ ] Medium
 - [ ] High
 
-%% study-check:end id=<stable-id> %%
+<!-- study-check:end id=<stable-id> -->
 ```
 
 Do not reveal the answer key in the exercise. Use a stable ID that includes the
@@ -238,11 +238,13 @@ section and concept, such as `1.2-control-category-fit`. Check types may include
 `calculation`, `configuration`, `scenario-response`, or a narrower subtype such
 as `asset-control-fit`. A generated check may use more specific answer-field
 labels, but each editable line must retain a preceding
-`%% learner-answer:<field> %%` marker and the `Write here.` sentinel.
+`<!-- learner-answer:<field> -->` marker and the `Write here.` sentinel.
 
-Use Obsidian `%% ... %%` comments for all machine markers. Do not use HTML
-`<!-- ... -->` comments: Obsidian may show them in Live Preview, exposing
-internal metadata in the learner's note.
+Use HTML `<!-- ... -->` comments for all machine markers — never Obsidian
+`%% ... %%`. HTML comments stay hidden in every Markdown renderer (GitHub,
+VS Code, pandoc, and Obsidian's reading view), keeping the note portable, while
+`%%` leaks as literal text outside Obsidian. The `portable-markdown` skill owns
+this rule.
 
 While a check is pending, task boxes provide clickable choices. After review,
 replace each task line with a non-task answer-state line so checked choices do
@@ -604,7 +606,8 @@ For each assessed in-scope objective, write one `##` section.
 For `solid` objectives:
 
 - Write complete, accurate notes.
-- Use clean Obsidian-flavored markdown.
+- Use portable GFM markdown (see the `portable-markdown` skill): the five standard
+  alerts only, HTML `<!-- ... -->` markers, and clean typography.
 - Include in-scope key terms and certification objective mappings from
   `## Study content` when they are anchored to the current section's learning
   outcomes.
@@ -612,7 +615,7 @@ For `solid` objectives:
 For `partial` objectives:
 
 - Write complete, accurate notes.
-- Add a `> [!tip]` callout flagging the specific detail the user was shaky on.
+- Add a `> [!TIP]` callout flagging the specific detail the user was shaky on.
 - Include in-scope key terms and certification objective mappings from
   `## Study content` when they are anchored to the current section's learning
   outcomes.
@@ -632,8 +635,8 @@ For `solid` and `partial`, use this section shape when the content supports it:
 
 - <exam objective mapping or likely test angle>
 
-> [!example] Worked example
-> **Context:** <concrete subject or asset and situation>
+> [!NOTE]
+> **Worked example** — <concrete subject or asset and situation>
 > **Reasoning:** <answer or decision and why it fits>
 > **Limit:** <what it does not cover, or a relevant alternative>
 ```
@@ -646,7 +649,7 @@ situation, relevant facts, answer or decision, fit, and limitation. Add a
 `study-check` mastery exercise when application would reveal more understanding
 than another definition question.
 
-Do not use a heading for a short worked example. Keep it in an `[!example]`
+Do not use a heading for a short worked example. Keep it in an `[!NOTE]`
 callout so it remains visible without competing with objective and subsection
 headings in the outline.
 
@@ -655,17 +658,18 @@ For `gap` objectives, write only this placeholder:
 ```markdown
 ## <objective name>
 
-> [!todo] RESEARCH NEEDED — you couldn't recall this in the quiz on <date>.
+> [!IMPORTANT]
+> **RESEARCH NEEDED** — you couldn't recall this in the quiz on <date>.
 > Research and fill this in yourself, then run a review. Replace the `Write
 > here.` sentence below, but keep the boundary comments.
 
-%% gap:<objective-slug> %%
-%% learner-edit:start id=gap-<objective-slug> %%
+<!-- gap:<objective-slug> -->
+<!-- learner-edit:start id=gap-<objective-slug> -->
 Write here.
-%% learner-edit:end id=gap-<objective-slug> %%
+<!-- learner-edit:end id=gap-<objective-slug> -->
 ```
 
-The `%% gap:<objective-slug> %%` Obsidian comment is a machine marker. Do not
+The `<!-- gap:<objective-slug> -->` HTML comment is a machine marker. Do not
 remove it during note writing. The learner-edit boundaries are user-owned space.
 During review, preserve the user's original wording long enough to score it,
 then make required corrections inside the same boundaries and record them in
@@ -678,12 +682,12 @@ After drafting full sections, run a note quality pass:
 - Prefer concise paragraphs, direct wording, and concrete examples.
 - Keep heading weight proportional to structure: `##` for objectives, `###` for
   durable subsections, and callouts for short examples or feedback.
-- Make every learner-editable location explicit. Use hidden Obsidian
-  `%% ... %%` learner boundaries for research gaps and put each
+- Make every learner-editable location explicit. Use hidden HTML
+  `<!-- ... -->` learner boundaries for research gaps and put each
   `learner-answer` marker on its own line above the mastery-check field.
 - Preserve course wording for definitions and exam objectives when supplied.
 - Do not cite sources unless a real source was consulted and can be named.
-- If a technical detail is uncertain, add a `> [!warning]` callout instead of
+- If a technical detail is uncertain, add a `> [!WARNING]` callout instead of
   guessing.
 
 Add discovery metadata near the end when useful:
@@ -730,7 +734,7 @@ After writing notes:
 
 The user researches `gap` objectives offline and fills in the content under the
 placeholder in the notes file. The user may leave or delete the
-`%% gap:... %%` marker.
+`<!-- gap:... -->` marker.
 
 Do not do this research for the user unless explicitly asked. The learning value
 comes from the user filling the gap.
@@ -757,26 +761,27 @@ When the user asks for review:
    session path before editing review output, unless the user says not to.
 3. Open the notes file or files listed in that session's `## Notes written`
    entry.
-4. Find every section that previously had a `%% gap:<objective-slug> %%`
+4. Find every section that previously had a `<!-- gap:<objective-slug> -->`
    marker.
-5. Prefer content between matching `%% learner-edit:start ... %%` and
-   `%% learner-edit:end ... %%` boundaries when they exist. Treat an
+5. Prefer content between matching `<!-- learner-edit:start ... -->` and
+   `<!-- learner-edit:end ... -->` boundaries when they exist. Treat an
    unchanged `Write here.` sentinel as unanswered.
 6. If the marker or boundaries were deleted, use the session assessment and
    objective heading to find the section that was formerly a gap.
-7. Find `%% study-check:start ... %%` blocks. Review a block when at least one
-   checkbox is selected or the field after a `%% learner-answer:<field> %%`
+7. Find `<!-- study-check:start ... -->` blocks. Review a block when at least one
+   checkbox is selected or the field after a `<!-- learner-answer:<field> -->`
    marker no longer equals `Write here.`. Leave untouched checks pending.
 8. For each researched gap section, check the user's content for accuracy and
    completeness against the objective:
    - If correct and complete, leave it unchanged and mark it approved.
    - If wrong or incomplete, edit it to be correct and complete.
    - If uncertain about a technical detail, do not guess. Add a
-     `> [!warning]` callout explaining what needs verification.
-   - Replace the stale pending `[!todo]` callout after review:
-     - `solid` or approved without edits: `[!success] Research reviewed — <date>`
-     - corrected or still `partial`: `[!tip] Research reviewed — corrections applied on <date>`
-     - unresolved `gap`: `[!warning] More research needed — <date>`
+     `> [!WARNING]` callout explaining what needs verification.
+   - Replace the stale pending `[!IMPORTANT]` research callout after review. Keep
+     the alert tag alone on its line and put the status on the next line:
+     - `solid` or approved without edits → `[!TIP]`, body **Research reviewed — <date>**
+     - corrected or still `partial` → `[!TIP]`, body **Research reviewed — corrections applied on <date>**
+     - unresolved `gap` → `[!WARNING]`, body **More research needed — <date>**
    - Keep the `gap`, `learner-edit:start`, and `learner-edit:end` markers so the
      reviewed region remains traceable. Do not leave `RESEARCH NEEDED` above a
      section that has already been approved or corrected.
@@ -796,11 +801,11 @@ When the user asks for review:
     after recording the original choices and score.
     Place feedback after `#### Your confidence before review` and before the
     closing `study-check` marker, outside any learner-edit region. Use
-    `[!success]` for `solid`, `[!tip]` for `partial`, and `[!warning]` for `gap`:
+    `[!TIP]` for `solid`, `[!TIP]` for `partial`, and `[!WARNING]` for `gap`:
 
 ```markdown
-> [!tip] Review — <date>
-> **Score:** <score>/8 — <solid|partial|gap>
+> [!TIP]
+> **Review — <date> · Score <score>/8 (<solid|partial|gap>)**
 > **What worked:** <specific evidence>
 > **Correction:** <what was wrong or incomplete>
 > **Why:** <reasoning or transfer explanation>
@@ -836,24 +841,26 @@ When the user asks for review:
     just reviewed and whether the user wants to continue, start the next unit,
     or start the next chapter.
 
-## Obsidian Markdown Rules
+## Markdown Rules (portable)
 
-- Use clean Obsidian-flavored markdown.
+- Use portable GFM markdown per the `portable-markdown` skill, not Obsidian-only
+  syntax. Run its `scripts/lint.sh` on a note before considering it done.
 - Use `##` headings for objective sections.
 - Use `###` only for durable subsections. Format short worked examples as
-  `[!example]` callouts and review feedback as mastery-appropriate callouts.
-- Use callouts such as `> [!note]`, `> [!tip]`, `> [!todo]`, and
-  `> [!warning]`.
-- Keep hidden Obsidian `learner-edit` boundaries and `learner-answer` markers
-  intact so the user and future review agents can identify exactly where
-  answers belong.
+  `[!NOTE]` callouts and review feedback as mastery-appropriate callouts.
+- Use only the five GFM-standard alerts — `> [!NOTE]`, `> [!TIP]`,
+  `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]` — with the tag alone on its
+  line. Never use custom callout types (`[!example]`, `[!question]`, …).
+- Keep hidden HTML `<!-- ... -->` `learner-edit` boundaries and `learner-answer`
+  markers intact so the user and future review agents can identify exactly where
+  answers belong. Never use Obsidian `%% ... %%` comments.
 - Use `[[wikilinks]]` only after verifying that the target note already exists
   in the vault. If the target note does not exist, use plain text instead.
 - Use lower-case kebab-case tags and keep them consistent across the course.
 - Add `## Related` and `## Mind map seeds` when they help future graph or mind
   map views.
 - Never invent citations or facts.
-- If unsure about a technical detail, flag it in a `> [!warning]` callout
+- If unsure about a technical detail, flag it in a `> [!WARNING]` callout
   instead of guessing.
 
 ## Safety Rules
