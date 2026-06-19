@@ -84,14 +84,21 @@ to midnight.
 date -u +%Y-%m-%dT%H:%M:%SZ
 ```
 
-- For date-only fields such as note `created` and `updated`, run:
+- For human-facing date-only fields such as note `created`, `updated`, review
+  headings, and mastery-evidence dates, use the current system's local calendar
+  date only when no explicit user or vault timezone is configured:
 
 ```text
-date -u +%F
+date +%F
 ```
 
-Paste the exact command output into the file. If the shell/date command is not
-available, ask the user for the current timestamp before writing.
+Also inspect the active offset or abbreviation with `date +%z` or `date +%Z`.
+If the user or vault specifies an IANA timezone, use it explicitly, for example
+`TZ=America/Dominica date +%F`. Do not infer a named timezone from an offset or
+truncate a UTC timestamp for a local note date; either can produce the wrong
+calendar day. If the timezone source is ambiguous or conflicts with the current
+system, ask before writing a date-only field. Paste the exact command output
+into the file.
 
 Before adding any `[[wikilink]]`, verify that the target note already exists in
 the vault. Use `rg --files` or another file listing and match the note basename
@@ -190,14 +197,34 @@ Distinguish two example types:
   classify, compare, sequence, diagnose, calculate, configure, or explain. Every
   answered mastery check is evidence for grading and confidence.
 
+Two assessment channels coexist. The Phase 3 quiz is asked and answered live in
+chat; in-note `study-check` blocks are answered offline by the learner and scored
+during Phase 7 review. Use the chat quiz to assess within a session; embed a
+`study-check` when you want the learner to practice application between sessions.
+
 Where meaningful, include at least one mastery check per objective. Use
 checkboxes when multiple selections or distractors help; use short-answer fields
 when reasoning matters more than selection.
 
+Keep worked examples visually subordinate to the objective they support. Do not
+use `### Example` for a short scenario because it clutters the note outline and
+renders more prominently than the content warrants. Use a compact callout:
+
+```markdown
+> [!example] Worked example
+> **Context:** <concrete subject or asset and situation>
+> **Reasoning:** <answer or decision and why it fits>
+> **Limit:** <what it does not cover, or a relevant alternative>
+```
+
+Omit a label only when it would be artificial, but keep the context chain
+complete. Reserve `###` headings for durable subsections such as `Key terms` or
+`Exam focus`, not one-paragraph labels.
+
 Use this general machine-readable structure:
 
 ```markdown
-<!-- study-check:start id=<stable-id> type=<check-type> scope=<scope> objective=<objective-slug> -->
+%% study-check:start id=<stable-id> type=<check-type> scope=<scope> objective=<objective-slug> %%
 ### Mastery check: <short title>
 
 > [!question] Scenario
@@ -207,9 +234,17 @@ Use this general machine-readable structure:
 
 - [ ] <candidate option when useful>
 - [ ] <candidate option or distractor>
-- Response:
-- Reasoning:
-- Limitation, alternative, or rejected options:
+
+Replace `Write here.` on each relevant line. Keep the field label and the
+Obsidian-native hidden marker on the line above it so a later review can locate
+your exact response.
+
+%% learner-answer:response %%
+- **Response:** Write here.
+%% learner-answer:reasoning %%
+- **Reasoning:** Write here.
+%% learner-answer:transfer %%
+- **Limitation, alternative, or rejected options:** Write here.
 
 #### Your confidence before review
 
@@ -217,14 +252,33 @@ Use this general machine-readable structure:
 - [ ] Medium
 - [ ] High
 
-<!-- study-check:end id=<stable-id> -->
+%% study-check:end id=<stable-id> %%
 ```
 
 Do not reveal the answer key in the exercise. Use a stable ID that includes the
 section and concept, such as `1.2-control-category-fit`. Check types may include
 `selection`, `classification`, `compare-contrast`, `sequence`, `diagnosis`,
 `calculation`, `configuration`, `scenario-response`, or a narrower subtype such
-as `asset-control-fit`.
+as `asset-control-fit`. A generated check may use more specific answer-field
+labels, but each editable line must retain a preceding
+`%% learner-answer:<field> %%` marker and the `Write here.` sentinel.
+
+Use Obsidian `%% ... %%` comments for all machine markers. Do not use HTML
+`<!-- ... -->` comments: Obsidian may show them in Live Preview, exposing
+internal metadata in the learner's note.
+
+While a check is pending, task boxes provide clickable choices. After review,
+replace each task line with a non-task answer-state line so checked choices do
+not appear struck through:
+
+```markdown
+- **Selected:** <original option text>
+- **Not selected:** <original option text>
+```
+
+Do the same for learner confidence. This is a presentation-only normalization:
+preserve every original choice exactly and record it in mastery evidence before
+changing the rendering.
 
 ## Mastery Evidence and Confidence
 
@@ -240,6 +294,13 @@ Score each evidence item out of 8 with this topic-neutral rubric:
 - Transfer, limitations, alternatives, or distractor rejection: `0-2`
 
 Map scores to mastery: `solid` = 7-8, `partial` = 4-6, `gap` = 0-3.
+
+For recall or definition items where context, reasoning, and transfer do not
+genuinely apply, score only the dimensions that fit and judge mastery on those. A
+fully correct term-definition answer is `solid` even though it earns no
+application or transfer points. Never let inapplicable dimensions drag a correct
+recall answer down to `partial` or `gap`. Reserve the full four-dimension score
+for application, scenario, and explanation items.
 
 Keep two confidence signals separate:
 
@@ -257,14 +318,17 @@ Judge calibration after scoring:
 - `underconfident`: demonstrated mastery materially exceeds learner confidence.
 - `unknown`: learner confidence was not supplied.
 
-Append or update this session ledger:
+The `## Assessment — <scope>` block is the canonical record of scores and
+mastery. Maintaining a separate roll-up ledger is optional; use it only when a
+cross-session view helps, and keep it consistent with the assessment — it must
+summarize, never contradict it. Keep the ledger lean:
 
 ```markdown
 ## Mastery evidence
 
-| Date | Scope | Objective | Evidence | Score | Mastery | Tutor confidence | Learner confidence | Calibration | Notes |
-|---|---|---|---:|---:|---|---|---|---|---|
-| <date> | <scope> | <objective> | <quiz or study-check-id> | <0-8> | <solid|partial|gap> | <low|medium|high> | <low|medium|high|unknown> | <calibration> | <brief evidence> |
+| Date | Scope | Objective | Evidence | Score | Mastery | Confidence | Notes |
+|---|---|---|---|---:|---|---|---|
+| <date> | <scope> | <objective> | <quiz or study-check-id> | <0-8> | <solid|partial|gap> | tutor <level>, learner <level|unknown>, <calibration> | <brief evidence> |
 ```
 
 Historical evidence remains in the ledger. New evidence may update the current
@@ -484,9 +548,9 @@ Record results under a scoped assessment heading:
 ```markdown
 ## Assessment — <scope>
 
-- <objective 1>: solid - <brief evidence from quiz>
-- <objective 2>: partial - <brief evidence from quiz>
-- <objective 3>: gap - <brief evidence from quiz>
+- <objective 1>: solid (<score>) - <brief evidence from quiz>
+- <objective 2>: partial (<score>) - <brief evidence from quiz>
+- <objective 3>: gap (<score>) - <brief evidence from quiz>
 ```
 
 If the scope is not the full session, do not imply that the entire session has
@@ -511,10 +575,12 @@ Append to `## Session log`:
 - <ISO datetime> - Quiz completed for <scope>. Status: quizzed.
 ```
 
-Append the quiz evidence to `## Mastery evidence` using the universal 8-point
-rubric. Use `unknown` learner confidence when confidence was not collected.
+Record each objective's score and mastery in the `## Assessment — <scope>` block
+using the universal 8-point rubric (apply the recall exception for definition
+items). Use `unknown` learner confidence when confidence was not collected.
 Calculate tutor confidence from all evidence currently available for that
-objective, not from the newest answer alone.
+objective, not from the newest answer alone. Optionally roll the result into
+`## Mastery evidence`.
 
 ## Phase 5 - Write Notes
 
@@ -573,10 +639,19 @@ For each assessed in-scope objective, write one `##` section:
 ## <objective name>
 
 > [!todo] RESEARCH NEEDED — you couldn't recall this in the quiz on <date>.
-> Research and fill this in yourself, then run a review.
+> Research and fill this in yourself, then run a review. Replace the `Write
+> here.` sentence below, but keep the boundary comments.
 
-<!-- gap:<objective-slug> -->
+%% gap:<objective-slug> %%
+%% learner-edit:start id=gap-<objective-slug> %%
+Write here.
+%% learner-edit:end id=gap-<objective-slug> %%
 ```
+
+The learner-edit boundaries are user-owned space. During review, preserve the
+user's original wording long enough to score it, then make required corrections
+inside the same boundaries and record them in the changelog. Never place tutor
+feedback inside the learner-edit region.
 
 For `solid` and `partial`, include in-scope key terms and certification-objective
 mappings from `## Study content` when they are anchored to the current section's
@@ -598,9 +673,10 @@ For `solid` and `partial`, use this section shape when the content supports it:
 
 - <exam objective mapping or likely test angle>
 
-### Example
-
-- <short scenario or applied example>
+> [!example] Worked example
+> **Context:** <concrete subject or asset and situation>
+> **Reasoning:** <answer or decision and why it fits>
+> **Limit:** <what it does not cover, or a relevant alternative>
 ```
 
 For applied examples, replace vague claims with the full context chain: asset,
@@ -608,11 +684,20 @@ situation, relevant facts, answer or decision, fit, and limitation. Add a
 `study-check` mastery exercise when application would reveal more understanding
 than another definition question.
 
+Do not use a heading for a short worked example. Keep it in an `[!example]`
+callout so it remains visible without competing with objective and subsection
+headings in the outline.
+
 After drafting, do a note quality pass:
 
 - Remove chatbot phrasing such as "here is," "let's dive in," generic
   conclusions, inflated importance, and vague attributions.
 - Prefer simple, direct sentences and concrete examples.
+- Keep heading weight proportional to structure: `##` for objectives, `###` for
+  durable subsections, and callouts for short examples or feedback.
+- Make every learner-editable location explicit. Use hidden Obsidian
+  `%% ... %%` learner boundaries for research gaps and put each
+  `learner-answer` marker on its own line above the mastery-check field.
 - Preserve course wording for definitions and exam objectives when the user
   supplied it.
 - Do not cite sources unless a real source was consulted and can be named.
@@ -674,31 +759,54 @@ Trigger examples: "review my additions", "check my gap notes".
    Restore `_study/state.json` to that vault-relative session path before
    editing review output, unless the user says not to.
 2. Open the notes listed in that session's `## Notes written` entry.
-3. Find sections that had `<!-- gap:<objective-slug> -->` markers. If the marker
+3. Find sections that had `%% gap:<objective-slug> %%` markers. If the marker
    was deleted, use the session assessment and objective heading to locate the
    former gap.
-4. Find `<!-- study-check:start ... -->` blocks. Review a block when at least
-   one checkbox is selected or the reasoning fields contain user text. Leave
-   untouched checks pending.
-5. Check the user's gap content for accuracy and completeness:
+4. Prefer content between matching `%% learner-edit:start ... %%` and
+   `%% learner-edit:end ... %%` boundaries when they exist. Treat an
+   unchanged `Write here.` sentinel as unanswered. If boundaries are absent,
+   fall back to the gap marker and objective heading.
+5. Find `%% study-check:start ... %%` blocks. Review a block when at least one
+   checkbox is selected or the field after a `%% learner-answer:<field> %%`
+   marker no longer equals `Write here.`. Leave untouched checks pending.
+6. Check the user's gap content for accuracy and completeness:
    - If correct, leave it and mark approved.
    - If wrong or incomplete, edit it to be correct and complete.
    - If unsure, add a `> [!warning]` callout rather than guessing.
+   - Replace the stale pending `[!todo]` callout after review:
+     - `solid` or approved without edits: `[!success] Research reviewed — <date>`
+     - corrected or still `partial`: `[!tip] Research reviewed — corrections applied on <date>`
+     - unresolved `gap`: `[!warning] More research needed — <date>`
+   - Keep the `gap`, `learner-edit:start`, and `learner-edit:end` markers so the
+     reviewed region remains traceable. Do not leave `RESEARCH NEEDED` above a
+     section that has already been approved or corrected.
    - Check frontmatter, tags, `[[wikilinks]]`, and related/mind-map metadata for
      consistency with the rest of the vault.
    - Apply a light humanizer pass so the final note reads like durable study
      material, not an AI transcript.
-6. Score each answered mastery check before editing the user's selections:
+7. Score each answered mastery check before editing the user's selections:
    - Accuracy or correctness: `0-2`
    - Context or application fit: `0-2`
    - Reasoning or explanation: `0-2`
    - Transfer, limitations, alternatives, or distractor rejection: `0-2`
    - `solid`: 7-8, `partial`: 4-6, `gap`: 0-3
-7. After scoring, explain every false positive, false negative, and weak
-   rationale. Preserve the user's original checkbox choices. Add feedback below
-   the exercise or in the session review log rather than silently correcting
-   their answers.
-8. Append and print this changelog:
+8. After scoring, explain every false positive, false negative, and weak
+   rationale. Preserve the user's original choices and answer text. Convert the
+   reviewed task boxes to explicit **Selected** / **Not selected** lines only
+   after recording the original choices and score.
+   Place feedback after `#### Your confidence before review` and before the
+   closing `study-check` marker, outside any learner-edit region. Use
+   `[!success]` for `solid`, `[!tip]` for `partial`, and `[!warning]` for `gap`:
+
+```markdown
+> [!tip] Review — <date>
+> **Score:** <score>/8 — <solid|partial|gap>
+> **What worked:** <specific evidence>
+> **Correction:** <what was wrong or incomplete>
+> **Why:** <reasoning or transfer explanation>
+```
+
+9. Append and print this changelog:
 
 ```markdown
 ## Review — <date>
@@ -709,19 +817,20 @@ Trigger examples: "review my additions", "check my gap notes".
   learner confidence <level>; calibration <result>. <reasoning feedback>
 ```
 
-9. Add every answered check to `## Mastery evidence`. Recalculate tutor
-   confidence for the objective from all available independent evidence. Do not
-   rewrite the historical quiz assessment.
-10. If no gap content changed and no applied check was answered, report that
+10. Record every answered check's score and mastery in the review changelog, and
+   optionally roll it into `## Mastery evidence`. Recalculate tutor confidence for
+   the objective from all available independent evidence. Do not rewrite the
+   historical quiz assessment.
+11. If no gap content changed and no applied check was answered, report that
     there is nothing new to review. Do not change frontmatter, unit progress, or
     the session log.
-11. Set frontmatter `status: reviewed` and append:
+12. Set frontmatter `status: reviewed` and append:
 
 ```markdown
 - <ISO datetime> - Review completed. Status: reviewed.
 ```
 
-12. Keep `_study/state.json` pointing at the reviewed session. Do not clear the
+13. Keep `_study/state.json` pointing at the reviewed session. Do not clear the
    active pointer after review. The next agent should be able to see what was
    just reviewed and whether the user wants to continue, start the next unit, or
    start the next chapter.
