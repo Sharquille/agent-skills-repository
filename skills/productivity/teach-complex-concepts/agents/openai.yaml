@@ -1,0 +1,4 @@
+interface:
+  display_name: "Teach Complex Concepts"
+  short_description: "Interactive, adaptive tutoring for difficult ideas"
+  default_prompt: "Use $teach-complex-concepts to help me deeply understand a difficult topic through guided problems and feedback."
