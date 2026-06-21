@@ -1,6 +1,12 @@
 ---
 name: teach-complex-concepts
-description: Teach difficult concepts through interactive, adaptive, problem-centered tutoring. Use when a learner asks to understand, learn, master, review, practice, or repair misconceptions about a complex topic; when dense material should become a guided lesson; or when creating a concept map, diagnostic, practice sequence, or teach-back session. Works across math, science, programming, technology, and other conceptual domains. Do not trigger for simple factual lookups, requests that only need a finished answer, or formal curriculum documents where a document-production skill is primary.
+description: Teach difficult concepts through interactive, adaptive, problem-centered tutoring. Use when a learner asks to understand, learn, master, review, practice, or repair misconceptions about a complex topic; when dense material should become a guided lesson; or when creating a concept map, diagnostic, practice sequence, or teach-back session. Works across math, science, programming, technology, and other conceptual domains. Do not trigger for simple factual lookups, requests that only need a finished answer, formal curriculum documents where a document-production skill is primary, or a disk-backed Obsidian study-vault session with scoped quizzes and saved progress (use obsidian-study-loop).
+# --- provenance ---
+category: productivity
+source: self-authored (this repository)
+author: Sharquille Andrew
+license: MIT
+retrieved: 2026-06-20
 ---
 
 # Teach Complex Concepts
@@ -29,6 +35,13 @@ a substantial learning path, comparing pedagogies, or deciding between discovery
 and direct instruction. Read
 [lesson-patterns.md](references/lesson-patterns.md) when choosing activities,
 hints, misconception repairs, or mastery checks.
+
+**Scope boundary.** This skill runs live, conversational tutoring of a concept.
+For a disk-backed study workflow over an Obsidian vault — session files, scoped
+quizzes, gap notes, and progress saved across sessions — use `obsidian-study-loop`
+instead; it owns vault state and note writing. The two compose: borrow this
+skill's diagnostic and hint patterns inside a study-loop session, but let the
+study loop persist the artifacts.
 
 ## Choose the session mode
 
