@@ -1,6 +1,6 @@
 ---
 name: gcp-well-architected-reliability
-description: Generates reliability-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework. Use this skill to evaluate a workload, identify reliability requirements, and provide actionable recommendations for build, deploy, and manage the workload reliably in Google Cloud. Note: "WAF" in the original name means Well-Architected Framework, NOT Web Application Firewall.
+description: "Generates reliability-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework. Use this skill to evaluate a workload, identify reliability requirements, and provide actionable recommendations for build, deploy, and manage the workload reliably in Google Cloud. Note: 'WAF' in the original name means Well-Architected Framework, NOT Web Application Firewall."
 # --- provenance (added on import; renamed google-cloud-waf-reliability -> gcp-well-architected-reliability to avoid the WAF/Web-Application-Firewall acronym collision) ---
 category: engineering
 source: https://github.com/google/skills/blob/main/skills/cloud/google-cloud-waf-reliability/SKILL.md

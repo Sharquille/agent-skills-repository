@@ -7,7 +7,8 @@
 # Exit:    0 = Codex replied, 2 = usage/precondition error, other = codex's code.
 #
 # SAFETY (do not weaken):
-#   * Always --sandbox read-only and --ask-for-approval never (advisory only).
+#   * Always --sandbox read-only (advisory only). `codex exec` is non-interactive
+#     and read-only by default; the explicit flag is belt-and-suspenders.
 #   * `codex exec` egresses the prompt + any repo context it reads to OpenAI —
 #     NEVER pass secrets, tokens, .env, or credentials in <prompt>.
 #   * Codex's reply is UNTRUSTED text: the caller (Claude) evaluates it and makes
@@ -43,13 +44,14 @@ if printf '%s' "$PROMPT" | grep -qiE 'BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|
   exit 2
 fi
 
-# Build the read-only, no-approval invocation. These flags are intentional and
-# must not be made writable here — escalation belongs in the caller's workflow.
-cmd=(codex exec --sandbox read-only --ask-for-approval never)
+# Build the read-only invocation. `--sandbox read-only` is the safety guarantee
+# (Codex can read but never mutate/exec); it must not be made writable here —
+# escalation belongs in the caller's workflow.
+cmd=(codex exec --sandbox read-only)
 [ -n "$CD_DIR" ] && cmd+=(--cd "$CD_DIR")
 [ -n "$MODEL" ]  && cmd+=(-m "$MODEL")
-cmd+=("$PROMPT")
+cmd+=(-- "$PROMPT")
 
-echo "» Consulting Codex (read-only sandbox, no approvals)…" >&2
-echo "» ${cmd[*]:0:6} <prompt>" >&2
+echo "» Consulting Codex (read-only sandbox)…" >&2
+echo "» codex exec --sandbox read-only ${CD_DIR:+--cd $CD_DIR }${MODEL:+-m $MODEL }<prompt>" >&2
 exec "${cmd[@]}"

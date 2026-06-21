@@ -1,6 +1,6 @@
 ---
 name: gcp-well-architected-security
-description: Generates security-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify security requirements, and provide actionable recommendations for IAM, network security, data protection, and operational security. Note: "WAF" here means Well-Architected Framework, NOT Web Application Firewall — do not trigger for Cloud Armor / web application firewall configuration.
+description: "Generates security-focused guidance for Google Cloud workloads based on the design principles and recommendations in the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify security requirements, and provide actionable recommendations for IAM, network security, data protection, and operational security. Note: 'WAF' here means Well-Architected Framework, NOT Web Application Firewall — do not trigger for Cloud Armor / web application firewall configuration."
 # --- provenance (added on import; renamed google-cloud-waf-security -> gcp-well-architected-security to avoid the WAF/Web-Application-Firewall acronym collision) ---
 category: engineering
 source: https://github.com/google/skills/blob/main/skills/cloud/google-cloud-waf-security/SKILL.md

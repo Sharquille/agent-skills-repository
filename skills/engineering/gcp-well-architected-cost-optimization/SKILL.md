@@ -1,6 +1,6 @@
 ---
 name: gcp-well-architected-cost-optimization
-description: Generates cost optimization guidance for Google Cloud workloads based on the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify cost requirements and constraints, and provide actionable recommendations for build, deploy, and manage the workload cost-efficiently in Google Cloud. Note: "WAF" here means Well-Architected Framework, NOT Web Application Firewall.
+description: "Generates cost optimization guidance for Google Cloud workloads based on the Google Cloud Well-Architected Framework (WAF). Use this skill to evaluate a workload, identify cost requirements and constraints, and provide actionable recommendations for build, deploy, and manage the workload cost-efficiently in Google Cloud. Note: 'WAF' here means Well-Architected Framework, NOT Web Application Firewall."
 # --- provenance (added on import; renamed google-cloud-waf-cost-optimization -> gcp-well-architected-cost-optimization to avoid the WAF/Web-Application-Firewall acronym collision) ---
 category: engineering
 source: https://github.com/google/skills/blob/main/skills/cloud/google-cloud-waf-cost-optimization/SKILL.md
