@@ -116,6 +116,13 @@ deploy_gemini() {
     echo "  Linked: ~/.gemini/skills/$skill_name -> $skill_dir"
     linked_count=$((linked_count + 1))
   done
+
+  # Prune stale links that no longer resolve to a skill (e.g. renamed/removed).
+  for existing in "$GEMINI_DEST"/*; do
+    [ -L "$existing" ] || continue
+    [ -e "$existing/SKILL.md" ] || { echo "  Pruning stale link: $(basename "$existing")"; rm -f "$existing"; }
+  done
+
   echo "  Successfully linked $linked_count skills to Gemini CLI."
   echo ""
 }
