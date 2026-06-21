@@ -45,7 +45,12 @@ Run via the bundled wrapper (it hard-codes the safe flags):
 ```text
 scripts/consult-codex.sh "<prompt>"            # advisory consult (read-only)
 scripts/consult-codex.sh --cd <repo> "<prompt>"
+scripts/consult-codex.sh --with-mcp "<prompt>" # rare: keep Codex's MCP tools on
 ```
+
+By default the wrapper disables Codex's MCP connectors (`-c mcp_servers={}`): a
+read-only review needs no Docker/Figma/etc. tooling, and a connector blocked on
+auth can hang the whole call. Pass `--with-mcp` only if a consult genuinely needs them.
 
 - **consult** — ask Codex a focused question (design choice, approach, hard bug).
 - **review** — Codex independently reviews the current diff. Generate the diff

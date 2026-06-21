@@ -19,11 +19,13 @@ set -uo pipefail
 CD_DIR=""
 MODEL=""
 PROMPT=""
+WITH_MCP=0   # advisory consults disable Codex MCP servers by default (see below)
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --cd)    CD_DIR="${2:-}"; shift 2 ;;
-    --model) MODEL="${2:-}"; shift 2 ;;
+    --cd)      CD_DIR="${2:-}"; shift 2 ;;
+    --model)   MODEL="${2:-}"; shift 2 ;;
+    --with-mcp) WITH_MCP=1; shift ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     --) shift; PROMPT="${*:-}"; break ;;
     -*) echo "unknown flag: $1" >&2; exit 2 ;;
@@ -48,10 +50,15 @@ fi
 # (Codex can read but never mutate/exec); it must not be made writable here —
 # escalation belongs in the caller's workflow.
 cmd=(codex exec --sandbox read-only)
+# Disable Codex MCP connectors for advisory consults: a read-only review needs no
+# Docker/Figma/etc. tools, and a connector waiting on auth can hang the whole call
+# (and adds startup latency + noise). Opt back in with --with-mcp if a consult
+# genuinely needs Codex's MCP tooling.
+[ "$WITH_MCP" -eq 0 ] && cmd+=(-c 'mcp_servers={}')
 [ -n "$CD_DIR" ] && cmd+=(--cd "$CD_DIR")
 [ -n "$MODEL" ]  && cmd+=(-m "$MODEL")
 cmd+=(-- "$PROMPT")
 
-echo "» Consulting Codex (read-only sandbox)…" >&2
-echo "» codex exec --sandbox read-only ${CD_DIR:+--cd $CD_DIR }${MODEL:+-m $MODEL }<prompt>" >&2
+echo "» Consulting Codex (read-only sandbox, MCP $([ "$WITH_MCP" -eq 1 ] && echo on || echo off))…" >&2
+echo "» codex exec --sandbox read-only $([ "$WITH_MCP" -eq 0 ] && printf '%s' '-c mcp_servers={} ')${CD_DIR:+--cd $CD_DIR }${MODEL:+-m $MODEL }<prompt>" >&2
 exec "${cmd[@]}"
