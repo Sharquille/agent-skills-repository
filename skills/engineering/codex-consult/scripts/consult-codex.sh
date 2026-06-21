@@ -56,9 +56,25 @@ cmd=(codex exec --sandbox read-only)
 # genuinely needs Codex's MCP tooling.
 [ "$WITH_MCP" -eq 0 ] && cmd+=(-c 'mcp_servers={}')
 [ -n "$CD_DIR" ] && cmd+=(--cd "$CD_DIR")
-[ -n "$MODEL" ]  && cmd+=(-m "$MODEL")
+
+# Model is intentionally NOT pinned: with no -m, codex uses the default `model`
+# in ~/.codex/config.toml, so a consult always runs on whatever current best
+# model you've configured (e.g. gpt-5.5 today) — nothing hardcoded to go stale.
+# Override per-call with --model if needed.
+[ -n "$MODEL" ] && cmd+=(-m "$MODEL")
+
+# Reasoning floor: a consult must be thorough, never shallow. Read the configured
+# effort; if it's already high/xhigh, inherit it (don't downgrade); if it's lower
+# or unset, raise it to `high`. Net effect: always >= high, never capped.
+REASON_NOTE="inherit"
+cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
+eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')
+case "$eff" in
+  high|xhigh) : ;;                                   # already >= high → inherit config
+  *) cmd+=(-c 'model_reasoning_effort="high"'); REASON_NOTE="floored to high" ;;
+esac
 cmd+=(-- "$PROMPT")
 
-echo "» Consulting Codex (read-only sandbox, MCP $([ "$WITH_MCP" -eq 1 ] && echo on || echo off))…" >&2
+echo "» Consulting Codex (read-only sandbox, MCP $([ "$WITH_MCP" -eq 1 ] && echo on || echo off); model=${MODEL:-config-default}, reasoning=${eff:-unset}/$REASON_NOTE)…" >&2
 echo "» codex exec --sandbox read-only $([ "$WITH_MCP" -eq 0 ] && printf '%s' '-c mcp_servers={} ')${CD_DIR:+--cd $CD_DIR }${MODEL:+-m $MODEL }<prompt>" >&2
 exec "${cmd[@]}"
