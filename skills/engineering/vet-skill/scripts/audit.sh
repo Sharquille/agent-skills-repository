@@ -10,10 +10,12 @@
 #   3. Embedded scripts / shell / eval (code execution)
 #   4. Prompt-injection / instruction-hijack phrasing
 #   5. Active code fences (non-inert languages)
+#   6. Frontmatter YAML validity (a malformed SKILL.md manifest won't load)
 #
-# Exit code 0 = clean, 1 = findings need human review. Findings are advisory:
+# Exit code 0 = clean, 1 = findings need human review. Checks 1-5 are advisory:
 # many are false positives in *security* skills (which legitimately discuss
 # "exfiltration", "credentials", etc.) — always read the matched context.
+# Check 6 is NOT advisory: a frontmatter parse failure is a hard "fix before install".
 
 set -uo pipefail
 
@@ -98,6 +100,64 @@ if [ -n "$fences" ]; then
   echo "  ^ review — executable-language fences in a skill body are worth a second look"; FINDINGS=$((FINDINGS+1))
 else
   echo "  CLEAN — only inert (text/mermaid/markdown) fences, if any"
+fi
+
+# --- 6. Frontmatter YAML validity ----------------------------------------------
+line; echo "6. FRONTMATTER YAML VALIDITY"; line
+python3 - "${FILES[@]}" <<'PY'
+import sys, re
+try:
+    import yaml; HAVE = True
+except Exception:
+    HAVE = False
+bad = []
+checked = 0
+for f in sys.argv[1:]:
+    try:
+        t = open(f, encoding='utf-8', errors='replace').read()
+    except Exception:
+        continue
+    if not t.startswith('---'):
+        continue  # no frontmatter -> not a skill manifest (reference/text file)
+    checked += 1
+    lines = t.split('\n')
+    close = next((i for i in range(1, len(lines)) if lines[i].strip() == '---'), None)
+    if close is None:
+        bad.append((f, 'frontmatter opened with --- but never closed')); continue
+    fm = '\n'.join(lines[1:close])
+    if HAVE:
+        try:
+            yaml.safe_load(fm)
+        except Exception as e:
+            bad.append((f, 'YAML error: ' + str(e).splitlines()[0]))
+        continue
+    # No PyYAML: heuristic for the common breakers.
+    if '\t' in fm:
+        bad.append((f, 'tab character in frontmatter (YAML forbids tabs for indentation)')); continue
+    for ln in lines[1:close]:
+        if not ln or ln[0] in ' #':
+            continue
+        m = re.match(r'^([\w.-]+):(.*)$', ln)
+        if not m:
+            continue
+        val = m.group(2).strip()
+        # unquoted, non-block scalar that contains a colon-space (or trailing colon)
+        if val and val[0] not in '"\'|>[{&*!' and re.search(r':\s|:$', val):
+            bad.append((f, f'unquoted "{m.group(1)}" value contains \': \' — quote it or use a \'>-\' block scalar'))
+            break
+for f, e in bad:
+    print(f'  BROKEN: {f}')
+    print(f'          {e}')
+if checked == 0:
+    print('  (no frontmatter files in scope)')
+elif not bad:
+    print(f'  CLEAN — frontmatter parses in all {checked} manifest file(s)' + ('' if HAVE else ' (heuristic; PyYAML not installed)'))
+sys.exit(1 if bad else 0)
+PY
+fm_rc=$?
+if [ "$fm_rc" -ne 0 ]; then
+  echo "  ^ FIX before install/commit — a malformed manifest fails to load (stricter parsers like Codex reject it)."
+  FINDINGS=$((FINDINGS+1))
 fi
 
 # --- Verdict -------------------------------------------------------------------

@@ -38,12 +38,17 @@ a throwaway dir with `curl -fsSL` or `git clone` — raw bytes only.
 ```text
 scripts/audit.sh /tmp/skill-audit
 ```
-It runs five checks and prints a verdict (exit 0 = clean, 1 = needs review):
+It runs six checks and prints a verdict (exit 0 = clean, 1 = needs review):
 1. Hidden / bidi / zero-width Unicode (invisible injection)
 2. External URLs / network-fetch (side-loading, chained deps)
 3. Embedded shell / exec / eval (code execution)
 4. Prompt-injection / instruction-hijack phrasing
 5. Active (non-inert) code fences
+6. Frontmatter YAML validity (a malformed SKILL.md manifest won't load)
+
+Checks 1–5 are advisory (security skills produce false positives — read the
+context). Check 6 is a hard gate: a frontmatter parse failure means the skill
+won't load (stricter parsers like Codex reject it), so fix it before installing.
 
 ### 3) Triage findings
 For every match, open the file and read the surrounding lines. Decide:
@@ -69,3 +74,4 @@ the skill in `REGISTRY.md`. Finally delete the quarantine dir.
 - **Shell/eval** → a skill that runs commands instead of just instructing.
 - **Hijack phrasing** → text aimed at overriding your agent, not at the task.
 - **Active code fences** → executable snippets hiding among inert examples.
+- **Frontmatter YAML** → a manifest that silently fails to load (e.g. an unquoted `description:` with an embedded colon) so the skill never registers.
