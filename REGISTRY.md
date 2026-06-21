@@ -81,3 +81,4 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [modern-web-ui](skills/design/modern-web-ui/) | design | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [ui-styling](skills/design/ui-styling/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
 | [design-tokens](skills/design/design-tokens/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
+| [codex-consult](skills/engineering/codex-consult/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
