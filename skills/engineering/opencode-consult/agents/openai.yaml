@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenCode Consult"
+  short_description: "Read-only OpenCode second opinions"
+  default_prompt: "Use $opencode-consult to get a read-only OpenCode second opinion with my selected provider/model."

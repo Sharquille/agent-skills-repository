@@ -1,0 +1,4 @@
+interface:
+  display_name: "Consult Orchestrator"
+  short_description: "Coordinate Codex and OpenCode reviews"
+  default_prompt: "Use $consult-orchestrator to coordinate Codex and OpenCode read-only consultations and synthesize a verified advisory."
