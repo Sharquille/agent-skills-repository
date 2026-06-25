@@ -66,33 +66,64 @@ every line.
    Never outsource the first draft; the panel reviews, it does not author.
 2. **Preflight.** Strip secrets. Paste only the relevant section, the source
    wording, and the precise question. Bound the scope.
-3. **Technical pass — Kimi.** Ask it to verify claims, definitions, commands, and
-   example logic against the stated source, and to list any inaccuracy with the
-   correction and its reasoning. Demand specifics, not a grade.
-4. **Writing pass — MiMo.** Ask it to improve clarity, grammar, and flow of the
-   *technically-settled* text **without changing meaning**, and to flag anything
-   it had to guess at.
-5. **Cross-check for bias.** Where the two disagree, or where MiMo's rewrite
+3. **Run both lanes via the runner.** Independent-before-shared: each model
+   reviews its own lane against the original draft, never the other's answer. Use
+   `scripts/consult-panel.sh`. It runs the lanes **sequentially** because opencode
+   shares one SQLite DB and concurrent runs can fail with "database is locked".
+   Sealed mode already makes each lane fast (~30-40s), so sequential is reliable
+   and quick; `--parallel` is opt-in for environments that isolate the DB.
+   - **Technical pass — Kimi.** Verify claims, definitions, commands, and example
+     logic against the stated source; list each inaccuracy with the exact quote,
+     the correction, and one line of reasoning. Specifics, not a grade.
+   - **Writing pass — MiMo.** Improve clarity, grammar, and flow **without
+     changing meaning**; flag anything it had to guess at.
+   - **Constrain output.** Ask for a tight per-claim structure (quote → verdict →
+     correction → reason). Shorter, structured output is faster to generate and
+     faster for you to verify than free prose.
+   - **Gate by difficulty.** Reserve the heavy technical model for genuinely
+     ambiguous spans. Flat term-definition recall rarely needs the panel at all.
+4. **Cross-check for bias.** Where the two disagree, or where MiMo's rewrite
    touches a technical claim, send that specific span back to the other model.
    Do not average their answers — adjudicate against the source.
-6. **Reconcile and decide.** You own the verdict: accept, partially accept, or
+5. **Reconcile and decide.** You own the verdict: accept, partially accept, or
    reject each suggestion, with a one-line reason. When evidence is thin, keep
    the conservative version and add a `> [!WARNING]` flagging what to verify.
-7. **Format and persist.** Re-apply the [[portable-markdown]] standard (the
+6. **Format and persist.** Re-apply the [[portable-markdown]] standard (the
    models do not know it) and let `obsidian-study-loop` write the note and log
    the change.
 
 ## Invocation
 
-Route each lane through the `opencode-consult` wrapper with the pinned model:
+Preferred path — run both lanes at once with the panel runner. Write each lane's
+prompt to a file first (the prompt carries the draft, the source wording, and the
+per-claim output format), then:
 
 ```text
-# Technical accuracy (Kimi)
-scripts/consult-opencode.sh --model openrouter/moonshotai/kimi-k2.7-code "<technical-review prompt>"
-
-# Writing / readability (MiMo)
-scripts/consult-opencode.sh --model openrouter/xiaomi/mimo-v2.5-pro "<copy-edit prompt>"
+scripts/consult-panel.sh \
+  --tech-prompt /tmp/tech.md \
+  --write-prompt /tmp/write.md \
+  --timeout 240 --quant fp8,bf16
 ```
+
+The runner calls the `opencode-consult` wrapper twice in parallel, both **sealed**
+(no repo access — the model judges only the inline material) and time-bounded.
+
+Single lane, when you only need one:
+
+```text
+../../opencode-consult/scripts/consult-opencode.sh --sealed --timeout 240 \
+  --model openrouter/moonshotai/kimi-k2.7-code "<technical-review prompt>"
+```
+
+Why these flags:
+
+- `--sealed` strips file/glob/grep/list access. For a bounded section review the
+  model needs no repo access; removing it cuts exploratory round-trips (latency)
+  and keeps the answer focused on your source-of-truth wording (accuracy).
+- `--timeout` bounds a stalled provider so the call fails fast instead of hanging.
+- OpenRouter routing is pinned automatically (throughput + require-parameters);
+  `--quant fp8,bf16` additionally refuses cheap low-quant backends for high-stakes
+  sections, at a small availability cost.
 
 Use `opencode-consult`'s own preflight, secret-refusal, and read-only sandbox.
 If `opencode` is not on `PATH` or OpenRouter is not authenticated, say so and
