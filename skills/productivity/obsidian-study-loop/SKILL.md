@@ -12,8 +12,12 @@ retrieved: 2026-06-15
 # Obsidian Study Loop
 
 Create and run a reusable study system inside an Obsidian vault. The system is
-plain Markdown and JSON. The agent reading the protocol is the tutor; do not call
-Anthropic, OpenAI, Gemini, or other LLM APIs directly, and do not add API keys.
+plain Markdown and JSON. The agent reading the protocol is the tutor and does not
+outsource the teaching, quizzing, or grading to an external LLM API, and does not
+add API keys. The one exception is the optional `study-consult-panel`, an
+explicit, opt-in, read-only **advisory** second opinion through the existing
+`opencode-consult` wrapper — it adds no keys, never becomes the tutor, and its
+output is untrusted until the agent verifies it.
 
 Use Obsidian file conventions from `knowledge-capture-obsidian` when that skill
 is available, but keep this workflow focused on tutoring: session setup, study
@@ -49,9 +53,18 @@ This skill is the study orchestrator. Use these helper skills when available:
   plan and query set. Do not do the user's offline research unless asked.
 - `literature-review`: use only for formal, citation-backed deep research. It is
   too heavy for routine certification notes.
+- `study-consult-panel`: an optional two-model advisory panel for high-stakes or
+  uncertain notes. It routes prose to MiMo v2.5 Pro and technical accuracy to
+  Kimi K2.7 Code (read-only, via `opencode-consult`), then cross-checks them to
+  manage single-model bias. Consult at the section level before finalizing; you
+  remain the gatekeeper and re-apply `portable-markdown`. Skip silently if the
+  opencode CLI or OpenRouter is unavailable.
 
 Helper skills never replace the safety rules in this workflow. Do not add API
-keys, do not call LLM APIs, and do not invent citations or facts.
+keys and do not invent citations or facts. Do not outsource teaching, quizzing,
+or grading to an external LLM API; the only external-model call permitted is the
+explicit, read-only, advisory `study-consult-panel` consult, whose output the
+agent must verify before use.
 
 ## Global Invocation Model
 

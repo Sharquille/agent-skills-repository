@@ -45,9 +45,21 @@ When available, use these helper skills while following this protocol:
   the user explicitly asks for that.
 - `literature-review` only for formal, citation-backed research. Routine
   certification notes should stay lighter.
+- `study-consult-panel` (optional) for a read-only, advisory two-model second
+  opinion on a drafted section — MiMo v2.5 Pro for writing, Kimi K2.7 Code for
+  technical accuracy — cross-checked to manage single-model bias. The agent
+  stays the tutor and gatekeeper, verifies every claim, and re-applies
+  `portable-markdown`.
 
-Helper skills do not change the safety rules: do not call external LLM APIs, do
-not add API keys, and do not invent facts or citations.
+Helper skills do not change the safety rules: do not invent facts or citations,
+and do not add API keys.
+
+The agent is the tutor and never outsources the teaching, quizzing, or grading
+to an external LLM API. The single exception is `study-consult-panel`: an
+explicit, opt-in, read-only **advisory** consult through the already-configured
+`opencode-consult` wrapper. It adds no API keys, never becomes the tutor, and its
+output is untrusted until the agent verifies it against the source. If that
+wrapper or its provider is unavailable, proceed from the agent's own draft.
 
 ## Status Values
 
