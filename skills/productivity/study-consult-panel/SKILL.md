@@ -19,8 +19,10 @@ prose that one model alone would wave through.
 
 This skill is the routing-and-reconciliation recipe. The actual model call goes
 through the audited [[opencode-consult]] wrapper — this skill does not invoke
-models itself. The calling agent (Claude) is always the gatekeeper: it verifies
-every claim against the source material and writes the final note.
+models itself. The calling agent — whichever agent invoked the skill (Claude,
+Gemini, Codex, or another) — is always the gatekeeper: it verifies every claim
+against the source material and writes the final note. Nothing here is specific
+to one agent.
 
 ## The panel (verified models)
 
@@ -37,7 +39,7 @@ default model.
 
 | Agent | Role | Writes the note? |
 |---|---|---:|
-| Calling agent (Claude) | Conductor, verifier, final gatekeeper | Yes |
+| Calling agent (Claude, Gemini, Codex, …) | Conductor, verifier, final gatekeeper | Yes |
 | MiMo v2.5 Pro | Writing consultant (advisory) | No |
 | Kimi K2.7 Code | Technical consultant (advisory) | No |
 
