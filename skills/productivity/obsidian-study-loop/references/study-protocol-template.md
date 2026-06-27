@@ -747,6 +747,34 @@ After writing notes:
 - <ISO datetime> - Notes written for <scope>. Status: notes-written.
 ```
 
+5. Show a concise `support-helper` menu in chat whenever the assessed scope has
+   `gap` stubs, unanswered `study-check` blocks, or obvious follow-up work. This
+   is a handoff inside `obsidian-study-loop`, not a new study phase. Include only
+   helper skills that are available in the current agent environment; if skill
+   discovery is unavailable, list these as protocol-supported options and say "if
+   available." Do not write this menu inside the study note or any learner-edit
+   region.
+
+Use this shape, omitting unavailable bullets when availability is known:
+
+```text
+Available support-helpers:
+- Research plan: `study-research-queries` can turn each gap into source types,
+  search queries, and a capture checklist.
+- Deep source review: `literature-review` can support formal, citation-backed
+  research when a gap needs stronger sources.
+- Advisory check: `study-consult-panel` can provide an optional read-only second
+  opinion on uncertain sections before finalizing.
+- Map refresh: `study-map` can refresh course maps after reviewed notes are
+  ready to link.
+- Note polish: `humanizer` and `portable-markdown` can clean reviewed prose and
+  formatting after the learner's own gap work is checked.
+```
+
+Ask which support path the user wants next, or tell them they can fill the gaps
+offline and return with "review my additions." Do not start a helper workflow
+unless the user chooses it or has already asked for that help.
+
 ## Phase 6 - User Research
 
 The user researches `gap` objectives offline and fills in the content under the
@@ -756,8 +784,11 @@ placeholder in the notes file. The user may leave or delete the
 Do not do this research for the user unless explicitly asked. The learning value
 comes from the user filling the gap.
 
-If the user asks for research help, generate a focused plan with search queries,
-preferred source types, and a capture checklist. Prefer official course
+At the start of a gap-filling exchange, repeat the available `support-helper`
+menu when it would help the user choose the next action. Keep the default path as
+offline learner research. If the user asks for research help, use
+`study-research-queries` when available to generate a focused plan with search
+queries, preferred source types, and a capture checklist. Prefer official course
 materials, exam objectives, standards bodies, vendor documentation, and reputable
 technical references over generic SEO articles.
 
@@ -909,8 +940,10 @@ unambiguous:
 4. Assess writes per-objective `solid`, `partial`, or `gap` results and sets
    `status: quizzed`.
 5. Write Notes creates one topic note, writes complete sections for `solid` and
-   `partial`, writes exact gap stubs for `gap`, and sets `status: notes-written`.
-6. User Research happens offline.
+   `partial`, writes exact gap stubs for `gap`, sets `status: notes-written`,
+   and shows the available `support-helper` menu when follow-up work exists.
+6. User Research happens offline unless the user chooses a helper path from the
+   `support-helper` menu.
 7. Review reopens the written notes, checks the former gap sections, appends the
    required changelog, sets `status: reviewed`, and keeps `_study/state.json`
    pointed at the reviewed session.

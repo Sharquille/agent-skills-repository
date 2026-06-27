@@ -768,15 +768,45 @@ Set frontmatter `status: notes-written` and append:
 - <ISO datetime> - Notes written for <scope>. Status: notes-written.
 ```
 
+After the notes are written, show a concise `support-helper` menu in chat
+whenever the assessed scope has `gap` stubs, unanswered `study-check` blocks, or
+obvious follow-up work. This is a handoff inside `obsidian-study-loop`, not a new
+study phase. Include only helper skills that are available in the current agent
+environment; if skill discovery is unavailable, list these as protocol-supported
+options and say "if available." Do not write this menu inside the study note or
+any learner-edit region.
+
+Use this shape, omitting unavailable bullets when availability is known:
+
+```text
+Available support-helpers:
+- Research plan: `study-research-queries` can turn each gap into source types,
+  search queries, and a capture checklist.
+- Deep source review: `literature-review` can support formal, citation-backed
+  research when a gap needs stronger sources.
+- Advisory check: `study-consult-panel` can provide an optional read-only second
+  opinion on uncertain sections before finalizing.
+- Map refresh: `study-map` can refresh course maps after reviewed notes are
+  ready to link.
+- Note polish: `humanizer` and `portable-markdown` can clean reviewed prose and
+  formatting after the learner's own gap work is checked.
+```
+
+Ask which support path the user wants next, or tell them they can fill the gaps
+offline and return with "review my additions." Do not start a helper workflow
+unless the user chooses it or has already asked for that help.
+
 ## Phase 6 - User Research
 
 The user researches `gap` objectives offline and fills in content under the
 placeholder. Do not do this work for the user unless explicitly asked.
 
-If the user asks for help planning that research, use `study-research-queries`
-to produce targeted search queries, preferred source types, and a capture
-checklist. The output should help the user research the gap without filling the
-note for them.
+At the start of a gap-filling exchange, repeat the available `support-helper`
+menu when it would help the user choose the next action. Keep the default path as
+offline learner research. If the user asks for help planning that research, use
+`study-research-queries` to produce targeted search queries, preferred source
+types, and a capture checklist. The output should help the user research the gap
+without filling the note for them.
 
 ## Phase 7 - Review Additions
 
