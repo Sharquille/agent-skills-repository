@@ -1,6 +1,6 @@
 ---
 name: project-name-consult
-description: "Consult Kimi K2.7 Code and MiMo v2.5 Pro for a domain-accurate, professional project name during project-build-loop bootstrap. Use when the user gives a rough project description and needs a clean title, slug, and category that captures the right technical concepts (Kimi) and reads well for a portfolio (MiMo). Runs both models sealed and bounded via the tuned opencode-consult wrapper, reconciles their suggestions, and returns a ranked shortlist. Do not trigger for naming skills (use name-skill), for renaming variables (use naming-analyzer), or outside a project-build-loop context."
+description: "Consult Kimi K2.7 Code and MiMo v2.5 Pro for a domain-accurate, professional project name during project-build-loop bootstrap. Use when the user gives a rough project description and needs a clean title, slug, and category that captures the right technical concepts (Kimi), reads well for a portfolio (MiMo), and benefits from conductor-led synthesis. Runs both models sealed and bounded via the tuned opencode-consult wrapper, then the conductor independently selects, rewrites, or creates the final ranked shortlist. Do not trigger for naming skills (use name-skill), for renaming variables (use naming-analyzer), or outside a project-build-loop context."
 # --- provenance ---
 category: productivity
 source: self-authored; part of the project orchestra (docs/plans/project-orchestra-plan.md)
@@ -21,8 +21,9 @@ Get a proper project name by routing through two specialist models:
   specific?
 
 Both run **sealed and timeout-bounded** via the tuned `opencode-consult` wrapper
-(no repo access, advisory only). The conductor reconciles their suggestions and
-presents a ranked shortlist: title, slug, and category.
+(no repo access, advisory only). The conductor treats their output as raw signal,
+adds its own naming judgment, and presents a refined ranked shortlist: title,
+slug, category, and the recommended pick.
 
 ## When to use
 
@@ -39,13 +40,20 @@ invoked standalone when naming or renaming a project.
    asks for clarity and portfolio readability.
 3. **Run sequentially** (opencode shares one SQLite DB). Both sealed, both
    bounded at 120s (naming is a lightweight call).
-4. **Reconcile.** Where the two diverge (Kimi picks a precise acronym, MiMo
-   prefers a readable phrase), the conductor picks the name that is both
-   technically correct and readable. Prefer specificity over generality; prefer
-   plain English over jargon when meaning is preserved.
-5. **Present a ranked shortlist** (3 options): title, inferred slug (the
-   bootstrap's `slugify` output), and recommended category. The user picks or
-   edits; the conductor proceeds with the confirmed name.
+4. **Synthesize as conductor.** Treat both model outputs as advisory ingredients,
+   not ballot results. Identify the real engineering story in the project
+   description, then select, rewrite, combine, or create names that better carry
+   that story. The conductor may introduce names absent from both consults when
+   they are more accurate, cleaner, or more useful for the project path.
+5. **Apply naming judgment.** Prefer names that foreground the durable technical
+   capability over implementation trivia. Use precise domain terms when they
+   clarify the work, but avoid pathologically long slugs, alarmist wording, and
+   unexplained jargon. For portfolio-facing projects, favor names that make a
+   hiring manager understand the value while still satisfying a practitioner.
+6. **Present a refined shortlist** (3 to 5 options): title, inferred slug (the
+   bootstrap's `slugify` output), recommended category, and a single conductor
+   recommendation with brief reasoning. The user picks or edits; the conductor
+   proceeds with the confirmed name.
 
 ## Invocation
 
