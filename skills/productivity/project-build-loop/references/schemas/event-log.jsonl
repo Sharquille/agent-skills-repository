@@ -1,0 +1,6 @@
+{"ts":"2026-06-27T11:12:51-04:00","seq":1,"event":"bootstrap","slug":"osint-lab-kali-wg-mullvad","category":"networking-and-cybersecurity"}
+{"ts":"2026-06-27T11:20:00-04:00","seq":2,"event":"classify","tier":"T2","status":"confirmed","rule_ids":["T2:bounded-lab"]}
+{"ts":"2026-06-27T11:35:00-04:00","seq":3,"event":"gate","action":"tooling","task":"1.1","decision":"allow","tier":"T2"}
+{"ts":"2026-06-27T11:50:00-04:00","seq":4,"event":"checkpoint","task":"1.1","git_after":"<sha>","status":"done"}
+{"ts":"2026-06-27T12:10:00-04:00","seq":5,"event":"consult","model":"openrouter/moonshotai/kimi-k2.7-code","prompt_sha256":"<hash>","artifact_sha256":"<hash>","timeout":false,"result":".project/consults/5.txt"}
+{"ts":"2026-06-27T12:30:00-04:00","seq":6,"event":"reclassify","from":"T2","to":"T3","reason":"task introduced mitm_proxy","direction":"up"}

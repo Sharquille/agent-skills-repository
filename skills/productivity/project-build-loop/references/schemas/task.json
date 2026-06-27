@@ -1,0 +1,26 @@
+{
+  "id": "1.2",
+  "title": "Passive recon of owned target",
+  "status": "todo | in-progress | blocked | done",
+  "gate": "authorize | baseline | build | deploy | execute | validate | redact | publish-approval | decommission",
+  "capability_flags": ["passive_recon"],
+  "authorization_required": false,
+  "isolation_required": true,
+  "domain_skills": ["performing-dns-enumeration-and-zone-transfer"],
+  "report": {
+    "changed_files": [],
+    "commands_run": [],
+    "risks": [],
+    "tests": [],
+    "blockers": []
+  },
+  "evidence": [{ "path": "evidence/recon-1.2.txt", "sha256": "<hash>" }],
+  "build_log": "build-log/task-1.2.md",
+  "checkpoint": {
+    "git_before": "<sha>",
+    "git_after": "<sha>",
+    "exit_codes": [],
+    "limitations": [],
+    "rollback_point": "<sha>"
+  }
+}

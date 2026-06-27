@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "generated": "2026-06-27T12:40:00-04:00",
+  "artifacts": [
+    {
+      "path": "evidence/capture-1.2.pcapng",
+      "sha256": "<hash>",
+      "class": "private",
+      "captured": "2026-06-27T12:05:00-04:00",
+      "source_task": "1.2",
+      "retention_until": "2026-12-27",
+      "publishable": false,
+      "sanitized_copy": null
+    },
+    {
+      "path": "publish/topology.svg",
+      "sha256": "<hash>",
+      "class": "public",
+      "source_task": "1.1",
+      "publishable": true,
+      "redaction": "real IPs -> RFC 5737 doc ranges; EXIF stripped"
+    }
+  ]
+}

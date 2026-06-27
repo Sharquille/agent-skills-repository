@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "id": "osint-lab-kali-wg-mullvad",
+  "title": "OSINT Lab: Kali -> WireGuard -> Mullvad",
+  "category": "networking-and-cybersecurity",
+  "created": "2026-06-27T11:12:51-04:00",
+  "phase": "task-loop",
+  "authorization": {
+    "owner": "self",
+    "scope": ["lab-only", "owned target VM"],
+    "target_list": ["192.0.2.10"],
+    "allowed_actions": ["passive_recon"],
+    "excluded_actions": ["active_scan against non-owned hosts"],
+    "evidence_ref": ".vault/authorization.md",
+    "egress_rules": "lab egress via WireGuard only; kill-switch on tunnel drop",
+    "kill_switch": "drop-all on wg0 down"
+  },
+  "classification": {
+    "policy_version": "1.0",
+    "status": "confirmed",
+    "archetype": { "primary": "osint-recon", "secondary": null },
+    "capability_flags": ["passive_recon", "internet_egress"],
+    "dual_use_tier": "T2",
+    "data_classes": ["synthetic"],
+    "artifact_class_floor": "private",
+    "required_gates": ["authorization", "isolation", "redaction"],
+    "satisfied_gates": ["authorization", "isolation"],
+    "publish_policy": "defensive-only",
+    "git_policy": "local-only",
+    "rationale": { "rule_ids": ["T2:bounded-lab"], "evidence_refs": [".vault/authorization.md"] },
+    "override": null
+  },
+  "audience": "community-shared",
+  "tasks": [
+    { "id": "1.1", "title": "Build the anonymity chain", "status": "done", "capability_flags": ["internet_egress"], "checkpoint": "evt-0007" },
+    { "id": "1.2", "title": "Passive recon of owned target", "status": "in-progress", "capability_flags": ["passive_recon"] }
+  ]
+}

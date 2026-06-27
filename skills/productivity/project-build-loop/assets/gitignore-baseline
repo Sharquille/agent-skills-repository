@@ -1,0 +1,49 @@
+# project-build-loop baseline .gitignore — default-private.
+# Never commit secrets, evidence, or raw captures. Stage an allowlist, never `git add .`.
+
+# Secrets / credentials
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*secret*
+*credential*
+*token*
+*.kdbx
+.vault/
+
+# Local-only conductor state (absolute paths, locks)
+.project/
+
+# Evidence & captures (hashed, retained locally; never published raw)
+evidence/
+*.pcap
+*.pcapng
+*.cap
+*.har
+
+# Lab / infra artifacts that commonly carry secrets
+*.ovpn
+*.conf.bak
+*.unl.bak
+inventory.ini
+ansible/*.vault
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+
+# OS / tooling noise
+.DS_Store
+__pycache__/
+*.log
+node_modules/
+.astro/
+dist/
