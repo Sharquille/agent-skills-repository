@@ -50,6 +50,11 @@ When available, use these helper skills while following this protocol:
   technical accuracy — cross-checked to manage single-model bias. The agent
   stays the tutor and gatekeeper, verifies every claim, and re-applies
   `portable-markdown`.
+- `study-map` to build the tiered map stack (Home index, chapter maps, section
+  sub-maps, concept maps, tag-lens, prerequisite map) once the vault has more than
+  one chapter. It is integrity-gated: every node, edge, and tag must resolve to a
+  real note/tag/link, missing linkage is reported (not invented), and it writes
+  only into `Maps/` — never `_study/` or note bodies.
 
 Helper skills do not change the safety rules: do not invent facts or citations,
 and do not add API keys.

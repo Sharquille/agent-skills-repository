@@ -59,6 +59,12 @@ This skill is the study orchestrator. Use these helper skills when available:
   manage single-model bias. Consult at the section level before finalizing; you
   remain the gatekeeper and re-apply `portable-markdown`. Skip silently if the
   opencode CLI or OpenRouter is unavailable.
+- `study-map`: once the vault has more than one chapter, build the tiered map
+  stack (Home index, chapter maps, section sub-maps, concept maps, tag-lens,
+  prerequisite map). It is integrity-gated — every node, edge, and tag must
+  resolve to a real note/tag/link, and missing linkage is reported, not invented.
+  It writes only into `Maps/` and never touches `_study/` or note bodies. Refresh
+  affected maps when a chapter reaches `reviewed`.
 
 Helper skills never replace the safety rules in this workflow. Do not add API
 keys and do not invent citations or facts. Do not outsource teaching, quizzing,
