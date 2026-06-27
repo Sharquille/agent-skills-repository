@@ -38,6 +38,32 @@ exists before writing it (`SKILL.md:122-126`), keep a verified list of existing
 note basenames and avoid orphans (`:622-626`), and use lowercase kebab-case tags
 matched to the vault's existing vocabulary (`:649`).
 
+## Map scope — what is mappable
+
+Real ≠ mappable. The vault contains scaffolding files that are real notes but
+carry no knowledge, and they must **never** appear as map nodes:
+
+- agent pointer files — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`
+- workflow/config — `STUDY-PROTOCOL.md`, `README.md`, `LICENSE`, `MEMORY.md`
+- everything under `_study/` (session logs, state) and `.obsidian/`
+- any dotfile or dot-folder
+
+**Content scope defaults to the `Notes/` folder** (plus the `Maps/` folder, since
+maps may link to maps). Only notes inside the content scope are candidates for
+nodes; everything else is excluded by construction. Override the scope with
+`STUDY_MAP_CONTENT_ROOTS="Notes,Refs"` if real content lives elsewhere.
+
+The integrity lint enforces this: a map node or wikilink that points at a real but
+out-of-scope/scaffolding file is reported as **UNWARRANTED** (distinct from a
+DANGLING reference that points at nothing). Both fail the gate.
+
+> [!TIP]
+> This also explains Obsidian's built-in **global graph view** showing
+> `AGENTS`/`CLAUDE`/`STUDY-PROTOCOL` etc. — that graph renders every `.md` file
+> and is separate from study-map's output. To declutter it, set the graph's
+> **Files filter** to `path:Notes/` (show only study notes), or exclude the
+> scaffolding: `-file:CLAUDE -file:AGENTS -file:GEMINI -file:STUDY-PROTOCOL -file:README -file:LICENSE -path:_study`.
+
 ## The map stack (each tier is vault-derived)
 
 | Tier | Map | Derived only from |
@@ -56,9 +82,10 @@ from propositions and prerequisites the notes actually state.
 
 1. **Resolve the vault** (same rules as `obsidian-study-loop`: an `.obsidian/`,
    `STUDY-PROTOCOL.md`, or `_study/state.json` marks it). Ask if unknown.
-2. **Inventory the real graph.** List existing note basenames, the `##`/`###`
-   headings per note, all frontmatter tags actually in use, every `related:` and
-   inline `[[wikilink]]`, and any stated prerequisites. This is the allow-list.
+2. **Inventory the real graph — content scope only.** List in-scope note basenames
+   (default `Notes/`), the `##`/`###` headings per note, all frontmatter tags
+   actually in use, every `related:` and inline `[[wikilink]]`, and any stated
+   prerequisites. Exclude scaffolding (see Map scope). This is the allow-list.
 3. **Plan each requested tier from the allow-list only.** Drop anything that would
    need a non-existent note/tag/relationship; collect those as a **gap report**.
 4. **Render via `mind-map-obsidian`.** Use `file` nodes for real notes; labeled
@@ -108,6 +135,7 @@ the gatekeeper.
 - [ ] Vault inventoried; allow-list of real notes/tags/links built.
 - [ ] Each tier planned only from the allow-list; gaps reported, not invented.
 - [ ] Maps rendered via `mind-map-obsidian` into `Maps/`, portable formats.
-- [ ] `integrity-lint.sh` passes — zero dangling nodes, edges, links, or tags.
+- [ ] `integrity-lint.sh` passes — zero DANGLING and zero UNWARRANTED references.
+- [ ] No scaffolding (`CLAUDE`/`AGENTS`/`GEMINI`/`STUDY-PROTOCOL`/`_study/` …) in any map.
 - [ ] Gap report delivered so the user can complete the brain with real notes.
 - [ ] No writes to `_study/`, session log, or note bodies.
