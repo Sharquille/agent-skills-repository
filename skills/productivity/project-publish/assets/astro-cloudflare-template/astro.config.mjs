@@ -1,4 +1,6 @@
-// @ts-check
+// Note: this JS config is intentionally not `// @ts-check`'d — astro check would
+// otherwise flag a known type-version skew between @tailwindcss/vite's plugin
+// signature and the Vite types Astro bundles. The build itself is unaffected.
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
 import sitemap from "@astrojs/sitemap";

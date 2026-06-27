@@ -8,7 +8,9 @@
     "preview": "astro preview",
     "deploy": "wrangler pages deploy dist --project-name security-lab-portfolio"
   },
-  "dependencies": {
+  "comment": "Static site: there are NO runtime dependencies — nothing here ships to Cloudflare. Everything below is build-time only, so it lives in devDependencies. The deployed dist/ is static HTML/CSS/XML.",
+  "dependencies": {},
+  "devDependencies": {
     "astro": "^5.0.0",
     "@astrojs/mdx": "^4.0.0",
     "@astrojs/sitemap": "^3.0.0",
@@ -16,9 +18,7 @@
     "@tailwindcss/vite": "^4.0.0",
     "@tailwindcss/typography": "^0.5.15",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.6.0"
-  },
-  "devDependencies": {
+    "typescript": "^5.6.0",
     "wrangler": "^3.0.0"
   }
 }
