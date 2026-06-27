@@ -1,6 +1,20 @@
 {
   "id": "1.2",
   "title": "Passive recon of owned target",
+  "plain_language": "This means running only passive OSINT checks against a target the user owns or controls, then recording what worked without collecting credentials or touching third-party systems.",
+  "why_it_matters": "This keeps the task inside the approved authorization and dual-use tier while producing evidence that the lab workflow works.",
+  "user_inputs_needed": [
+    "Target placeholder or owned scope reference, such as SELF_PROFILE_URL",
+    "Allowed tool categories, such as search-engine review or metadata inspection",
+    "Evidence type to capture, such as screenshots, logs, or sanitized CLI output"
+  ],
+  "do_not_send": [
+    "passwords",
+    "tokens",
+    "private keys",
+    "real credentials",
+    "personal profile URLs unless explicitly needed and safe to store locally"
+  ],
   "status": "todo | in-progress | blocked | done",
   "gate": "authorize | baseline | build | deploy | execute | validate | redact | publish-approval | decommission",
   "capability_flags": ["passive_recon"],

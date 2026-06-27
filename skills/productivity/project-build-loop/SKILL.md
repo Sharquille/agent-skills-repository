@@ -1,6 +1,6 @@
 ---
 name: project-build-loop
-description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with inline build-log notes and issue reports, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
+description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with inline build-log notes and issue reports, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, and safe placeholders. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
 # --- provenance ---
 category: productivity
 source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via consult-orchestrator (Codex + Kimi)
@@ -72,6 +72,30 @@ Helper skills never override the safety rules here.
   use it; otherwise create under `projects/<category>/<slug>`.
 - **Git:** local private init, **no remote** by default.
 
+## User-facing clarity
+
+Lifecycle terms are internal shorthand. When presenting a task, asking discovery
+questions, or requesting missing inputs, translate the shorthand into the
+concrete pieces the user needs to provide.
+
+For every task prompt, include:
+
+- **Task label:** `N.N: <title>`.
+- **Plain meaning:** one sentence beginning with "This means..." that names the
+  actual objects involved, such as devices, interfaces, subnets, files, commands,
+  screenshots, logs, policies, or validation evidence.
+- **Why it matters:** one sentence tying the task to the project's safety,
+  function, or evidence gate.
+- **What I need from you:** a short, numbered list of specific inputs. Use
+  examples and placeholders (`KALI_LAN`, `DEBIAN_WAN`, `SELF_PROFILE_URL`) and
+  say "answer `unsure` and I will propose a default" when appropriate.
+- **Do-not-send guardrail:** when relevant, state what not to paste, such as
+  secrets, tokens, private keys, real public IPs, credentials, or personal links.
+
+Avoid presenting bare project-management labels such as "document topology",
+"define scope", "capture evidence", or "validate egress" without unpacking what
+those labels mean for the current project.
+
 ## Global invocation
 
 This skill is globally available and may be called from any directory. Resolve
@@ -128,7 +152,9 @@ path, egress rules, kill-switch), **isolation/egress**, environment (EVE-NG
 Community/Pro, images, snapshots / production rollback), tooling, **evidence
 capture + hashing + retention**, **redaction policy**, success criteria,
 **decommission plan**, audience, and publish intent. Treat unknowns as
-restrictive.
+restrictive. Ask in plain language: define each term before asking for it, show
+safe examples, and let the user answer "unsure" when the conductor can propose a
+reasonable default.
 
 ### Phase 3 — Classify
 
@@ -149,7 +175,12 @@ Generate a roadmap and numbered tasks (1.1, 1.2…) with **mandatory gates**:
 authorize+classify → baseline+snapshot+hashes → build/harden → deploy with
 version locks → execute → analyze/validate → redact+repro-bundle →
 publish-approval → decommission. Offer suggested paths; the user selects; finalize
-tasks into `references/schemas/task.json` shape.
+tasks into `references/schemas/task.json` shape. Each task title must be paired
+with a plain-language expansion, a reason the task exists, and the exact user
+inputs needed to start it. Example: `1.1: Document topology, trust boundaries,
+and traffic policy` should be presented as "map devices, interfaces, EVE-NG
+networks, IP subnets, allowed traffic paths, blocked traffic paths, and the
+evidence that will prove those controls work."
 
 ### Phase 5 — Task loop
 
