@@ -1,0 +1,63 @@
+---
+title: "OSINT Egress Lab: Kali → Router → WireGuard → Mullvad"
+summary: "An isolated EVE-NG lab that routes research traffic through a WireGuard tunnel to a Mullvad egress, with detection and hardening notes. Authorized, lab-only, synthetic data."
+date: 2026-06-27
+tags: ["osint", "wireguard", "eve-ng", "egress"]
+archetype: "osint"
+tier: "T2"
+topology:
+  - src: "/projects/osint-egress-lab/topology.svg"
+    alt: "Kali origin, CSR1000v router, ISP/WireGuard tunnel, Mullvad egress to the internet"
+    caption: "Generated from the .unl by eve-ng-topology. Addresses are RFC 5737 documentation ranges."
+detection:
+  summary: "Anomalous outbound UDP/51820 from the research segment and DNS that bypasses the resolver."
+  logSources: ["firewall flow logs", "Zeek conn.log", "DNS query logs"]
+  ruleRefs: []
+mitigation:
+  summary: "Pin egress to the tunnel, fail closed on tunnel drop, and segment the research zone."
+  controls: ["kill-switch on wg0 down", "egress ACL to the WG endpoint only", "VLAN isolation of the research segment"]
+ogImage:
+  src: "/projects/osint-egress-lab/og.webp"
+  alt: "OSINT egress lab topology"
+approved: true
+revoked: false
+---
+
+import TopoViewer from "../../components/mdx/TopoViewer.astro";
+import AttackDetectHarden from "../../components/mdx/AttackDetectHarden.astro";
+import IOCCallout from "../../components/mdx/IOCCallout.astro";
+
+> Authorized lab. Built and tested entirely inside an isolated EVE-NG environment
+> against owned/synthetic targets. All addresses below use RFC 5737 documentation
+> ranges; no real infrastructure detail is published.
+
+<TopoViewer
+  src="/projects/osint-egress-lab/topology.svg"
+  alt="Kali → CSR1000v → ISP/WireGuard → Mullvad → internet"
+  caption="Kali is shown unwired as it appears in the .unl; the egress path runs router → WireGuard tunnel → Mullvad."
+  panZoom
+/>
+
+## Overview
+
+The lab routes research egress through a WireGuard tunnel (`UDP/51820`) to a
+Mullvad exit, isolating the origin host from direct internet exposure.
+
+<AttackDetectHarden
+  attack={{ title: "Untraceable egress", summary: "Research traffic leaves via an encrypted tunnel, masking origin and bypassing local egress inspection.", constraints: ["lab-only", "owned/synthetic targets"] }}
+  detect={{ title: "Tunnel + DNS anomalies", summary: "Outbound UDP/51820 from a segment that should not initiate it, plus resolver bypass.", logSources: ["firewall flow logs", "Zeek conn.log", "DNS logs"] }}
+  harden={{ title: "Fail-closed egress", summary: "Force all egress through the tunnel and drop on tunnel loss.", controls: ["kill-switch on wg0 down", "egress ACL to WG endpoint", "research-zone VLAN isolation"] }}
+/>
+
+<IOCCallout
+  severity="info"
+  confidence="medium"
+  title="Lab indicators (documentation values)"
+  items={[
+    { type: "ip", value: "203.0.113.10", note: "WG endpoint (doc range)" },
+    { type: "rule", value: "outbound udp/51820 from research VLAN", note: "Zeek/Suricata candidate" },
+  ]}
+/>
+
+_Detection and mitigation are the point; the egress technique is described as
+methodology, not as a copy-paste recipe._

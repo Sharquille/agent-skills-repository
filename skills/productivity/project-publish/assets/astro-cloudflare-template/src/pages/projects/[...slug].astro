@@ -1,0 +1,37 @@
+---
+import { getCollection, render } from "astro:content";
+import ProjectLayout from "../../layouts/ProjectLayout.astro";
+import TopoViewer from "../../components/mdx/TopoViewer.astro";
+import CommandBlock from "../../components/mdx/CommandBlock.astro";
+import IOCCallout from "../../components/mdx/IOCCallout.astro";
+import EvidenceFigure from "../../components/mdx/EvidenceFigure.astro";
+import AttackDetectHarden from "../../components/mdx/AttackDetectHarden.astro";
+
+export async function getStaticPaths() {
+  // Only approved, non-revoked projects become pages.
+  const entries = await getCollection(
+    "projects",
+    (e) => e.data.approved === true && e.data.revoked === false,
+  );
+  return entries.map((entry) => ({
+    params: { slug: entry.id.replace(/\.mdx$/, "") },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+---
+
+<ProjectLayout
+  title={d.title}
+  summary={d.summary}
+  date={d.date}
+  tags={d.tags}
+  ogImage={d.ogImage.src}
+>
+  <Content
+    components={{ TopoViewer, CommandBlock, IOCCallout, EvidenceFigure, AttackDetectHarden }}
+  />
+</ProjectLayout>

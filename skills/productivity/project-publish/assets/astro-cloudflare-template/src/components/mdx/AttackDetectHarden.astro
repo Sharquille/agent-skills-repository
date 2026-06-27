@@ -1,0 +1,48 @@
+---
+// The required dual-use narrative shell: attack -> detect -> harden. Methodology,
+// not weaponized tooling. Detection and hardening are first-class, not footnotes.
+interface Section {
+  title: string;
+  summary: string;
+}
+interface Props {
+  attack: Section & { constraints?: string[] };
+  detect: Section & { logSources?: string[] };
+  harden: Section & { controls?: string[] };
+}
+const { attack, detect, harden } = Astro.props;
+const col = "rounded-lg border bg-[var(--color-panel)] p-4";
+---
+
+<div class="not-prose my-6 grid gap-4 md:grid-cols-3">
+  <section class={`${col} border-[var(--color-warn)]/40`}>
+    <p class="font-mono text-xs text-[var(--color-warn)]">ATTACK</p>
+    <h3 class="mt-1 text-sm font-medium">{attack.title}</h3>
+    <p class="mt-2 text-sm text-[var(--color-muted)]">{attack.summary}</p>
+    {attack.constraints && (
+      <ul class="mt-2 list-disc pl-4 text-xs text-[var(--color-muted)]">
+        {attack.constraints.map((c) => <li>{c}</li>)}
+      </ul>
+    )}
+  </section>
+  <section class={`${col} border-[var(--color-detect)]/40`}>
+    <p class="font-mono text-xs text-[var(--color-detect)]">DETECT</p>
+    <h3 class="mt-1 text-sm font-medium">{detect.title}</h3>
+    <p class="mt-2 text-sm text-[var(--color-muted)]">{detect.summary}</p>
+    {detect.logSources && (
+      <ul class="mt-2 list-disc pl-4 text-xs text-[var(--color-muted)]">
+        {detect.logSources.map((s) => <li>{s}</li>)}
+      </ul>
+    )}
+  </section>
+  <section class={`${col} border-[var(--color-harden)]/40`}>
+    <p class="font-mono text-xs text-[var(--color-harden)]">HARDEN</p>
+    <h3 class="mt-1 text-sm font-medium">{harden.title}</h3>
+    <p class="mt-2 text-sm text-[var(--color-muted)]">{harden.summary}</p>
+    {harden.controls && (
+      <ul class="mt-2 list-disc pl-4 text-xs text-[var(--color-muted)]">
+        {harden.controls.map((c) => <li>{c}</li>)}
+      </ul>
+    )}
+  </section>
+</div>

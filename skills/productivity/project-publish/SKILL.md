@@ -48,6 +48,26 @@ Structure as **attack → detect → harden**:
 3. **Detection**: IOCs, Sigma/Suricata rules, log sources, alert logic.
 4. **Mitigation**: segmentation, TLS/MACsec, 802.1X, cert pinning, hardening.
 
+## Shipped scaffold
+
+`assets/astro-cloudflare-template/` is a ready Astro + Tailwind 4 + MDX project:
+
+- `astro.config.mjs` (static output), `wrangler.toml`, `package.json`.
+- `src/content.config.ts` — the project write-up schema (`tier` is a build gate,
+  never rendered or routed from).
+- `src/components/mdx/` — `TopoViewer`, `CommandBlock`, `IOCCallout`,
+  `EvidenceFigure`, `AttackDetectHarden`.
+- `src/pages/index.astro` renders from `src/data/approved-projects.json` only —
+  **never** filesystem discovery.
+- `tools/import-approved-manifest.ts` — the only path a project reaches the public
+  index; fail-closed (requires `audience: public`, `status: approved`,
+  `revoked: false`, publishable policy).
+- `src/content/projects/_example-osint-chain.mdx` — worked example.
+
+Copy the template once, then per project: drop the sanitized topology SVG into
+`public/projects/<slug>/`, write the MDX from the publish manifest, run the
+importer, and `npm run build` (deploys `dist/` to Cloudflare Pages).
+
 ## Build & deploy
 
 Reuse `site-architecture`, `modern-web-ui`, `design-tokens`, `ui-styling` for the

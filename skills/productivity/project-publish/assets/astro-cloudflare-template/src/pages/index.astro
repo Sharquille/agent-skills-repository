@@ -1,0 +1,43 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+// Render ONLY from the curated approved list — never from filesystem discovery,
+// so unpublished / embargoed / sensitive projects can never leak into the index.
+import approved from "../data/approved-projects.json";
+
+const projects = (approved as Array<{
+  slug: string;
+  title: string;
+  summary: string;
+  date: string;
+  tags: string[];
+  ogImage?: { src: string; alt: string };
+}>).sort((a, b) => (a.date < b.date ? 1 : -1));
+---
+
+<BaseLayout title="Security & Networking Lab Portfolio">
+  <h1 class="text-3xl font-semibold tracking-tight">Lab write-ups</h1>
+  <p class="mt-2 text-[var(--color-muted)]">
+    Authorized, sanitized lab builds — attack → detect → harden.
+  </p>
+  <ul class="mt-8 space-y-4">
+    {
+      projects.map((p) => (
+        <li class="rounded-lg border border-white/10 bg-[var(--color-panel)] p-5 transition hover:border-[var(--color-detect)]/40">
+          <a href={`/projects/${p.slug}`} class="block">
+            <p class="font-mono text-xs text-[var(--color-muted)]">{p.date}</p>
+            <h2 class="mt-1 text-lg font-medium">{p.title}</h2>
+            <p class="mt-1 text-sm text-[var(--color-muted)]">{p.summary}</p>
+            {p.tags?.length > 0 && (
+              <p class="mt-2 font-mono text-xs text-[var(--color-detect)]">
+                {p.tags.join(" · ")}
+              </p>
+            )}
+          </a>
+        </li>
+      ))
+    }
+    {projects.length === 0 && (
+      <li class="text-sm text-[var(--color-muted)]">No published projects yet.</li>
+    )}
+  </ul>
+</BaseLayout>

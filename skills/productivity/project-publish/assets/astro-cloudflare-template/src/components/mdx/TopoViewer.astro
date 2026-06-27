@@ -1,0 +1,45 @@
+---
+// Embed a sanitized topology SVG (from eve-ng-topology). Optional pan/zoom with
+// keyboard controls. Never embeds device configs.
+interface Props {
+  src: string;
+  alt: string;
+  caption?: string;
+  panZoom?: boolean;
+  height?: "sm" | "md" | "lg";
+}
+const { src, alt, caption, panZoom = false, height = "md" } = Astro.props;
+const h = { sm: "h-64", md: "h-96", lg: "h-[32rem]" }[height];
+---
+
+<figure class="not-prose my-6 rounded-lg border border-white/10 bg-[var(--color-panel)] p-3">
+  <div class={`relative w-full overflow-auto ${h}`} data-panzoom={panZoom ? "" : null}>
+    <img src={src} alt={alt} loading="lazy" class="mx-auto" />
+  </div>
+  {
+    panZoom && (
+      <div class="mt-2 flex gap-2">
+        <button type="button" data-zoom="in" class="rounded border border-white/15 px-2 py-1 text-xs" aria-label="Zoom in">+</button>
+        <button type="button" data-zoom="out" class="rounded border border-white/15 px-2 py-1 text-xs" aria-label="Zoom out">−</button>
+        <button type="button" data-zoom="reset" class="rounded border border-white/15 px-2 py-1 text-xs" aria-label="Reset zoom">reset</button>
+      </div>
+    )
+  }
+  {caption && <figcaption class="mt-2 text-xs text-[var(--color-muted)]">{caption}</figcaption>}
+</figure>
+
+{
+  panZoom && (
+    <script>
+      document.querySelectorAll('[data-panzoom] img').forEach((img) => {
+        let scale = 1;
+        const el = img as HTMLImageElement;
+        const wrap = el.closest('figure');
+        const set = (s: number) => { scale = Math.min(4, Math.max(1, s)); el.style.transform = `scale(${scale})`; el.style.transformOrigin = 'top left'; };
+        wrap?.querySelector('[data-zoom="in"]')?.addEventListener('click', () => set(scale + 0.25));
+        wrap?.querySelector('[data-zoom="out"]')?.addEventListener('click', () => set(scale - 0.25));
+        wrap?.querySelector('[data-zoom="reset"]')?.addEventListener('click', () => set(1));
+      });
+    </script>
+  )
+}

@@ -38,6 +38,24 @@ scripts/unl_to_topology.py lab.unl --emit mermaid > topology.mmd
 scripts/unl_to_topology.py lab.unl --emit dot | dot -Tsvg > topology.svg
 ```
 
+## Enrichments
+
+Validated against a real EVE-NG **Pro** export, the parser captures:
+
+- **Link labels** — interface `label` values (e.g. `WireGuard Tunnel UDP :51820`)
+  ride the edge in Mermaid/DOT.
+- **Roles** — node `icon`/`type`/`template` map to `router`/`server`/`docker`/
+  `kali`/`linux`/`cloud` for styling.
+- **Isolated nodes** — a node present in the `.unl` but with **no `<interface>`**
+  is rendered dashed and annotated "unwired in .unl". Never fabricate an edge for
+  a conceptual path; inferred wiring belongs in prose, not the generated diagram.
+- **Zones** — `<textobject>` base64 HTML is decoded into a `zones` list (e.g.
+  "Research Zone — VLAN 70").
+
+Device `<config>` blocks are **never** auto-included — they carry certs and real
+IPs. The publication layer redacts (cert → placeholder, real IPs → RFC 5737/3849
+ranges) and may include only a sanitized excerpt.
+
 ## Validate before trusting
 
 The `.unl` schema differs between EVE-NG **Community** and **Pro** (and across

@@ -1,0 +1,22 @@
+---
+// A sanitized evidence figure (screenshot, packet summary, log excerpt, rule).
+// `hash` lets a reader tie the figure to the artifact manifest. Source images
+// must already be stripped of EXIF and redacted by the publish gate.
+interface Props {
+  src: string;
+  alt: string;
+  caption: string;
+  kind?: "screenshot" | "packet-summary" | "log" | "rule" | "diagram";
+  hash?: string;
+}
+const { src, alt, caption, kind = "screenshot", hash } = Astro.props;
+---
+
+<figure class="not-prose my-6 rounded-lg border border-white/10 bg-[var(--color-panel)] p-3">
+  <img src={src} alt={alt} loading="lazy" class="mx-auto rounded" />
+  <figcaption class="mt-2 text-xs text-[var(--color-muted)]">
+    <span class="font-mono text-[var(--color-detect)]">[{kind}]</span>
+    {caption}
+    {hash && <span class="ml-2 font-mono">sha256:{hash.slice(0, 12)}…</span>}
+  </figcaption>
+</figure>

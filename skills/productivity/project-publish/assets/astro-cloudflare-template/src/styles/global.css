@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Dark, technical, low-gloss theme. Teal = detection, green = hardening,
+   amber = caution. */
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg: #090d11;
+  --color-panel: #111820;
+  --color-ink: #e6edf3;
+  --color-muted: #93a4b5;
+  --color-detect: #38bdf8;
+  --color-harden: #34d399;
+  --color-warn: #f59e0b;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Visible focus rings for keyboard nav (accessibility). */
+:focus-visible {
+  outline: 2px solid var(--color-detect);
+  outline-offset: 2px;
+}
+
+figure svg,
+figure img {
+  max-width: 100%;
+  height: auto;
+}

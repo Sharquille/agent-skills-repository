@@ -1,0 +1,41 @@
+---
+import "../styles/global.css";
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+}
+const { title, description = "", ogImage } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta property="og:title" content={title} />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body class="min-h-screen bg-[var(--color-bg)] text-[var(--color-ink)]">
+    <header class="border-b border-white/10">
+      <nav class="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <a href="/" class="font-mono text-sm tracking-tight text-[var(--color-detect)]"
+          >./labs</a
+        >
+        <a href="/" class="text-sm text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+          >Portfolio</a
+        >
+      </nav>
+    </header>
+    <main class="mx-auto max-w-4xl px-6 py-10">
+      <slot />
+    </main>
+    <footer class="mx-auto max-w-4xl px-6 py-10 text-xs text-[var(--color-muted)]">
+      Authorized lab write-ups. Topology and command output are sanitized;
+      addresses use RFC 5737 / RFC 3849 documentation ranges.
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+---
+interface IOC {
+  type: "ip" | "domain" | "hash" | "rule" | "log";
+  value: string;
+  note?: string;
+}
+interface Props {
+  title?: string;
+  severity: "info" | "low" | "medium" | "high";
+  items: IOC[];
+  confidence?: "low" | "medium" | "high";
+}
+const { title = "Indicators", severity, items, confidence } = Astro.props;
+const ring = {
+  info: "border-[var(--color-detect)]/40",
+  low: "border-[var(--color-detect)]/40",
+  medium: "border-[var(--color-warn)]/50",
+  high: "border-red-500/50",
+}[severity];
+---
+
+<aside class={`not-prose my-5 rounded-lg border ${ring} bg-[var(--color-panel)] p-4`}>
+  <div class="flex items-center justify-between">
+    <p class="font-mono text-sm text-[var(--color-detect)]">{title}</p>
+    <span class="font-mono text-xs text-[var(--color-muted)]">
+      severity: {severity}{confidence && ` · confidence: ${confidence}`}
+    </span>
+  </div>
+  <ul class="mt-3 space-y-1 font-mono text-sm">
+    {
+      items.map((i) => (
+        <li class="flex flex-wrap gap-2">
+          <span class="text-[var(--color-muted)]">[{i.type}]</span>
+          <span>{i.value}</span>
+          {i.note && <span class="text-[var(--color-muted)]">— {i.note}</span>}
+        </li>
+      ))
+    }
+  </ul>
+</aside>
