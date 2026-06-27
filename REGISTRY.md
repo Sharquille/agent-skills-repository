@@ -30,6 +30,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [portable-markdown](skills/productivity/portable-markdown/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-18 |
 | [review-pm-resume](skills/productivity/review-pm-resume/) | productivity | Pawel Huryn (phuryn/pm-skills) | [github.com/phuryn/pm-skills](https://github.com/phuryn/pm-skills/tree/main/pm-toolkit/skills/review-resume) | MIT | 2026-06-13 |
 | [study-consult-panel](skills/productivity/study-consult-panel/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
+| [study-map](skills/productivity/study-map/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [study-research-queries](skills/productivity/study-research-queries/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
 | [teach-complex-concepts](skills/productivity/teach-complex-concepts/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [undo-obsidian-study-loop](skills/productivity/undo-obsidian-study-loop/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
