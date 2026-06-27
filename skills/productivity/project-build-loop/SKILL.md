@@ -53,6 +53,8 @@ The conductor orchestrates; it does not re-implement domain work. Route to:
 - **Networking:** `configuring-network-segmentation-with-vlans`,
   `configuring-pfsense-firewall-rules`, `homelab-*`, `cisco-ios-patterns`,
   `network-config-validation`, `network-bgp-diagnostics`.
+- **Naming:** `project-name-consult` (Kimi for domain accuracy, MiMo for
+  portfolio readability) — called during Phase 1 intake before bootstrap.
 - **Consult:** `consult-orchestrator`, `codex-consult`, `opencode-consult` (via
   `project-consult-panel` once built).
 - **Publish:** `project-publish` (Astro), reusing `site-architecture`,
@@ -106,8 +108,10 @@ dry-run-first creation.
 
 ### Phase 1 — Intake & safe bootstrap
 
-1. Collect a short project description. Infer a **title** and **category**;
-   confirm both with the user before any write.
+1. Collect a short project description. Route to `project-name-consult` (Kimi +
+   MiMo) for a domain-accurate, portfolio-ready title and category; present a
+   ranked shortlist; confirm the user's choice before any write. Fall back to the
+   conductor's own inference if the models are unavailable.
 2. Run `scripts/bootstrap_project.sh` (see its header). It slugifies the title,
    rejects `..`/absolute/symlink targets, `realpath`-guards the path under the
    approved base, refuses a non-empty dir lacking a project marker, prints a
