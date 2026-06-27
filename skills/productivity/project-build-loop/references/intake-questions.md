@@ -11,15 +11,36 @@ decommission, explain what the term means for this project. Give safe examples,
 allow placeholders, and tell the user when `unsure` is acceptable so the
 conductor can propose a default.
 
+When asking for network or lab details, be explicit about actual values versus
+placeholders:
+
+- **Actual lab values are preferred** for private RFC1918/RFC4193 subnets,
+  EVE-NG network/cloud names, VM/node labels, interface names, and non-secret
+  version numbers because they make later configuration and validation accurate.
+- **Placeholders are required** for real public IPs, personal URLs/profiles,
+  identity-linked hostnames, VPN account/provider details, credentials, keys,
+  tokens, private configuration blobs, or anything the user does not want stored
+  in the project log.
+- **`unsure` is acceptable** for any value the user has not chosen yet; propose a
+  conservative default and label it clearly as a default before recording it as
+  project state.
+- If asking for multiple inputs, say how many sections/items there are and that
+  the user can answer them in one combined response. Do not leave the user to
+  guess whether the numbered items are separate questions or examples of the
+  same question.
+
 Use this pattern for follow-up questions:
 
 ```text
 Task N.N: <title>
 This means: <concrete objects or decisions involved>.
 Why it matters: <safety/function/evidence gate>.
+How to answer: Reply once with the numbered sections below. Each numbered item
+is a separate input. Use actual private lab values where requested, placeholders
+where requested, and `unsure` where you want a proposed default.
 What I need from you:
-1. <specific input with example or placeholder>
-2. <specific input with example or placeholder>
+1. <specific input; expected form: actual lab value | placeholder | unsure; example>
+2. <specific input; expected form: actual lab value | placeholder | unsure; example>
 Do not send: <secrets/private data to avoid>.
 ```
 
@@ -58,8 +79,10 @@ Do not send: <secrets/private data to avoid>.
   licensing, physical underlay.
 - For production work: rollback/snapshot state.
 - Plain-language prompt: "List the devices, VM images, EVE-NG networks/clouds,
-  interface names, and any version numbers you already know. Use placeholders if
-  needed."
+  interface names, private lab subnets, and any version numbers you already
+  know. Use actual lab-only values for RFC1918/RFC4193 addressing and interface
+  names. Use placeholders for real public IPs, provider details, credentials, or
+  personal identifiers. Answer `unsure` where you want a proposed default."
 
 ## E. Capability flags (drive the tier)
 

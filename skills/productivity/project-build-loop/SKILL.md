@@ -86,15 +86,56 @@ For every task prompt, include:
   screenshots, logs, policies, or validation evidence.
 - **Why it matters:** one sentence tying the task to the project's safety,
   function, or evidence gate.
-- **What I need from you:** a short, numbered list of specific inputs. Use
-  examples and placeholders (`KALI_LAN`, `DEBIAN_WAN`, `SELF_PROFILE_URL`) and
-  say "answer `unsure` and I will propose a default" when appropriate.
+- **How to answer:** state whether the user should answer all items in one
+  combined response or whether you are asking one blocking question. If there are
+  multiple numbered items, explicitly say each numbered item is a separate input
+  inside one response.
+- **Actual values vs placeholders:** tell the user which values are safe and
+  useful to provide as actual lab values, which values must stay as placeholders,
+  and when `unsure` is acceptable. Actual private lab values are useful for
+  RFC1918/RFC4193 subnets, EVE-NG network names, VM/node labels, interface names,
+  and non-secret version numbers. Placeholders are required for real public IPs,
+  personal URLs/profiles, hostnames tied to identity, VPN account/provider
+  details, credentials, keys, tokens, private config blobs, or anything the user
+  does not want stored in the project log.
+- **What I need from you:** a short, numbered list or table of specific inputs.
+  For each input, include the expected form (`actual lab value`, `placeholder`,
+  or `unsure`) and an example such as `KALI_eth0 -> LAB_LAN`,
+  `LAB_LAN_SUBNET=10.10.10.0/24`, `UBUNTU_WAN_PUBLIC_IP=<REAL_PUBLIC_IP>`, or
+  `SELF_PROFILE_URL=<SELF_PROFILE_URL>`. Say "answer `unsure` and I will propose
+  a conservative default" when appropriate.
 - **Do-not-send guardrail:** when relevant, state what not to paste, such as
   secrets, tokens, private keys, real public IPs, credentials, or personal links.
 
 Avoid presenting bare project-management labels such as "document topology",
 "define scope", "capture evidence", or "validate egress" without unpacking what
-those labels mean for the current project.
+those labels mean for the current project. Do not ask for mixed networking
+inputs as an ambiguous paragraph; group them into named sections such as
+interfaces, addressing, allowed paths, blocked paths, bootstrap choices, and
+evidence.
+
+Example topology prompt shape:
+
+```text
+How to answer: Reply once with the six sections below. Each numbered section is
+a separate input. Use actual lab-only values for private RFC1918/RFC4193 subnets
+and VM interface names. Use placeholders for real public IPs, VPN details,
+personal links, secrets, or anything unknown. Write `unsure` where you want me to
+propose a default.
+
+1. Interface map (actual lab labels preferred):
+   - Example: KALI_eth0 -> LAB_LAN; UBUNTU_eth0 -> LAB_LAN; UBUNTU_eth1 -> pnet0
+2. Lab addressing (actual private lab subnets preferred, placeholders allowed):
+   - Example: LAB_LAN_SUBNET=10.10.10.0/24; UBUNTU_LAN_GW=10.10.10.1; KALI_LAN_IP=10.10.10.10
+3. External/VPN details (placeholders only):
+   - Example: VPN_ENDPOINT_IP=<VPN_ENDPOINT_IP>; UBUNTU_WAN_PUBLIC_IP=<REAL_PUBLIC_IP>
+4. Allowed paths:
+   - Example: Kali -> Ubuntu LAN -> wg0 -> VPN -> internet
+5. Blocked paths:
+   - Example: Kali -> pnet0 direct; Kali -> ISP DNS; Ubuntu WAN non-WireGuard when wg0 is down
+6. Evidence to capture:
+   - Example: ip route output, firewall rules, DNS leak check, public IP check, lab-only PCAP names
+```
 
 ## Global invocation
 
