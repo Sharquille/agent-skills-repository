@@ -1,6 +1,6 @@
 ---
 name: eve-ng-topology
-description: "Turn an EVE-NG lab into clean, version-controlled, presentation-grade topology diagrams. Use when the user has an EVE-NG .unl lab file (or HTML/PNG export) and wants a diffable topology: parse the .unl XML as the source of truth into structured topology.json, then generate Mermaid (logical/versionable) and Graphviz DOT->SVG (precise, vendor icons) for docs or a static site. Also runs in reverse to scaffold an importable EVE-NG Pro .unl from a topology spec + node catalog (scripts/generate_unl.py) so a lab is easier to stand up without manual node-dragging — structure only: it embeds device configs verbatim and never performs technical config changes for the user. Do not trigger for live device polling (use network-config-validation) or for non-EVE-NG diagrams. The .unl schema differs between Community and Pro, so validate the parser against a real export before relying on it."
+description: "Turn an EVE-NG lab into clean, version-controlled, presentation-grade topology diagrams. Use when the user has an EVE-NG .unl lab file (or HTML/PNG export) and wants a diffable topology: parse the .unl XML as the source of truth into structured topology.json, then generate Mermaid (logical/versionable) and Graphviz DOT->SVG (precise, vendor icons) for docs or a static site. Also runs in reverse to scaffold an importable EVE-NG Pro .unl from a topology spec + node catalog (scripts/generate_unl.py), apply presentation-grade EVE canvas zones/labels (scripts/decorate_unl.py), and package a root-level .unl import zip (scripts/package_unl_zip.py). Structure only: it embeds device configs verbatim and never performs technical config changes for the user. Do not trigger for live device polling (use network-config-validation) or for non-EVE-NG diagrams. The .unl schema differs between Community and Pro, so validate the parser against a real export before relying on it."
 # --- provenance ---
 category: engineering
 source: self-authored; part of the project orchestra (docs/plans/project-orchestra-plan.md)
@@ -27,6 +27,18 @@ else from it.
    - Keep the EVE-NG PNG only as a thumbnail, never the canonical diagram.
 4. **Embed** the SVG in the site; optionally wrap in Cytoscape.js/D3 for pan/zoom
    (handled by `project-publish`).
+
+For an **importable lab template**, use a two-spec workflow instead of forcing a
+single auto-layout to carry every visual decision:
+
+1. `canvas-layout-spec.json` -> `generate_unl.py` owns nodes, networks, interface
+   wiring, exact coordinates, and verbatim config embedding.
+2. `decoration-spec.json` -> `decorate_unl.py` owns zone rectangles and compact
+   text labels inside the `.unl`.
+3. Optional `design-spec.json` -> `design_unl.py --format excalidraw` owns the
+   shareable presentation diagram.
+4. `package_unl_zip.py lab.unl -o lab-import.zip` packages the EVE import
+   artifact with the `.unl` at the archive root.
 
 ## Usage
 
@@ -96,6 +108,44 @@ scripts/generate_unl.py spec.json --catalog catalog.json > lab.unl
 **Not proven until imported.** The `.unl` schema differs across Pro/Community and
 versions. A generated `.unl` is unverified until it import-validates on the target
 EVE-NG server; only then round-trip it back through `unl_to_topology.py` for docs.
+
+### Presentation pass for importable `.unl` files (`decorate_unl.py`)
+
+When a topology needs to be usable **inside EVE-NG**, prefer a generated `.unl`
+plus a decoration pass over standalone PNG/SVG output. This keeps the lab
+importable while giving the canvas readable trust zones, short labels, and
+aligned visual structure.
+
+```text
+scripts/generate_unl.py canvas-layout-spec.json > lab.unl
+scripts/decorate_unl.py lab.unl decoration-spec.json -o lab.unl
+scripts/package_unl_zip.py lab.unl -o lab-import.zip
+```
+
+The decorator injects only `<objects>/<textobjects>`:
+
+- **Shapes** define colored rounded rectangles with RGBA fill, dashed stroke,
+  radius, and stroke width.
+- **Labels** support font size, optional monospace, fixed width, color, alignment,
+  and line height.
+- `replace_textobjects: true` removes stale generated labels before adding the
+  current decoration set.
+- Nodes, networks, interface wiring, and `<configs>` are left untouched.
+
+Use this when the user wants an import zip or an elegant EVE-NG canvas. Keep the
+source specs in `topology/`:
+
+```text
+topology/canvas-layout-spec.json
+topology/decoration-spec.json
+topology/design-spec.json        # optional Excalidraw/presentation source
+topology/<lab>.unl
+topology/<lab>-import.zip
+```
+
+Keep lifecycle notes in `build-log/task-N.N*.md`; do not treat task notes as
+competing topology sources. The topology folder holds reusable generated
+artifacts and their specs; task notes explain how and why they were produced.
 
 ### Presentable, context-driven layout (`design_unl.py`)
 

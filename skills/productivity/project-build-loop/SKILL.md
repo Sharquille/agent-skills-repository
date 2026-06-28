@@ -63,10 +63,16 @@ The conductor orchestrates; it does not re-implement domain work. Route to:
   `modern-web-ui`, `design-tokens`, `ui-styling`.
 - **Topology:** `eve-ng-topology` both ways — `.unl` → diagram, and (forward)
   topology spec + node catalog → importable EVE-NG Pro `.unl`
-  (`scripts/generate_unl.py`). **Scaffold, don't configure:** the conductor may
-  scaffold lab structure (nodes, images, wiring, layout) to save manual
-  node-dragging, but device config is embedded verbatim and left faithful to
-  observed state — technical config changes are the user's hands-on lab work,
+  (`scripts/generate_unl.py`). For user-importable lab templates, keep reusable
+  artifacts in `topology/`: `canvas-layout-spec.json` for exact node/network
+  placement, `decoration-spec.json` for EVE canvas zones/labels via
+  `scripts/decorate_unl.py`, optional `design-spec.json` for Excalidraw, the
+  generated `.unl`, and a root-level `.unl` import zip from
+  `scripts/package_unl_zip.py`. Keep `build-log/task-*` files as lifecycle/audit
+  notes, not competing topology sources. **Scaffold, don't configure:** the
+  conductor may scaffold lab structure (nodes, images, wiring, layout) to save
+  manual node-dragging, but device config is embedded verbatim and left faithful
+  to observed state — technical config changes are the user's hands-on lab work,
   surfaced as `! TODO`/advisories, never auto-applied. A generated `.unl` is
   unverified until import-validated on the EVE-NG server.
 
