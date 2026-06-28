@@ -1,23 +1,32 @@
 # Agent Skills Repository
 
-A curated, secure-by-default registry of high-signal skills for AI agents like **Claude Code**, **Claude Desktop**, and **Gemini CLI**.
+A curated, secure-by-default registry of high-signal skills for AI agents like **Claude Code**, **Claude Desktop**, **Gemini CLI**, **Codex**, and **OpenCode**.
 
 This repository serves as a personal collection of self-authored and audited third-party skills, providing a central place to manage, version, and deploy advanced capabilities to your local coding assistants.
 
 ## 🚀 Getting Started
 
-### Quick Install (Claude Only)
-For a basic setup that symlinks the entire `skills/` directory to `~/.claude/skills`:
+### Quick Install
+Install repo-backed skills for Claude, Gemini, Codex, and OpenCode, then install the tracked safety guardrails:
 ```bash
 ./install.sh
 ```
 
-### Full Deployment (Claude & Gemini CLI)
-To deploy skills to both Claude and Gemini CLI (handling Gemini's specific directory nesting requirements):
+### Full Deployment
+Run the canonical deployment script directly:
 ```bash
 ./scripts/deploy.sh
 ```
-*See [deploy-agent-skills](skills/engineering/deploy-agent-skills/SKILL.md) for more details.*
+
+Useful options:
+
+```bash
+./scripts/deploy.sh --safety-only
+./scripts/deploy.sh --opencode-only
+./scripts/deploy.sh --skip-safety
+```
+
+See [deploy-agent-skills](skills/engineering/deploy-agent-skills/SKILL.md) for the full deployment and safety behavior.
 
 ## 📂 Repository Structure
 
@@ -26,12 +35,15 @@ To deploy skills to both Claude and Gemini CLI (handling Gemini's specific direc
   - `engineering/`: Security, network forensics, cloud architecture, and development workflows.
   - `productivity/`: Brainstorming, resume review, and knowledge management.
 - `scripts/`: Automation for deployment and maintenance.
+- `skills/engineering/deploy-agent-skills/assets/safety/`: Tracked safety templates for OpenCode, Claude, Gemini, and Codex.
 - `REGISTRY.md`: The "Source of Truth" table tracking every skill, its author, and provenance.
 - `NOTICE.md`: Detailed attribution and licensing information.
 
 ## 🛡️ Security & Auditing
 
 Every third-party skill in this repository has been vetted before inclusion. We recommend using the built-in [vet-skill](skills/engineering/vet-skill/) to audit any new skills before adding them to your registry.
+
+The repository also includes [command-risk-review](skills/engineering/command-risk-review/), a target-aware destructive command review skill. It is intended to catch cases where a command like `rm -rf` becomes dangerous because of the target path, such as `.claude`, `.agents`, `.codex`, `.gemini`, vaults, repositories, or app support data.
 
 ### How to add a new skill
 1. Download the skill files to a temporary directory.

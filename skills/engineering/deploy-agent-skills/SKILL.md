@@ -1,6 +1,6 @@
 ---
 name: deploy-agent-skills
-description: "Automates deployment and symlinking of agent skills in this repository to Claude Desktop/Code (~/.claude/skills), Gemini CLI (~/.gemini/skills), and Codex CLI (~/.codex/skills). All three discover skills one level deep, so skills are exposed as flat per-skill symlinks regardless of this repo's category nesting. Run with no flag to deploy to all three, or combine --claude-only / --gemini-only / --codex-only. Trigger when the user wants to configure, install, link, deploy, or update local repository skills across their terminal or AI assistants."
+description: "Automates deployment and symlinking of agent skills in this repository to Claude Desktop/Code (~/.claude/skills), Gemini CLI (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents (~/.agents/skills). Also installs reproducible local safety guardrails for destructive command review and protected agent data paths. Run with no flag to deploy skills and safety to all supported agents, combine --claude-only / --gemini-only / --codex-only / --opencode-only, use --safety-only for guardrails only, or --skip-safety for skills only. Trigger when the user wants to configure, install, link, deploy, update, or reproduce local repository skills and agent safety rules across terminal or AI assistants."
 category: engineering
 source: self-authored (this repository)
 author: Sharquille Andrew
@@ -10,13 +10,15 @@ retrieved: 2026-06-14
 
 # Deploy Agent Skills
 
-Deploy and symlink agent skills from this repository to your global configuration environments for Claude (Desktop & Code), Gemini CLI, and Codex CLI. This ensures that skills you add or modify locally in this workspace are dynamically loaded and always active in your global agent sessions without duplicating files or writing manual config.
+Deploy and symlink agent skills from this repository to your global configuration environments for Claude (Desktop & Code), Gemini CLI, Codex CLI, and OpenCode/shared agents. The deployment also installs tracked safety guardrails so destructive commands must be reviewed with target-aware context before they run.
 
 ## When to use
 
 - After onboarding a new skill (e.g. `frontend-ui-engineering`) to this repository to make it available globally.
 - Setting up a new computer or environment for your local coding agents.
 - Keeping skills synchronized across different coding assistants (Claude, Codex, Gemini CLI).
+- Reinstalling OpenCode safety rules and shared skills after moving to a new machine.
+- Restoring protected-path guidance after agent config or cache cleanup.
 - Updating existing links if directory structures change.
 
 ## When NOT to use
@@ -37,7 +39,7 @@ skills/engineering/deploy-agent-skills/scripts/deploy.sh
 ```
 
 ### 2) Support Platforms
-The script deploys to three directories. All three discover skills one level deep
+The script deploys to four directories. These agents discover skills one level deep
 (`<dest>/<name>/SKILL.md`), so each skill is exposed as a **flat per-skill symlink**
 regardless of this repo's category nesting (`skills/<category>/<name>/`).
 
@@ -46,16 +48,35 @@ regardless of this repo's category nesting (`skills/<category>/<name>/`).
 | **Claude (Desktop/Code)** | `~/.claude/skills/` | Flat per-skill symlinks (a whole-dir symlink would nest skills too deep to load) |
 | **Gemini CLI** | `~/.gemini/skills/` | Flat per-skill symlinks (Gemini's 1-directory-deep limit) |
 | **Codex CLI** | `~/.codex/skills/` | Flat per-skill symlinks (same 1-deep discovery) |
+| **OpenCode / shared agents** | `~/.agents/skills/` | Flat per-skill symlinks independent of Claude's user-data directory |
 
-### 3) Command Line Options
+### 3) Safety Guardrails
+By default, deployment installs safety rules from `assets/safety/` through `scripts/install-agent-safety.py`.
 
-- **Default (No arguments):** Deploys to all three environments (Claude, Gemini, Codex).
+The safety installer:
+
+- Merges OpenCode permissions into `~/.config/opencode/opencode.jsonc`.
+- Adds `~/.agents/skills` as OpenCode's explicit skill path.
+- Hard-denies high-risk delete patterns for `.claude`, `.agents`, `.codex`, `.gemini`, Claude app support data, broad hidden globs such as `rm -rf .*`, and this repository.
+- Appends or refreshes managed safety blocks in:
+  - `~/.config/opencode/AGENTS.md`
+  - `~/.claude/CLAUDE.md`
+  - `~/.gemini/GEMINI.md`
+  - `~/.codex/AGENTS.md`
+- Backs up files before changing them.
+
+### 4) Command Line Options
+
+- **Default (No arguments):** Deploys to all supported environments and installs safety guardrails.
 - `--claude-only`: Only deploys and symlinks Claude skills.
 - `--gemini-only`: Only deploys and symlinks Gemini skills.
 - `--codex-only`: Only deploys and symlinks Codex skills.
+- `--opencode-only`: Only deploys and symlinks OpenCode/shared-agent skills.
+- `--safety-only`: Only install safety guardrails.
+- `--skip-safety` / `--no-safety`: Deploy skills without installing safety guardrails.
 - Flags **combine** — e.g. `--claude-only --codex-only` deploys to Claude and Codex but not Gemini.
 
-### 4) Verification
+### 5) Verification
 After running the script, verify correct discovery in your interactive agents:
 
 - In **Gemini CLI**, run:
@@ -64,3 +85,13 @@ After running the script, verify correct discovery in your interactive agents:
   ```
   *(If already inside a session, use `/skills reload` or `/skills refresh`)*
 - In **Claude Code / Desktop**, the agent will discover them automatically in its registry on startup.
+- In **OpenCode**, run:
+  ```text
+  opencode debug skill
+  ```
+  and confirm skill locations include `~/.agents/skills`.
+- For safety rules, run:
+  ```text
+  opencode debug config
+  ```
+  and confirm `permission.bash` includes protected-path denies and `skills.paths` includes `~/.agents/skills`.

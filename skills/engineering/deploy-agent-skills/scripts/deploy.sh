@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # deploy.sh — automates deployment and symlinking of agent skills to global
 # environment folders for Claude Code/Desktop (~/.claude/skills), Gemini CLI
-# (~/.gemini/skills), and Codex CLI (~/.codex/skills).
+# (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents
+# (~/.agents/skills). It also installs reproducible safety guardrails by default.
 #
-# All three discover skills one level deep (<dest>/<name>/SKILL.md), so skills
+# Supported agents discover skills one level deep (<dest>/<name>/SKILL.md), so skills
 # are exposed as FLAT per-skill symlinks regardless of this repo's category
 # nesting (skills/<category>/<name>/).
 #
-# Usage:   deploy.sh [--claude-only] [--gemini-only] [--codex-only]
-#          (no flag = deploy to all three; flags combine)
+# Usage:   deploy.sh [--claude-only] [--gemini-only] [--codex-only] [--opencode-only]
+#          deploy.sh [--safety-only] [--skip-safety]
+#          (no flag = deploy to all supported agents and install safety; flags combine)
 # Exit:    0 = success, 1 = failure.
 
 set -euo pipefail
@@ -24,12 +26,18 @@ echo ""
 CLAUDE_ONLY=false
 GEMINI_ONLY=false
 CODEX_ONLY=false
+OPENCODE_ONLY=false
+SAFETY_ONLY=false
+SKIP_SAFETY=false
 
 for arg in "$@"; do
   case "$arg" in
     --claude-only) CLAUDE_ONLY=true ;;
     --gemini-only) GEMINI_ONLY=true ;;
     --codex-only)  CODEX_ONLY=true ;;
+    --opencode-only) OPENCODE_ONLY=true ;;
+    --safety-only) SAFETY_ONLY=true ;;
+    --skip-safety|--no-safety) SKIP_SAFETY=true ;;
     *) echo "Unknown argument: $arg" >&2; exit 1 ;;
   esac
 done
@@ -162,16 +170,69 @@ deploy_codex() {
   echo ""
 }
 
-# Dispatch: with no --*-only flag, deploy to all three. Flags combine, so
-# e.g. `--claude-only --codex-only` deploys to Claude and Codex but not Gemini.
-if [ "$CLAUDE_ONLY" = false ] && [ "$GEMINI_ONLY" = false ] && [ "$CODEX_ONLY" = false ]; then
+deploy_opencode() {
+  local OPENCODE_DEST="$HOME/.agents/skills"
+  echo "--- Deploying to OpenCode / shared agent skills ---"
+  echo "Destination: $OPENCODE_DEST"
+
+  mkdir -p "$OPENCODE_DEST"
+
+  # OpenCode discovers external skills from ~/.agents/skills/<name>/SKILL.md
+  # and ~/.claude/skills/<name>/SKILL.md. Use ~/.agents/skills so OpenCode is
+  # not dependent on Claude's user-data directory existing.
+  local linked_count=0
+  for skill_dir in "$SKILLS_SRC"/*/*; do
+    [ -d "$skill_dir" ] || continue
+    local skill_name
+    skill_name=$(basename "$skill_dir")
+    [ "$skill_name" = ".gitkeep" ] && continue
+    [ "$skill_name" = "_template" ] && continue
+    [[ "$skill_name" =~ ^\. ]] && continue
+    [ -f "$skill_dir/SKILL.md" ] || continue
+
+    local abs_path
+    abs_path="$(cd "$skill_dir" && pwd)"
+    ln -sfn "$abs_path" "$OPENCODE_DEST/$skill_name"
+    linked_count=$((linked_count + 1))
+  done
+
+  # Prune stale links that no longer resolve to a skill.
+  for existing in "$OPENCODE_DEST"/*; do
+    [ -L "$existing" ] || continue
+    [ -e "$existing/SKILL.md" ] || { echo "  Pruning stale link: $(basename "$existing")"; rm -f "$existing"; }
+  done
+
+  echo "  Successfully linked $linked_count skills to OpenCode/shared agents (~/.agents/skills)."
+  echo ""
+}
+
+install_safety() {
+  local installer="$REPO_DIR/skills/engineering/deploy-agent-skills/scripts/install-agent-safety.py"
+  python3 "$installer" --repo-dir "$REPO_DIR"
+}
+
+if [ "$SAFETY_ONLY" = true ]; then
+  install_safety
+  echo "Safety deployment complete."
+  exit 0
+fi
+
+# Dispatch: with no --*-only flag, deploy to all supported agents. Flags combine,
+# so e.g. `--claude-only --codex-only` deploys to Claude and Codex only.
+if [ "$CLAUDE_ONLY" = false ] && [ "$GEMINI_ONLY" = false ] && [ "$CODEX_ONLY" = false ] && [ "$OPENCODE_ONLY" = false ]; then
   deploy_claude
   deploy_gemini
   deploy_codex
+  deploy_opencode
 else
   if [ "$CLAUDE_ONLY" = true ]; then deploy_claude; fi
   if [ "$GEMINI_ONLY" = true ]; then deploy_gemini; fi
   if [ "$CODEX_ONLY" = true ]; then deploy_codex; fi
+  if [ "$OPENCODE_ONLY" = true ]; then deploy_opencode; fi
 fi
 
-echo "Deployment complete! Skills are now globally available."
+if [ "$SKIP_SAFETY" = false ]; then
+  install_safety
+fi
+
+echo "Deployment complete! Skills and safety guardrails are now globally available."

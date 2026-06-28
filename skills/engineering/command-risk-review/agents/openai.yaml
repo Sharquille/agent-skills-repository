@@ -1,0 +1,4 @@
+interface:
+  display_name: "Command Risk Review"
+  short_description: "Review command and target risk before execution"
+  default_prompt: "Review this command and target for data-loss risk before running it."
