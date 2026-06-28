@@ -29,7 +29,7 @@ Spec JSON:
   }
 network.type: pnet0..pnet9 | internal | bridge.  iface: {name, network(id), label?}
 """
-import sys, json, base64, uuid, html, argparse
+import sys, os, json, base64, uuid, html, argparse
 
 # Template profiles captured from a real EVE-NG Pro export. console/icon/ram are
 # sensible defaults a node can override. image strings are SERVER-SPECIFIC and are
@@ -49,25 +49,40 @@ PROFILES = {
 
 def esc(s): return html.escape(str(s), quote=True)
 
-def node_xml(n, configs):
+# Non-qemu templates have distinct EVE-NG node `type`s. Inferred from template
+# unless the spec sets `type` explicitly. Extend as needed.
+_NONQEMU = {"docker": "docker", "iol": "iol"}
+def node_type(n): return n.get("type") or _NONQEMU.get(n["template"], "qemu")
+
+def node_xml(n, configs, base_dir="."):
     p = PROFILES.get(n["template"], {})
     g = lambda k, d=None: n.get(k, p.get(k, d))
+    ntype = node_type(n)
     cpu = n.get("cpu", 1)
     eth = n.get("ethernet", max(len(n.get("ifaces", [])), p.get("ethernet", 1)))
-    a = [f'id="{n["id"]}"', f'name="{esc(n["name"])}"', f'type="{n.get("type","qemu")}"',
+    a = [f'id="{n["id"]}"', f'name="{esc(n["name"])}"', f'type="{ntype}"',
          f'template="{n["template"]}"', f'image="{esc(n["image"])}"',
          f'console="{g("console","vnc")}"', f'cpu="{cpu}"', 'cpulimit="1"',
          f'ram="{g("ram",1024)}"', f'ethernet="{eth}"', f'uuid="{uuid.uuid4()}"']
-    if n.get("type", "qemu") == "qemu":
-        a.append(f'firstmac="50:00:00:{n["id"]:02d}:00:00"')
-    if g("qemu_options"): a.append(f'qemu_options="{esc(g("qemu_options"))}"')
-    if g("qemu_version"): a.append(f'qemu_version="{g("qemu_version")}"')
-    if n.get("type", "qemu") == "qemu": a.append('qemu_arch="x86_64"')
-    if g("qemu_nic"):     a.append(f'qemu_nic="{g("qemu_nic")}"')
-    if g("eth_format"):   a.append(f'eth_format="{g("eth_format")}"')
+    if ntype == "qemu":
+        nid = int(n["id"])
+        # hex octets; low byte first preserves the 50:00:00:0X:00:00 pattern for id<256
+        a.append(f'firstmac="50:00:00:{nid & 0xff:02x}:{(nid >> 8) & 0xff:02x}:00"')
+        if g("qemu_options"): a.append(f'qemu_options="{esc(g("qemu_options"))}"')
+        if g("qemu_version"): a.append(f'qemu_version="{g("qemu_version")}"')
+        a.append('qemu_arch="x86_64"')
+        if g("qemu_nic"):   a.append(f'qemu_nic="{g("qemu_nic")}"')
+        if g("eth_format"): a.append(f'eth_format="{g("eth_format")}"')
     cfg = 0
     if n.get("config_file"):
-        text = open(n["config_file"]).read()          # embedded VERBATIM — never edited
+        path = n["config_file"]
+        if not os.path.isabs(path):
+            path = os.path.join(base_dir, path)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()                       # embedded VERBATIM — never edited
+        except FileNotFoundError:
+            raise SystemExit(f"config_file not found for node {n['name']!r}: {path}")
         configs.append((n["id"], base64.b64encode(text.encode()).decode()))
         cfg = 1
     a += ['delay="0"', 'sat="-1"', f'icon="{g("icon","Server.png")}"',
@@ -87,17 +102,26 @@ def net_xml(nw):
             f'visibility="{nw.get("visibility",1)}" icon="{nw.get("icon","lan.png")}" width="0" '
             f'hideme="0" l2filter_lldp="0" l2filter_stp="0" l2filter_cisco="0" l2filter_lacp="0"/>\n')
 
-def generate(spec, catalog=None):
+def generate(spec, catalog=None, base_dir="."):
+    nodes, nets_in = spec["nodes"], spec["networks"]
+    # node-id and network-id are separate EVE-NG namespaces; each must be unique.
+    for label, items in (("node", nodes), ("network", nets_in)):
+        seen = set()
+        for it in items:
+            if it["id"] in seen:
+                raise SystemExit(f"duplicate {label} id {it['id']!r} ({it.get('name')})")
+            seen.add(it["id"])
     if catalog:
-        known = {n.get("image") for n in catalog.get("nodes", [])} | set(catalog.get("images", []))
-        for n in spec["nodes"]:
+        known = {n.get("image") for n in catalog.get("nodes", []) if n.get("image")} \
+                | set(catalog.get("images", []))
+        for n in nodes:
             if n["image"] not in known:
                 sys.stderr.write(f"WARN: image {n['image']!r} (node {n['name']}) not in catalog — "
                                  f"verify it is installed on the EVE-NG server before import.\n")
     lab = spec.get("lab", {})
     configs = []
-    body = "".join(node_xml(n, configs) for n in spec["nodes"])
-    nets = "".join(net_xml(nw) for nw in spec["networks"])
+    body = "".join(node_xml(n, configs, base_dir) for n in nodes)
+    nets = "".join(net_xml(nw) for nw in nets_in)
     cfgxml = ""
     if configs:
         cfgxml = "  <objects>\n    <configs>\n" + "".join(
@@ -145,9 +169,9 @@ def main():
         print(json.dumps(EXAMPLE, indent=2)); return
     if not args.spec:
         ap.error("provide a spec file or --example")
-    spec = json.load(open(args.spec))
-    catalog = json.load(open(args.catalog)) if args.catalog else None
-    sys.stdout.write(generate(spec, catalog))
+    spec = json.load(open(args.spec, encoding="utf-8"))
+    catalog = json.load(open(args.catalog, encoding="utf-8")) if args.catalog else None
+    sys.stdout.write(generate(spec, catalog, os.path.dirname(os.path.abspath(args.spec))))
 
 if __name__ == "__main__":
     main()

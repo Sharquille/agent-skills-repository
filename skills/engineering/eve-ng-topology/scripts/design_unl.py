@@ -33,7 +33,7 @@ Design JSON:
 An item is either {"node": {...}} or {"network": "<network-key>"} (to place a
 cloud/bridge icon inside a tier). iface: {name, net(key), label?}.
 """
-import sys, os, json, argparse, base64
+import sys, os, json, argparse, base64, random
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -82,16 +82,8 @@ def design(spec, catalog=None):
     zone_h = HEADER + max_rows * ROW_H + PAD_BOTTOM
 
     nodes, networks, shapes, labels = [], [], [], []
-    netkey_to_id, used = {}, set()
-    nid_counter = [0]
-    def new_net_id():
-        nid_counter[0] += 1
-        while nid_counter[0] in used: nid_counter[0] += 1
-        used.add(nid_counter[0]); return nid_counter[0]
-
-    # pre-assign network ids referenced by interfaces
-    for key in netdefs: netkey_to_id[key] = new_net_id()
-
+    # node-id and network-id are separate EVE-NG namespaces; number each from 1.
+    netkey_to_id = {key: i + 1 for i, key in enumerate(netdefs)}
     node_id = 0
     for ti, tier in enumerate(tiers):
         cx = X0 + ti * COL_W
@@ -109,7 +101,11 @@ def design(spec, catalog=None):
                                      name=nd.get("name", key), icon=nd.get("icon", "lan.png"),
                                      left=cx - 30, top=y, visibility=1))
             else:
-                n = item["node"]; node_id += 1; used.add(node_id)
+                n = item["node"]; node_id += 1
+                for i in n.get("ifaces", []):
+                    if i["net"] not in netkey_to_id:
+                        raise SystemExit(f"node {n['name']!r} iface {i['name']!r} references "
+                                         f"unknown network {i['net']!r}")
                 ifaces = [dict(name=i["name"], network=netkey_to_id[i["net"]],
                                **({"label": i["label"]} if i.get("label") else {}))
                           for i in n.get("ifaces", [])]
@@ -120,7 +116,10 @@ def design(spec, catalog=None):
                 if n.get("config"): node["config_file"] = n["config"]
                 nodes.append(node)
                 if n.get("ip"):
-                    labels.append((cx - 56, y + 64, n["ip"], False))
+                    ip = str(n["ip"])
+                    # centre under the icon, clamped inside the zone so it never bleeds out
+                    lx = max(cx - ZW // 2 + 10, cx - min(len(ip) * 4, ZW // 2 - 12))
+                    labels.append((lx, y + 66, ip, False))
             y += ROW_H
 
     # place any networks not visually pinned into a tier (referenced but not listed)
@@ -184,18 +183,101 @@ EXAMPLE = {
     ],
 }
 
+# --- Excalidraw export (presentation diagram from the SAME design spec) --------
+# Recommended by the consult panel over cramming a hand-drawn look into EVE-NG
+# textobjects: the .unl stays the lab source of truth; the .excalidraw is the
+# shareable, version-drift-proof picture (opens at excalidraw.com, embeds in docs).
+EXCALI_PALETTE = {  # stroke, light fill
+    "green": ("#2f9e44", "#ebfbee"), "purple": ("#7048e8", "#f3f0ff"),
+    "blue":  ("#1971c2", "#e7f5ff"), "red":    ("#e03131", "#fff5f5"),
+    "amber": ("#f08c00", "#fff9db"), "slate":  ("#495057", "#f1f3f5"),
+}
+
+def to_excalidraw(spec):
+    rng = random.Random(spec.get("lab", {}).get("name", "lab"))  # deterministic per lab
+    def _id(): return "".join(rng.choice("abcdefghijklmnopqrstuvwxyz0123456789") for _ in range(10))
+    def el(**kw):
+        e = dict(id=_id(), x=0, y=0, width=0, height=0, angle=0, strokeColor="#1e1e1e",
+                 backgroundColor="transparent", fillStyle="solid", strokeWidth=2,
+                 strokeStyle="solid", roughness=1, opacity=100, groupIds=[], frameId=None,
+                 roundness=None, seed=rng.randint(1, 2**31 - 1), version=1,
+                 versionNonce=rng.randint(1, 2**31 - 1), isDeleted=False, boundElements=None,
+                 updated=1, link=None, locked=False)
+        e.update(kw); return e
+    def text(x, y, s, size=16, color="#1e1e1e", gid=None):
+        return el(type="text", x=x, y=y, width=max(20, int(len(s) * size * 0.55)),
+                  height=int(size * 1.25), text=s, fontSize=size, fontFamily=1,
+                  textAlign="left", verticalAlign="top", containerId=None, originalText=s,
+                  lineHeight=1.25, strokeColor=color, groupIds=[gid] if gid else [])
+
+    tiers, netdefs = spec["tiers"], spec.get("networks", {})
+    max_rows = max((len(t["items"]) for t in tiers), default=1)
+    zone_h = HEADER + max_rows * ROW_H + PAD_BOTTOM
+    elements, net_centers = [], {}
+    for ti, tier in enumerate(tiers):
+        cx = X0 + ti * COL_W; zleft = cx - ZW // 2; gid = _id()
+        stroke, bg = EXCALI_PALETTE.get(tier.get("color", "slate"), EXCALI_PALETTE["slate"])
+        elements.append(el(type="rectangle", x=zleft, y=ZONE_TOP, width=ZW, height=zone_h,
+                           strokeColor=stroke, backgroundColor=bg, fillStyle="solid",
+                           strokeStyle="dashed", roundness={"type": 3}, groupIds=[gid]))
+        elements.append(text(zleft + 14, ZONE_TOP + 10, tier["title"], 18, stroke, gid))
+        if tier.get("subnet"):
+            elements.append(text(zleft + 14, ZONE_TOP + 38, tier["subnet"], 13, "#495057", gid))
+        y = ZONE_TOP + HEADER
+        for item in tier["items"]:
+            if "network" in item:
+                key = item["network"]; nd = netdefs.get(key, {})
+                elements.append(el(type="diamond", x=cx - 34, y=y + 4, width=68, height=44,
+                                   strokeColor="#1971c2", backgroundColor="#e7f5ff",
+                                   fillStyle="solid", groupIds=[gid]))
+                elements.append(text(cx - 44, y + 50, nd.get("name", key), 11, "#495057", gid))
+                net_centers.setdefault(key, []).append((cx, y + 26))
+            else:
+                n = item["node"]
+                elements.append(el(type="rectangle", x=cx - 48, y=y, width=96, height=56,
+                                   strokeColor="#343a40", backgroundColor="#ffffff",
+                                   fillStyle="solid", roundness={"type": 3}, groupIds=[gid]))
+                elements.append(text(cx - 44, y + 9, n["name"], 14, "#212529", gid))
+                if n.get("ip"):
+                    elements.append(text(cx - 44, y + 34, str(n["ip"]), 10, "#868e96", gid))
+                for i in n.get("ifaces", []):
+                    net_centers.setdefault(i["net"], []).append((cx, y + 28))
+            y += ROW_H
+    # links: connect, left-to-right, the elements sharing each network
+    for centers in net_centers.values():
+        pts = sorted(set(centers))
+        for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+            elements.append(el(type="line", x=x1, y=y1, width=x2 - x1, height=y2 - y1,
+                               points=[[0, 0], [x2 - x1, y2 - y1]], lastCommittedPoint=None,
+                               startBinding=None, endBinding=None, startArrowhead=None,
+                               endArrowhead=None, strokeColor="#868e96", strokeWidth=1.5))
+    return json.dumps({"type": "excalidraw", "version": 2,
+                       "source": "eve-ng-topology/design_unl.py", "elements": elements,
+                       "appState": {"viewBackgroundColor": "#ffffff", "gridSize": None},
+                       "files": {}}, indent=2)
+
 def main():
     ap = argparse.ArgumentParser(description="Context-driven, presentable EVE-NG Pro .unl designer.")
     ap.add_argument("design", nargs="?", help="design spec JSON (omit with --example)")
     ap.add_argument("--example", action="store_true", help="print a sample design and exit")
     ap.add_argument("--catalog", help="node catalog JSON; warn on images not present")
+    ap.add_argument("--format", choices=["unl", "excalidraw"], default="unl",
+                    help="unl = importable EVE-NG lab; excalidraw = shareable diagram")
     args = ap.parse_args()
     if args.example:
         print(json.dumps(EXAMPLE, indent=2)); return
     if not args.design:
         ap.error("provide a design file or --example")
-    spec = json.load(open(args.design))
-    catalog = json.load(open(args.catalog)) if args.catalog else None
+    spec = json.load(open(args.design, encoding="utf-8"))
+    base = os.path.dirname(os.path.abspath(args.design))
+    for t in spec.get("tiers", []):          # resolve config paths relative to the spec file
+        for it in t.get("items", []):
+            nd = it.get("node")
+            if nd and nd.get("config") and not os.path.isabs(nd["config"]):
+                nd["config"] = os.path.join(base, nd["config"])
+    if args.format == "excalidraw":
+        sys.stdout.write(to_excalidraw(spec)); return
+    catalog = json.load(open(args.catalog, encoding="utf-8")) if args.catalog else None
     sys.stdout.write(design(spec, catalog))
 
 if __name__ == "__main__":

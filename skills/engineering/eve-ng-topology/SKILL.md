@@ -123,6 +123,19 @@ subnet per zone, short node labels. The geometry is guaranteed clean (aligned,
 non-overlapping); aesthetics like color and wording are yours to tune in the
 design spec, then re-run.
 
+**Two outputs, one spec.** For a polished, shareable picture, emit an
+Excalidraw diagram from the same design — don't fight EVE-NG's fragile textobject
+renderer for a hand-drawn look:
+
+```text
+design_unl.py design.json --format excalidraw > lab.excalidraw
+```
+
+It opens at excalidraw.com and embeds in docs/READMEs; output is deterministic
+per lab name. Keep the `.unl` as the lab source of truth (IPs, wiring) and the
+`.excalidraw` as the presentation artifact — they're generated from the same
+context, so they never drift.
+
 ## Redaction
 
 When the topology feeds a public write-up, replace real management IPs/hostnames
