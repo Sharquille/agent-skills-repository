@@ -1,6 +1,6 @@
 ---
 name: eve-ng-topology
-description: "Turn an EVE-NG lab into clean, version-controlled, presentation-grade topology diagrams. Use when the user has an EVE-NG .unl lab file (or HTML/PNG export) and wants a diffable topology: parse the .unl XML as the source of truth into structured topology.json, then generate Mermaid (logical/versionable) and Graphviz DOT->SVG (precise, vendor icons) for docs or a static site. Do not trigger for live device polling (use network-config-validation) or for non-EVE-NG diagrams. The .unl schema differs between Community and Pro, so validate the parser against a real export before relying on it."
+description: "Turn an EVE-NG lab into clean, version-controlled, presentation-grade topology diagrams. Use when the user has an EVE-NG .unl lab file (or HTML/PNG export) and wants a diffable topology: parse the .unl XML as the source of truth into structured topology.json, then generate Mermaid (logical/versionable) and Graphviz DOT->SVG (precise, vendor icons) for docs or a static site. Also runs in reverse to scaffold an importable EVE-NG Pro .unl from a topology spec + node catalog (scripts/generate_unl.py) so a lab is easier to stand up without manual node-dragging — structure only: it embeds device configs verbatim and never performs technical config changes for the user. Do not trigger for live device polling (use network-config-validation) or for non-EVE-NG diagrams. The .unl schema differs between Community and Pro, so validate the parser against a real export before relying on it."
 # --- provenance ---
 category: engineering
 source: self-authored; part of the project orchestra (docs/plans/project-orchestra-plan.md)
@@ -62,6 +62,40 @@ The `.unl` schema differs between EVE-NG **Community** and **Pro** (and across
 versions). Run the parser against a **real export** first and diff the node/link
 count against what you see in the EVE-NG UI. The parser is defensive: it reports
 what it could not map rather than guessing.
+
+## Generate (forward): scaffold, don't configure
+
+The reverse of the pipeline. `scripts/generate_unl.py` builds an importable
+EVE-NG **Pro** `.unl` from a topology spec so a lab is easier to stand up without
+manual node-dragging.
+
+**Principle — scaffold, don't configure.** The generator owns the tedious
+*structure*: nodes, images, interface wiring, networks, canvas layout. It does
+**not** own device configuration. A node's `config_file` is embedded **verbatim**;
+the tool never edits, "fixes", or invents config. Technical config changes are the
+user's hands-on lab work — leave the baseline faithful to observed state and
+surface improvements as `! TODO`/advisories, never silently apply them.
+
+**Node catalog (image strings are server-specific).** `template` is
+platform-fixed; the `image` must exist on the target server or import fails. Keep
+a per-project catalog in three tiers:
+
+- Tier 1 — confirmed installed (from a real export of that server).
+- Tier 2 — EVE-NG default QEMU templates (vios / viosl2 / iol / nxosv / veos / vmx…).
+- Tier 3 — EVE-NG Pro default Docker containers (eve-gui-server, …).
+
+Pass `--catalog catalog.json`; the generator warns (fail-soft) on any image not
+in the catalog. Never guess an image string.
+
+```text
+scripts/generate_unl.py --example > spec.json      # sample spec to adapt
+scripts/generate_unl.py spec.json > lab.unl         # spec -> importable .unl
+scripts/generate_unl.py spec.json --catalog catalog.json > lab.unl
+```
+
+**Not proven until imported.** The `.unl` schema differs across Pro/Community and
+versions. A generated `.unl` is unverified until it import-validates on the target
+EVE-NG server; only then round-trip it back through `unl_to_topology.py` for docs.
 
 ## Redaction
 

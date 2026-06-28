@@ -61,7 +61,14 @@ The conductor orchestrates; it does not re-implement domain work. Route to:
   `project-consult-panel` once built).
 - **Publish:** `project-publish` (Astro), reusing `site-architecture`,
   `modern-web-ui`, `design-tokens`, `ui-styling`.
-- **Topology:** `eve-ng-topology` for `.unl` → diagram.
+- **Topology:** `eve-ng-topology` both ways — `.unl` → diagram, and (forward)
+  topology spec + node catalog → importable EVE-NG Pro `.unl`
+  (`scripts/generate_unl.py`). **Scaffold, don't configure:** the conductor may
+  scaffold lab structure (nodes, images, wiring, layout) to save manual
+  node-dragging, but device config is embedded verbatim and left faithful to
+  observed state — technical config changes are the user's hands-on lab work,
+  surfaced as `! TODO`/advisories, never auto-applied. A generated `.unl` is
+  unverified until import-validated on the EVE-NG server.
 
 Helper skills never override the safety rules here.
 
