@@ -1,6 +1,6 @@
 ---
 name: project-build-loop
-description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with build-log notes plus per-task steps ledgers, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, and safe placeholders. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
+description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with focused task briefs plus observations notes and per-task steps ledgers, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, safe placeholders, and evidence-resolved default status. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
 # --- provenance ---
 category: productivity
 source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via consult-orchestrator (Codex + Kimi)
@@ -113,6 +113,13 @@ For every task prompt, include:
   commands, tell the user those methods will be captured in
   `build-log/task-<id>.steps.md` and that proposed defaults are guidance until
   evidence exists.
+- **Default resolution by evidence:** do not force the user to explicitly say
+  accept or reject every proposed default. If later observed evidence in the
+  steps ledger matches a proposed default and no newer input contradicts it,
+  mark that default `accepted`. If observed evidence contradicts it, mark it
+  `rejected`. If evidence is absent or ambiguous, keep it `pending`. Default
+  resolution may update the task checklist and observations note, but it never
+  closes the task by itself.
 
 Avoid presenting bare project-management labels such as "document topology",
 "define scope", "capture evidence", or "validate egress" without unpacking what
@@ -242,16 +249,30 @@ For "work on task N.N":
 3. **Execute** by routing to the archetype's domain skills. Each returns a
    structured report: changed files, commands run, risks, tests, blockers.
 4. **Capture + hash** evidence into `evidence/` (gitignored) with a manifest.
-5. **Task notes + steps ledger**:
-   - Keep the narrative task note in `build-log/task-N.N.md` for decisions,
-     assumptions, limitations, and human-readable progress.
+5. **Task artifacts**:
+   - Keep the focused task note in `build-log/task-N.N.md` for the task brief,
+     user-owned completion checklist, accepted/pending/rejected default status,
+     proven state, remaining work, and close condition. It should be the
+     low-noise view of what the user needs to do next.
+   - Create or update the observations note at
+     `build-log/task-N.N.observations.md` for assumptions, defaults before
+     resolution, current-state review notes, issue context, candidate decisions,
+     non-final analysis, and rationale. Do not let observations become a dump
+     zone: once a default or decision becomes authoritative, promote the result
+     into the task note or the steps ledger and leave only the rationale here.
    - Create or update the required method ledger at
      `build-log/task-N.N.steps.md` using `task-steps-ledger` whenever hands-on
      setup, troubleshooting, logical-to-topology mapping, persistence files,
      validation commands, screenshots, PCAPs, issue reports, or fixes appear.
-   - Do not bury reproducibility details in the narrative note. The ledger must
-     capture method, diagnostics, issue/fix rows, persistence files, validation
-     checks, evidence pointers, and closure checklist state.
+   - Do not bury reproducibility details in the task note or observations note.
+     The ledger must capture method, diagnostics, issue/fix rows, persistence
+     files, validation checks, evidence pointers, and closure checklist state.
+   - Cross-reference defaults to observed step evidence. Mark each proposed
+     default `accepted`, `rejected`, or `pending` based on the latest evidence:
+     accepted when evidence matches, rejected when evidence contradicts, pending
+     when evidence is missing or ambiguous. The user may still override a
+     default explicitly, but no separate accept/reject reply is required when
+     evidence resolves it.
 6. **Closure gate:** Do not mark a task `done` merely because proposed defaults
    were accepted or candidate commands were written. A task closes only after
    the user explicitly confirms completion and the steps ledger contains
