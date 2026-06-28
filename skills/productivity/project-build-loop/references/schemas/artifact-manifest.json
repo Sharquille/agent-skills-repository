@@ -1,6 +1,6 @@
 {
-  "schema_version": "1.0",
-  "generated": "2026-06-27T12:40:00-04:00",
+  "schema_version": "1.1",
+  "generated": "2026-06-28T12:40:00-04:00",
   "artifacts": [
     {
       "path": "evidence/capture-1.2.pcapng",
@@ -8,7 +8,27 @@
       "class": "private",
       "captured": "2026-06-27T12:05:00-04:00",
       "source_task": "1.2",
+      "source": "file",
+      "relevance": "passive recon capture; closure-gate evidence for task 1.2",
+      "retained_original": true,
+      "retained_format": "original-file",
+      "redaction_status": "lab-RFC1918-retained",
       "retention_until": "2026-12-27",
+      "publishable": false,
+      "sanitized_copy": null
+    },
+    {
+      "path": "evidence/task-1.1/ip-route.txt",
+      "sha256": "<hash>",
+      "class": "private",
+      "captured": "2026-06-28T12:00:00-04:00",
+      "source_task": "1.1",
+      "source": "chat-paste",
+      "relevance": "default-route-via-gateway checklist item; resolves Kali default route to accepted",
+      "retained_original": false,
+      "retained_format": "transcribed-text",
+      "redaction_status": "lab-RFC1918-retained",
+      "retention_until": null,
       "publishable": false,
       "sanitized_copy": null
     },
@@ -17,6 +37,10 @@
       "sha256": "<hash>",
       "class": "public",
       "source_task": "1.1",
+      "source": "file",
+      "retained_original": true,
+      "retained_format": "original-file",
+      "redaction_status": "redacted-to-RFC5737/3849",
       "publishable": true,
       "redaction": "real IPs -> RFC 5737 doc ranges; EXIF stripped"
     }

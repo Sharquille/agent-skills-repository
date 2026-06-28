@@ -29,6 +29,18 @@
     "blockers": []
   },
   "evidence": [{ "path": "evidence/recon-1.2.txt", "sha256": "<hash>" }],
+  "advisories": [
+    {
+      "advisory": "docker0 bridge can create an egress path",
+      "why": "Docker NAT/iptables can bypass the gateway-only egress policy",
+      "when_where": "task 1.1 ip route paste; evidence/task-1.1/ip-route.txt",
+      "steps": ["add docker0 to blocked interfaces in task 1.4 kill-switch", "re-check ip route with Docker running in task 1.6 leak-test"],
+      "status": "deferred",
+      "route_to_task": "1.4",
+      "evidence_pointer": "evidence/task-1.1/ip-route.txt",
+      "promotes_capability_flag": null
+    }
+  ],
   "build_log": "build-log/task-1.2.md",
   "steps_ledger": "build-log/task-1.2.steps.md",
   "checkpoint": {

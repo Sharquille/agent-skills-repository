@@ -7,7 +7,9 @@ work. The conductor (the `project-build-loop` skill) owns all state changes.
 ## State files
 
 - `project.json` — tracked project state (schema_version, id, phase,
-  `classification`, `authorization`, tasks). Relative paths only.
+  `classification`, `authorization`, tasks). Relative paths only. Tasks may carry
+  `advisories[]` — in-scope observations (Why / When-Where / Steps / Status) routed to
+  the task where they become actionable.
 - `event-log.jsonl` — append-only audit of every transition, gate, and consult.
 - `.project/` — local-only (gitignored): lock (host+pid), absolute paths,
   scratch. Never committed.
@@ -16,7 +18,11 @@ work. The conductor (the `project-build-loop` skill) owns all state changes.
 
 - `build-log/` — raw per-task working notes (`task-N.N.md`): steps, commands,
   decisions, dead-ends, issues + fixes, limitations. Internal class.
-- `evidence/` — gitignored, hashed artifacts + manifest.
+- `evidence/` — gitignored raw captures, each hashed at write time. The authoritative
+  manifest is tracked at `build-log/artifact-manifest.json` (schema
+  `references/schemas/artifact-manifest.json`, v1.1) with `source`, `relevance`,
+  `retained_original`, `retained_format`, and `redaction_status`. The manifest is
+  tracked; the artifacts are not.
 - `.vault/` — gitignored secrets.
 - `topology/` — `.unl` source → `topology.json` → generated SVG/Mermaid.
 - `publish/` — sanitized PUBLIC artifacts only; feeds `project-publish` (Astro).

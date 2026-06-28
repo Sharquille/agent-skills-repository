@@ -82,6 +82,52 @@ Helper skills never override the safety rules here.
   logged as `reference_added`. At publication it becomes a sanitized citations
   list, never raw build context.
 
+### Evidence retention
+
+`evidence/` is gitignored; the authoritative manifest is tracked at
+`build-log/artifact-manifest.json` (schema `references/schemas/artifact-manifest.json`,
+v1.1). The conductor retains evidence **automatically but relevance-gated**: keep an
+artifact only when it answers the active task's checklist, resolves a `pending` default,
+or bears on a success criterion — never hoard noise.
+
+Source modes, recorded per artifact: `command` (conductor-produced output), `file`
+(user gives a path on disk → copy the bytes and hash; `retained_original: true`), and
+`chat-paste`. **Image-bytes boundary:** the conductor cannot recover the raw bytes of a
+chat-pasted screenshot. It transcribes the visible command/output into a sanitized text
+artifact under `evidence/task-N.N/`, hashes that, and records `retained_original: false`,
+`retained_format: transcribed-text`. For byte fidelity the user pastes a file path and
+the conductor copies the original.
+
+Sanitize before any tracked write, not blanket: raw RFC1918/RFC4193 lab values may stay
+in the gitignored evidence file, but real public IPs/IPv6, identity-bearing hostnames,
+and anything that travels into a tracked artifact (manifest, task note, steps ledger,
+publish) must be replaced with RFC 5737 / RFC 3849 placeholders. Each manifest entry
+carries `redaction_status`. Run `scripts/secret_scan.sh` on the manifest before staging;
+it is tracked and must be clean even though its artifacts are not. After each capture,
+report one line per artifact — `path | sha256[:12] | relevance` — and let the user keep,
+expand, or discard it. Log `evidence_captured` (and `evidence_dropped` on removal).
+
+### Advisory capture and routing
+
+When the conductor raises an observation within project scope, capture it as a
+**structured advisory in the task's "What You Need To Do" surface**, not as throwaway
+chat prose. Required fields: **Why** (reasoning), **When/Where** (trigger + evidence
+pointer), **Steps**, and **Status** (`blocking` | `deferred` | `noted`). Mirror it in
+`task.json` `advisories[]`.
+
+- `blocking` — must be resolved before close; promote it to a real checklist item (it is
+  then no longer just an advisory).
+- `deferred` — routed to the future task where it becomes actionable via `route_to_task`;
+  it surfaces in that task's "What You Need To Do" when the task opens, carrying the same
+  evidence pointer. Do not duplicate it into the future task before that task exists.
+- `noted` — kept for the audit trail; no required action.
+
+An advisory never closes or gates a task by itself. If an advisory reveals the task is
+adopting a new capability flag (`mitm_proxy`, `traffic_decryption`, `exploit_poc`,
+`malware_sample`, live targets), set `promotes_capability_flag` and take the Phase 5
+reclassify path before continuing — the advisory is the trigger that makes the policy
+change visible, not the policy change itself. Log `advisory_recorded`.
+
 ## User-facing clarity
 
 Lifecycle terms are internal shorthand. When presenting a task, asking discovery
@@ -259,7 +305,11 @@ For "work on task N.N":
 2. **Baseline/snapshot** the relevant state (git status, env snapshot).
 3. **Execute** by routing to the archetype's domain skills. Each returns a
    structured report: changed files, commands run, risks, tests, blockers.
-4. **Capture + hash** evidence into `evidence/` (gitignored) with a manifest.
+4. **Capture + hash** evidence per the Evidence-retention convention:
+   relevance-gated, into gitignored `evidence/task-N.N/`, with a sanitized entry in
+   the tracked manifest at `build-log/artifact-manifest.json`. Chat-pasted screenshots
+   are retained as transcribed text only — the original image bytes are not recoverable
+   from a paste.
 5. **Task artifacts**:
    - Keep the focused task note in `build-log/task-N.N.md` for the task brief,
      user-owned completion checklist, accepted/pending/rejected default status,
@@ -288,10 +338,17 @@ For "work on task N.N":
      the project's `references/external-references.md` registry; the task note
      or `task-N.N.steps.md` carries only a pointer plus the advisory caveat. Do
      not duplicate the registry table into a task file.
+   - Capture in-scope advisories as structured items in the task note's "What You
+     Need To Do" surface (Why / When-Where / Steps / Status) and mirror them in
+     `task.json` `advisories[]`; route deferred advisories to the target task. See
+     the Advisory capture and routing convention.
 6. **Closure gate:** Do not mark a task `done` merely because proposed defaults
    were accepted or candidate commands were written. A task closes only after
    the user explicitly confirms completion and the steps ledger contains
-   observed validation/evidence rows or documented limitations.
+   observed validation/evidence rows or documented limitations. An auto-retained
+   chat-paste satisfies the evidence requirement only when the steps ledger and
+   `checkpoint.limitations[]` record that the original image bytes were not
+   retained. Open advisories do not block closure unless promoted to a checklist item.
 7. **Checkpoint**: before/after git status, exit codes, limitations, rollback
    point; append to `event-log.jsonl`. **Kill-switch** on unexpected egress or
    live-malware beaconing.
