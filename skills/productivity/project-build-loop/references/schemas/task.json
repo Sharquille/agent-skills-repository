@@ -30,6 +30,7 @@
   },
   "evidence": [{ "path": "evidence/recon-1.2.txt", "sha256": "<hash>" }],
   "build_log": "build-log/task-1.2.md",
+  "steps_ledger": "build-log/task-1.2.steps.md",
   "checkpoint": {
     "git_before": "<sha>",
     "git_after": "<sha>",

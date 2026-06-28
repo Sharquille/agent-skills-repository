@@ -1,6 +1,6 @@
 ---
 name: project-build-loop
-description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with inline build-log notes and issue reports, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, and safe placeholders. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
+description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with build-log notes plus per-task steps ledgers, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, and safe placeholders. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
 # --- provenance ---
 category: productivity
 source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via consult-orchestrator (Codex + Kimi)
@@ -43,8 +43,10 @@ and gate decision.
 The conductor orchestrates; it does not re-implement domain work. Route to:
 
 - **Research:** `literature-review`, `study-research-queries`.
-- **Notes/format:** `knowledge-capture-obsidian`, `portable-markdown` (formatting
-  authority), `humanizer` (prose pass on publication only), `mind-map-obsidian`.
+- **Notes/format:** `task-steps-ledger` (per-task method, issue/fix,
+  persistence, validation, and evidence ledger), `knowledge-capture-obsidian`,
+  `portable-markdown` (formatting authority), `humanizer` (prose pass on
+  publication only), `mind-map-obsidian`.
 - **Security governance:** `security-threat-model`, `build-security-policy`,
   `security-and-hardening` (secret-scan / `.gitignore` baseline), `security-scan`,
   `agent-repo-security`, `security-ownership-map`.
@@ -106,6 +108,11 @@ For every task prompt, include:
   a conservative default" when appropriate.
 - **Do-not-send guardrail:** when relevant, state what not to paste, such as
   secrets, tokens, private keys, real public IPs, credentials, or personal links.
+- **Steps ledger reminder:** when a task involves hands-on setup,
+  troubleshooting, persistence files, mappings, screenshots, or validation
+  commands, tell the user those methods will be captured in
+  `build-log/task-<id>.steps.md` and that proposed defaults are guidance until
+  evidence exists.
 
 Avoid presenting bare project-management labels such as "document topology",
 "define scope", "capture evidence", or "validate egress" without unpacking what
@@ -235,10 +242,21 @@ For "work on task N.N":
 3. **Execute** by routing to the archetype's domain skills. Each returns a
    structured report: changed files, commands run, risks, tests, blockers.
 4. **Capture + hash** evidence into `evidence/` (gitignored) with a manifest.
-5. **Inline note** the practical steps, decisions, issues + fixes, and limitations
-   under that task in `build-log/task-N.N.md`. In-task issue reports are inlined
-   here, not scattered.
-6. **Checkpoint**: before/after git status, exit codes, limitations, rollback
+5. **Task notes + steps ledger**:
+   - Keep the narrative task note in `build-log/task-N.N.md` for decisions,
+     assumptions, limitations, and human-readable progress.
+   - Create or update the required method ledger at
+     `build-log/task-N.N.steps.md` using `task-steps-ledger` whenever hands-on
+     setup, troubleshooting, logical-to-topology mapping, persistence files,
+     validation commands, screenshots, PCAPs, issue reports, or fixes appear.
+   - Do not bury reproducibility details in the narrative note. The ledger must
+     capture method, diagnostics, issue/fix rows, persistence files, validation
+     checks, evidence pointers, and closure checklist state.
+6. **Closure gate:** Do not mark a task `done` merely because proposed defaults
+   were accepted or candidate commands were written. A task closes only after
+   the user explicitly confirms completion and the steps ledger contains
+   observed validation/evidence rows or documented limitations.
+7. **Checkpoint**: before/after git status, exit codes, limitations, rollback
    point; append to `event-log.jsonl`. **Kill-switch** on unexpected egress or
    live-malware beaconing.
 
