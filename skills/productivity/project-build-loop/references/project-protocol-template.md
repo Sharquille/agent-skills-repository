@@ -20,6 +20,8 @@ work. The conductor (the `project-build-loop` skill) owns all state changes.
 - `.vault/` — gitignored secrets.
 - `topology/` — `.unl` source → `topology.json` → generated SVG/Mermaid.
 - `publish/` — sanitized PUBLIC artifacts only; feeds `project-publish` (Astro).
+- `references/` — project-local reference material; `external-references.md` is
+  the governed registry of authoritative external domain sources (advisory).
 
 ## Lifecycle (phases)
 
@@ -32,6 +34,8 @@ See the `project-build-loop` SKILL for the full phase definitions and gates.
 - Run secret scan before stage/commit/consult/publish (fail-closed).
 - Authorization is a gate; default everything private; unknown = restrictive.
 - Publication reads only sanitized `publish/` artifacts.
+- `references/external-references.md` is advisory only — secret-scanned and
+  allowlist-staged like any tracked artifact; never closure proof.
 - All notes in portable GFM (five standard alerts, HTML `<!-- -->` markers).
 
 ## Resuming

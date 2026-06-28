@@ -73,6 +73,14 @@ Helper skills never override the safety rules here.
 - **Root resolution:** if `cwd` already has `.git` or a `project.json`, offer to
   use it; otherwise create under `projects/<category>/<slug>`.
 - **Git:** local private init, **no remote** by default.
+- **External references registry:** Authoritative external domain sources
+  (vendor docs, RFCs, CIS benchmarks, official guides, tool docs) go in one
+  project-level file, `references/external-references.md` — one row per source:
+  **Topic**, **Source** (canonical name), **URL**, **Type**, **Retrieved** (ISO
+  date), **Used-by-task**, **Validation note**. The registry is advisory and is
+  never closure proof. Additions are secret-scanned, allowlist-staged, and
+  logged as `reference_added`. At publication it becomes a sanitized citations
+  list, never raw build context.
 
 ## User-facing clarity
 
@@ -244,7 +252,10 @@ For "work on task N.N":
 1. **Per-action gate** (`scripts/policy_check.sh`): re-validate the tier against
    the task's declared capability flags; confirm authorization + isolation for
    T2+. If a task introduces `mitm_proxy` / `traffic_decryption` / `exploit_poc`
-   / `malware_sample` / live targets, **reclassify** before routing.
+   / `malware_sample` / live targets, **reclassify** before routing. Adding an
+   external reference never changes `dual_use_tier` or gates; if a referenced
+   technique leads the task to adopt a new capability, reclassify the task, not
+   the reference.
 2. **Baseline/snapshot** the relevant state (git status, env snapshot).
 3. **Execute** by routing to the archetype's domain skills. Each returns a
    structured report: changed files, commands run, risks, tests, blockers.
@@ -273,6 +284,10 @@ For "work on task N.N":
      when evidence is missing or ambiguous. The user may still override a
      default explicitly, but no separate accept/reject reply is required when
      evidence resolves it.
+   - When a task relies on an authoritative external source, record it once in
+     the project's `references/external-references.md` registry; the task note
+     or `task-N.N.steps.md` carries only a pointer plus the advisory caveat. Do
+     not duplicate the registry table into a task file.
 6. **Closure gate:** Do not mark a task `done` merely because proposed defaults
    were accepted or candidate commands were written. A task closes only after
    the user explicitly confirms completion and the steps ledger contains
@@ -319,6 +334,9 @@ never invents deletion steps; it reverses recorded checkpoints.
   consult or a publication. Use RFC 5737 / RFC 3849 documentation ranges in
   write-ups.
 - Vet tool supply chain (EVE-NG images, GitHub tools, containers) before use.
+- External references are supply-chain context: prefer canonical/official
+  sources, record the retrieval date, and never run commands copied from a
+  reference without lab validation. A reference is context, not evidence.
 - All notes/publication in portable GFM per `portable-markdown` (five standard
   alerts, HTML `<!-- -->` markers). No Obsidian-only syntax.
 
