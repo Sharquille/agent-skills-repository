@@ -90,9 +90,16 @@ def node_xml(n, configs, base_dir="."):
     s = f'      <node {" ".join(a)}>\n'
     for i, itf in enumerate(n.get("ifaces", [])):
         lab = f' label="{esc(itf["label"])}"' if itf.get("label") else ""
+        # link styling is optional; defaults reproduce a plain straight link.
+        style = itf.get("style", "Solid")
+        linkstyle = itf.get("linkstyle", "Straight")     # Straight | Bezier | Flowchart | StateMachine
+        curv = itf.get("curviness", 10)
+        bcurv = itf.get("beziercurviness", 150)
+        vid = itf.get("vid", 1)
         s += (f'        <interface id="{i}" name="{esc(itf["name"])}" type="ethernet" '
-              f'network_id="{itf["network"]}" vid="1"{lab} labelpos="0.5" stub="0" width="1" '
-              f'curviness="10" beziercurviness="150" round="0" midpoint="0.5" srcpos="0.15" dstpos="0.85"/>\n')
+              f'network_id="{itf["network"]}" vid="{vid}"{lab} style="{style}" '
+              f'linkstyle="{linkstyle}" labelpos="0.5" stub="0" width="1" curviness="{curv}" '
+              f'beziercurviness="{bcurv}" round="0" midpoint="0.5" srcpos="0.15" dstpos="0.85"/>\n')
     return s + "      </node>\n"
 
 def net_xml(nw):

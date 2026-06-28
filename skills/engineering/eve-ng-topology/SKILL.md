@@ -136,6 +136,19 @@ per lab name. Keep the `.unl` as the lab source of truth (IPs, wiring) and the
 `.excalidraw` as the presentation artifact — they're generated from the same
 context, so they never drift.
 
+**Visual polish (automatic).** Both outputs are styled for legibility:
+
+- **Distance-based links** — short hops render `Straight`; longer ones flow as
+  `Bezier` with curvature scaled by endpoint distance (computed from the layout).
+  In Excalidraw the same rule bows the connectors.
+- **Zones** get a subtle vertical gradient; **subnet/IP labels** use a monospace
+  font so addresses are scannable; the Excalidraw diagram adds a **title** and a
+  **color legend**.
+- **Labels are placeholders by design** — `node.ip`, `tier.subnet`, and
+  `iface.label` are free strings. Use real lab values *or* generic placeholders
+  (`<KALI_IP>`, `<VPN_ENDPOINT>`); the layout doesn't care and nothing is
+  invented. Keep them short so they sit cleanly under the node / in the header.
+
 ## Redaction
 
 When the topology feeds a public write-up, replace real management IPs/hostnames
