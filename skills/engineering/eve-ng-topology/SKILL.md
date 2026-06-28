@@ -97,6 +97,32 @@ scripts/generate_unl.py spec.json --catalog catalog.json > lab.unl
 versions. A generated `.unl` is unverified until it import-validates on the target
 EVE-NG server; only then round-trip it back through `unl_to_topology.py` for docs.
 
+### Presentable, context-driven layout (`design_unl.py`)
+
+`generate_unl.py` wires nodes; `scripts/design_unl.py` makes them **presentable**
+from project context instead of a fixed template. You describe the lab by **trust
+tiers** (what lives in each zone, with a title, color, subnet, and the nodes); the
+tool **computes** the layout — never hand-placed coordinates:
+
+- Tiers become evenly spaced **columns**; nodes stack inside them.
+- Each tier gets one **non-overlapping** zone rectangle of **equal height**
+  (tops/bottoms align), with a title + subnet header.
+- Every node gets an **IP/label** under its icon; interface `label`s ride links.
+- Change the tiers/nodes → layout, zones, and labels recompute. IP strings are
+  display labels only (generic placeholders are fine); `config` is still embedded
+  verbatim (scaffold, don't configure).
+
+```text
+design_unl.py --example > design.json      # sample tiered design to adapt
+design_unl.py design.json > lab.unl         # context -> elegant, aligned .unl
+design_unl.py design.json --catalog catalog.json > lab.unl
+```
+
+Aim for **concise, legible** designs: a handful of clearly named tiers, one
+subnet per zone, short node labels. The geometry is guaranteed clean (aligned,
+non-overlapping); aesthetics like color and wording are yours to tune in the
+design spec, then re-run.
+
 ## Redaction
 
 When the topology feeds a public write-up, replace real management IPs/hostnames
