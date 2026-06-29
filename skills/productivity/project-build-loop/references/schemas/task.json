@@ -21,6 +21,16 @@
   "authorization_required": false,
   "isolation_required": true,
   "domain_skills": ["performing-dns-enumeration-and-zone-transfer"],
+  "tools": [
+    {
+      "name": "wireguard, wireguard-tools",
+      "purpose": "wg0 tunnel + wg-quick/wg CLI for the egress gateway",
+      "install": "apt install wireguard wireguard-tools",
+      "version": "<pin from `wg --version` after install>",
+      "source": "Ubuntu repos (trusted)",
+      "vet": "distro package; provider config downloaded by user, kept in .vault/"
+    }
+  ],
   "report": {
     "changed_files": [],
     "commands_run": [],

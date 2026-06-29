@@ -95,6 +95,34 @@ Helper skills never override the safety rules here.
   logged as `reference_added`. At publication it becomes a sanitized citations
   list, never raw build context.
 
+
+
+### Task surface consolidation
+
+Avoid one summary file per task. The default project surface is
+`build-log/tasks.md`: a sequential board with all roadmap tasks, current status,
+blockers, next inputs, and close conditions. Keep observations in
+`build-log/observations.md` and create per-task `task-N.N.steps.md` ledgers only
+when there is real method, troubleshooting, persistence, validation, or evidence
+to preserve. Existing `task-N.N.md` files may remain as historical summaries, but
+do not create new per-task summary files unless the user explicitly asks or a
+single task is large enough to justify an exception.
+
+### Markdown hygiene gate
+
+`portable-markdown` is the formatting authority for project notes. The conductor
+must run `scripts/markdown_gate.sh` on Markdown files touched in the current
+lifecycle phase before checkpointing, consulting, or publishing. The gate wraps
+`portable-markdown/scripts/lifecycle-lint.sh` and checks both portability and
+lifecycle house style: unambiguous task status, routed-work clarity, table row
+shape, heading levels, and oversized action surfaces.
+
+Scope the gate to touched files unless the user explicitly requests a cleanup
+pass. Observations notes may remain rough while exploring; gate them when they
+are promoted into a task note, sent to consult, or prepared for publish. A gate
+error blocks the lifecycle transition; warnings should be logged and cleaned up
+when they affect the user-facing action surface.
+
 ### Evidence retention
 
 `evidence/` is gitignored; the authoritative manifest is tracked at
@@ -141,6 +169,24 @@ adopting a new capability flag (`mitm_proxy`, `traffic_decryption`, `exploit_poc
 reclassify path before continuing — the advisory is the trigger that makes the policy
 change visible, not the policy change itself. Log `advisory_recorded`.
 
+### Tooling & software setup
+
+A network/config design is incomplete until the **tools it depends on** are
+named. Maintain a per-project **tool bill of materials** in `references/tooling.md`
+— one row per tool: name, purpose, install method, pinned version, source, and a
+supply-chain note. Discovery's tooling-supply-chain answers (intake §H) seed it;
+the roadmap derives each hands-on task's subset into `task.json` `tools[]`; the
+task brief surfaces a **Tools & setup** block before the configuration steps.
+
+- **Scaffold, not configure.** The conductor *proposes* install/setup steps
+  (`apt install …`, key generation, where to download a provider config) as TODO;
+  it never installs or configures for the user.
+- **Pin versions** for the Phase 7 reproducibility bundle; **vet the supply
+  chain** (trusted repo, checksum/signature) per the safety rule before use.
+- **Secrets stay out:** provider configs, keys, and tokens are obtained by the
+  user and kept in `.vault/` — list the *tool* and *where to get it*, never the
+  secret material.
+
 ## User-facing clarity
 
 Lifecycle terms are internal shorthand. When presenting a task, asking discovery
@@ -173,6 +219,15 @@ For every task prompt, include:
   `LAB_LAN_SUBNET=10.10.10.0/24`, `UBUNTU_WAN_PUBLIC_IP=<REAL_PUBLIC_IP>`, or
   `SELF_PROFILE_URL=<SELF_PROFILE_URL>`. Say "answer `unsure` and I will propose
   a conservative default" when appropriate.
+- **Tools & setup:** for any hands-on task, list the **software/tools the task
+  needs before configuration can start** — package/binary name, what it is for,
+  how to install it (e.g. `apt install wireguard wireguard-tools`), where to
+  obtain non-repo artifacts (e.g. the VPN provider's WireGuard config from their
+  portal), the version to pin for reproducibility, and a one-line supply-chain
+  note (trusted repo / verify checksum). This is **proposed setup, not done for
+  the user** (scaffold, not configure) — present it as TODO steps the user runs
+  and confirms. Do not enumerate a network design without first naming the tools
+  it depends on.
 - **Do-not-send guardrail:** when relevant, state what not to paste, such as
   secrets, tokens, private keys, real public IPs, credentials, or personal links.
 - **Steps ledger reminder:** when a task involves hands-on setup,
@@ -302,7 +357,11 @@ with a plain-language expansion, a reason the task exists, and the exact user
 inputs needed to start it. Example: `1.1: Document topology, trust boundaries,
 and traffic policy` should be presented as "map devices, interfaces, EVE-NG
 networks, IP subnets, allowed traffic paths, blocked traffic paths, and the
-evidence that will prove those controls work."
+evidence that will prove those controls work." For each hands-on task also
+**derive its tool bill of materials** (`task.json` `tools[]`, sourced from
+`references/tooling.md`): the software/packages it needs, install method, and
+where to obtain non-repo artifacts — so a build task never starts without naming
+the tools it depends on. See the Tooling & software setup convention.
 
 ### Phase 5 — Task loop
 
@@ -324,22 +383,21 @@ For "work on task N.N":
    are retained as transcribed text only — the original image bytes are not recoverable
    from a paste.
 5. **Task artifacts**:
-   - Keep the focused task note in `build-log/task-N.N.md` for the task brief,
-     user-owned completion checklist, accepted/pending/rejected default status,
-     proven state, remaining work, and close condition. It should be the
-     low-noise view of what the user needs to do next.
-   - Create or update the observations note at
-     `build-log/task-N.N.observations.md` for assumptions, defaults before
-     resolution, current-state review notes, issue context, candidate decisions,
-     non-final analysis, and rationale. Do not let observations become a dump
-     zone: once a default or decision becomes authoritative, promote the result
-     into the task note or the steps ledger and leave only the rationale here.
+   - Keep the primary user-facing task surface in one sequential board:
+     `build-log/tasks.md`. This is the low-noise view of current status,
+     blocked/next/done items, accepted/pending defaults, routed advisories, and
+     close conditions. Do not create a new `task-N.N.md` summary by default.
+   - Keep working observations in one general note: `build-log/observations.md`.
+     Use it for assumptions, defaults before resolution, current-state review
+     notes, issue context, candidate decisions, non-final analysis, and
+     rationale. Create a task-specific observations file only when the general
+     file would become unreadable.
    - Create or update the required method ledger at
-     `build-log/task-N.N.steps.md` using `task-steps-ledger` whenever hands-on
+     `build-log/task-N.N.steps.md` using `task-steps-ledger` only when hands-on
      setup, troubleshooting, logical-to-topology mapping, persistence files,
      validation commands, screenshots, PCAPs, issue reports, or fixes appear.
-   - Do not bury reproducibility details in the task note or observations note.
-     The ledger must capture method, diagnostics, issue/fix rows, persistence
+   - Do not bury reproducibility details in `tasks.md` or observations. The
+     steps ledger must capture method, diagnostics, issue/fix rows, persistence
      files, validation checks, evidence pointers, and closure checklist state.
    - Cross-reference defaults to observed step evidence. Mark each proposed
      default `accepted`, `rejected`, or `pending` based on the latest evidence:
@@ -362,7 +420,12 @@ For "work on task N.N":
    chat-paste satisfies the evidence requirement only when the steps ledger and
    `checkpoint.limitations[]` record that the original image bytes were not
    retained. Open advisories do not block closure unless promoted to a checklist item.
-7. **Checkpoint**: before/after git status, exit codes, limitations, rollback
+7. **Markdown hygiene gate**: run `scripts/markdown_gate.sh` on touched
+   `build-log/tasks.md`, `build-log/observations.md`, any touched
+   `build-log/task-*.steps.md`, `references/*.md`, and publish-candidate
+   Markdown. Fix errors before checkpoint; warnings may remain only when they
+   are historical observations, not the current user-facing action surface.
+8. **Checkpoint**: before/after git status, exit codes, limitations, rollback
    point; append to `event-log.jsonl`. **Kill-switch** on unexpected egress or
    live-malware beaconing.
 
@@ -408,7 +471,9 @@ never invents deletion steps; it reverses recorded checkpoints.
   sources, record the retrieval date, and never run commands copied from a
   reference without lab validation. A reference is context, not evidence.
 - All notes/publication in portable GFM per `portable-markdown` (five standard
-  alerts, HTML `<!-- -->` markers). No Obsidian-only syntax.
+  alerts, HTML `<!-- -->` markers). No Obsidian-only syntax. Run the Markdown
+  hygiene gate on touched lifecycle Markdown before checkpoint, consult, and
+  publish handoff.
 
 ## Bundled resources
 
@@ -416,6 +481,7 @@ never invents deletion steps; it reverses recorded checkpoints.
   creation.
 - `scripts/secret_scan.sh` — secret/PII scan gate.
 - `scripts/policy_check.sh` — fail-closed pre-action tier/gate validator.
+- `scripts/markdown_gate.sh` — wraps portable-markdown lifecycle lint for touched project Markdown.
 - `assets/gitignore-baseline` — strong `.gitignore`.
 - `references/intake-questions.md` — governance-complete discovery bank.
 - `references/project-archetypes.md` — archetype taxonomy + default profiles.
