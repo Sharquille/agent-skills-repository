@@ -136,6 +136,26 @@ Portable does not mean plain. Use the standard constructs well:
    spacing around alerts.
 6. Run the lint check (below) and confirm zero findings.
 
+
+## Lifecycle Project Notes
+
+For `project-build-loop` notes, use the lifecycle house style in
+`rules/lifecycle.md` in addition to the base portability standard. The lifecycle
+checks catch problems the base lint intentionally does not cover: contradictory
+task status, stale routed work, malformed Markdown table rows, skipped heading
+levels, overgrown task-note checklists, and table overuse in focused task notes.
+
+Run the lifecycle gate on touched lifecycle Markdown before checkpoint, consult,
+or publish handoff:
+
+```text
+scripts/lifecycle-lint.sh build-log/task-1.5.md build-log/task-1.5.steps.md
+```
+
+The gate is intentionally scoped. Do not recurse through the entire `build-log/`
+unless the task is an explicit cleanup pass; old historical notes should not
+block new work unless they are being edited or promoted.
+
 ## Lint check
 
 `scripts/lint.sh <file-or-dir>` flags anything non-portable: any `%%` sequence,

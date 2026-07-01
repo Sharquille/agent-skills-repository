@@ -699,6 +699,11 @@ After drafting full sections, run a note quality pass:
 - Prefer concise paragraphs, direct wording, and concrete examples.
 - Keep heading weight proportional to structure: `##` for objectives, `###` for
   durable subsections, and callouts for short examples or feedback.
+- Use industry-standard cybersecurity terminology in headings. Prefer the terms
+  used in the relevant certification objectives, NIST CSF, or MITRE ATT&CK (e.g.
+  "threat actors" over "threat agents", "insecure" over "unsecure",
+  "remediation prioritization" over "fix priority"). Avoid vague or generic
+  headings that do not signal the specific concept.
 - Make every learner-editable location explicit. Use hidden HTML
   `<!-- ... -->` learner boundaries for research gaps and put each
   `learner-answer` marker on its own line above the mastery-check field.
