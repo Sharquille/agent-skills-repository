@@ -819,6 +819,78 @@ When the user asks for review:
 7. Find `<!-- study-check:start ... -->` blocks. Review a block when at least one
    checkbox is selected or the field after a `<!-- learner-answer:<field> -->`
    marker no longer equals `Write here.`. Leave untouched checks pending.
+7.5. **Duplicate content resolution.** Before editing individual sections, scan the
+   opened notes for content that repeats across sections. Not all repetition
+   is duplication — purposeful cross-references and worked examples that
+   serve different objectives are legitimate. Apply this procedure:
+   - **Detect.** Identify sections where the same concept, term, or
+     explanation appears in more than one place with different headings.
+     Common patterns: an actor type covered in both a general-actor section
+     and a dedicated deep-dive section; the same attack term defined in two
+     separate sections under different headings; a scenario or mitigation
+     explained in a concept section and repeated in a gap section.
+   - **Classify.** Tag each overlap as `true duplicate`, `cross-reference`,
+     or `partial overlap`:
+     - `true duplicate`: identical or near-identical content in two
+       sections (e.g., nation-state actor definition in both
+       "High-resource actors" and "Nation-state actors").
+     - `cross-reference`: one section briefly mentions a concept that
+       belongs to another section (e.g., "least privilege" in
+       "Threat actors" is a forward reference to the insider section).
+       Leave it if it serves context; tighten to one sentence if verbose.
+     - `partial overlap`: sections share related but distinct content
+       (e.g., "Coercion and attacker goals" lists motivations, and
+       "Threat actors and motivations" also lists them). Consolidate
+       only when the same facts or mechanisms are restated for the same
+       purpose.
+   - **Consolidate.** For each `true duplicate` or `partial overlap` that
+     justifies merging:
+     1. Identify the **anchor section** — the section whose learning
+        outcome, key terms, or objective mapping is the best fit for the
+        content.
+     2. Move the full text (including key terms, exam focus, worked
+        examples, `> [!TIP]` callouts, `study-check` blocks, and `gap`
+        markers) from the duplicate section into the anchor section.
+        Order merged content logically: anchor's original content first,
+        then absorbed content.
+     3. Preserve every `<!-- learner-edit: ... -->`, `<!-- gap: ... -->`,
+        `<!-- study-check: ... -->`, and `<!-- learner-answer: ... -->`
+        marker. Adjust the `scope` attribute in moved `study-check`
+        markers if the anchor section's scope is different. If the anchor
+        already has a key terms or exam focus subsection, append new
+        entries rather than creating a duplicate sub-heading.
+     4. Replace the vacated section heading with a single-line
+        cross-reference pointing to the anchor section:
+        ```markdown
+        ## <old heading>
+        See [[<anchor note>#<anchor section heading>]].
+        ```
+        Keep the cross-reference only when the original heading is likely
+        to be looked up by the learner (e.g., a term or objective name).
+        If the original heading was a gap section whose content has been
+        absorbed, leave a `> [!TIP]` cross-reference instead of an
+        `[!IMPORTANT]` gap stub so the learner knows the content was
+        merged, not lost.
+     5. If a `study-check` block was moved during consolidation, verify
+        it still makes sense in the anchor context. Change the scenario
+        or framing if the original section-specific framing no longer
+        fits.
+   - **Log every consolidation** in the review changelog. Use this format:
+     ```markdown
+     - <source-section>: CONSOLIDATED into <anchor-section>. Reason: <why>.
+       Moved: <key terms, example, study-check, etc.>.
+     ```
+   - **Do not consolidate** when:
+     - The overlap is intentionally pedagogical (the same concept
+       presented differently for two learning outcomes — e.g., recall in
+       one section, application in another).
+     - A section is a legitimate sub-topic that deserves its own heading
+       (e.g., "APT" as a sub-type of nation-state actors with unique
+       characteristics).
+     - The user explicitly asked for both sections to remain separate.
+     - The content is a `gap` stub with no user-submitted answer. These
+       may be consolidated at the agent's discretion, but never at the
+       cost of removing the learner-edit boundary.
 8. For each researched gap section, check the user's content for accuracy and
    completeness against the objective:
    - If correct and complete, leave it unchanged and mark it approved.
