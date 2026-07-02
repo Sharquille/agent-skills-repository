@@ -14,12 +14,13 @@ For new work:
 Use $agent-orchestra to route OpenCode review or specialist model lanes.
 ```
 
-The bundled script remains for project and study workflows that already call the
-read-only OpenCode wrapper:
+The bundled script keeps its old interface but is now a forwarder into the
+canonical `agent-orchestra/scripts/consult-opencode.sh` (same flags, plus
+`--lane code|prose|reasoning` shortcuts):
 
 ```text
 scripts/consult-opencode.sh --sealed --timeout 240 --model provider/model -- "<brief>"
-../agent-orchestra/scripts/consult-opencode.sh --sealed --timeout 240 --model provider/model -- "<brief>"
+../agent-orchestra/scripts/consult-opencode.sh --lane code --sealed -- "<brief>"
 ```
 
 Safety contract for the compatibility wrapper:

@@ -14,12 +14,13 @@ For new work:
 Use $agent-orchestra to route Codex consult, review, implementation, gpt-5.5 work, or multi-model review.
 ```
 
-The bundled script remains for existing workflows that need a strictly read-only
-Codex consult:
+The bundled script keeps its old interface but is now a forwarder into the
+canonical `agent-orchestra/scripts/codex-agent.sh consult` (read-only, MCP off,
+secret guard, bounded timeout):
 
 ```text
 scripts/consult-codex.sh --cd <repo> -- "<brief>"
-../agent-orchestra/scripts/consult-codex.sh --cd <repo> -- "<brief>"
+../agent-orchestra/scripts/codex-agent.sh consult --cd <repo> -- "<brief>"
 ```
 
 Safety contract for the compatibility wrapper:

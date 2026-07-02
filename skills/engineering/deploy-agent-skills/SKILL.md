@@ -65,9 +65,11 @@ The safety installer:
   - `~/.codex/AGENTS.md`
 - Backs up files before changing them.
 - Adds Agent Orchestra defaults to the Claude, Gemini, and OpenCode managed
-  blocks: wrapper-first Codex and OpenCode calls, optional plugin use only,
-  `gpt-5.5` via Codex CLI for bulk work, taste-aware model routing, no Haiku,
-  and guarded Codex implementation through
+  blocks: wrapper-only Codex and OpenCode calls (no plugins), delegation of
+  token-heavy work off-Claude to preserve Claude usage and rate limits,
+  `gpt-5.5` via Codex CLI for bulk work, OpenCode `--lane code|prose|reasoning`
+  shortcuts (Kimi K2.7 Code / MiMo v2.5 Pro / MiniMax M3), taste-aware model
+  routing, no Haiku, and guarded Codex implementation through
   `codex-agent.sh --allow-write --scope`.
 - Keeps Codex's own `AGENTS.md` safety-only so invoked Codex workers do not
   recursively route back through Agent Orchestra.

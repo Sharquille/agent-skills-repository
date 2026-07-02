@@ -30,9 +30,10 @@ Enhancing a third-party skill does **not** transfer its ownership. Such skills
 are derivative works: original author's content + this repository's modifications,
 each credited separately.
 
-`agent-orchestra` references OpenAI's `openai/codex-plugin-cc` behavior and
-installation flow, but does not vendor the plugin source. The upstream plugin
-retains its Apache-2.0 license.
+`agent-orchestra`'s design was informed by studying OpenAI's
+`openai/codex-plugin-cc` plugin, but it does not use, install, or vendor the
+plugin; its wrappers call the `codex` and `opencode` CLIs directly. The
+upstream plugin retains its Apache-2.0 license.
 
 ## If you reuse a skill from here
 

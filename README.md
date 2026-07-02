@@ -42,14 +42,20 @@ See [deploy-agent-skills](skills/engineering/deploy-agent-skills/SKILL.md) for t
 ## Agent orchestration
 
 Use [agent-orchestra](skills/engineering/agent-orchestra/) as the canonical
-Claude Code/Codex/OpenCode routing skill. It is wrapper-first: the primary path
-is `scripts/codex-agent.sh` for Codex consult/review/implementation and
-`scripts/consult-opencode.sh` for OpenCode specialist lanes. It also documents
-the optional [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)
-Claude Code plugin for environments where that plugin is available. The older
-`codex-consult`, `opencode-consult`, and
-`consult-orchestrator` skills remain as compatibility entry points for existing
-scripts.
+Claude Code/Codex/OpenCode routing skill. It is wrapper-only — no plugins:
+`scripts/codex-agent.sh` covers Codex consult/review/implementation (gpt-5.5,
+the primary engineering lane), `scripts/consult-opencode.sh` covers the
+OpenCode specialist lanes (`--lane code` Kimi K2.7 Code, `--lane reasoning`
+MiniMax M3 at high reasoning effort, `--lane context` DeepSeek V4 Flash for
+cheap ~1M-context sweeps, `--lane prose` MiMo v2.5 Pro), and
+`scripts/opencode-implement.sh` is the guarded write fallback (file edits
+only, no shell) for when Codex is rate-limited or down. Its purpose is to
+preserve Claude usage and rate limits by delegating token-heavy work to
+non-Claude models while the conductor keeps judgment. The conductor role is
+agent-agnostic: Claude Code by default, or OpenCode/Gemini CLI with the same
+duties when Claude is unavailable. The older `codex-consult`, `opencode-consult`, and
+`consult-orchestrator` skills remain as compatibility entry points; their
+scripts forward to the canonical wrappers.
 
 ## 🛡️ Security & Auditing
 

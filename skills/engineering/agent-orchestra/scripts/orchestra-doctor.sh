@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Read-only readiness check for Agent Orchestra integrations.
+# Checks the two direct integration paths (Codex CLI, OpenCode CLI), their
+# auth, the canonical wrappers, and the standard delegation lanes.
 
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REPO_ENGINEERING_DIR="$(cd "$SKILL_DIR/.." && pwd)"
 
 status=0
 
@@ -33,46 +34,79 @@ version_of() {
 printf 'Agent Orchestra readiness check\n'
 printf 'Skill: %s\n\n' "$SKILL_DIR"
 
-if have node; then
-  node_version="$(version_of node --version)"
-  info "node available for optional codex-plugin-cc: ${node_version:-unknown version}"
-else
-  info "node is not on PATH; only the optional codex-plugin-cc path needs Node.js 18.18 or later."
-fi
-
+# --- Codex CLI (gpt-5.5 lane) ---
 if have codex; then
   codex_version="$(version_of codex --version)"
   ok "codex CLI available: ${codex_version:-unknown version}"
+  login_line="$(codex login status 2>&1 | head -n 1)"
+  if codex login status >/dev/null 2>&1; then
+    ok "codex auth: ${login_line:-logged in}"
+  else
+    warn "codex auth: not logged in (run: codex login)"
+  fi
+  codex_cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
+  codex_model="$(grep -E '^[[:space:]]*model[[:space:]]*=' "$codex_cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"([^"]*)".*/\1/')"
+  codex_effort="$(grep -E '^[[:space:]]*model_reasoning_effort' "$codex_cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')"
+  info "codex defaults: model=${codex_model:-unset}; reasoning=${codex_effort:-unset}"
 else
-  warn "codex CLI is not on PATH. Install with: npm install -g @openai/codex"
+  warn "codex CLI is not on PATH. Install with: npm install -g @openai/codex && codex login"
 fi
+
+echo
+
+# --- OpenCode CLI (Kimi / MiniMax / DeepSeek / MiMo lanes) ---
+lane_code="${ORCHESTRA_LANE_CODE:-openrouter/moonshotai/kimi-k2.7-code}"
+lane_prose="${ORCHESTRA_LANE_PROSE:-openrouter/xiaomi/mimo-v2.5-pro}"
+lane_reasoning="${ORCHESTRA_LANE_REASONING:-openrouter/minimax/minimax-m3}"
+lane_context="${ORCHESTRA_LANE_CONTEXT:-openrouter/deepseek/deepseek-v4-flash}"
 
 if have opencode; then
   opencode_version="$(version_of opencode --version)"
   ok "opencode CLI available: ${opencode_version:-unknown version}"
+  models_list="$(opencode models 2>/dev/null)"
+  if [ -n "$models_list" ]; then
+    for lane in "code:$lane_code" "reasoning:$lane_reasoning" "context:$lane_context" "prose:$lane_prose"; do
+      lane_name="${lane%%:*}"
+      lane_model="${lane#*:}"
+      if printf '%s\n' "$models_list" | grep -qxF "$lane_model"; then
+        ok "lane '$lane_name' model available: $lane_model"
+      else
+        warn "lane '$lane_name' model NOT in 'opencode models' catalog: $lane_model"
+      fi
+    done
+  else
+    warn "could not list OpenCode models; provider auth may be missing (run: opencode auth login)"
+  fi
 else
-  warn "opencode CLI is not on PATH; OpenCode lanes will be skipped."
+  warn "opencode CLI is not on PATH; OpenCode lanes (Kimi/MiniMax/DeepSeek/MiMo) will be skipped."
 fi
 
-codex_wrapper="$SKILL_DIR/scripts/consult-codex.sh"
+echo
+
+# --- Canonical wrappers ---
 codex_agent="$SKILL_DIR/scripts/codex-agent.sh"
 opencode_wrapper="$SKILL_DIR/scripts/consult-opencode.sh"
-legacy_codex="$REPO_ENGINEERING_DIR/codex-consult/scripts/consult-codex.sh"
-legacy_opencode="$REPO_ENGINEERING_DIR/opencode-consult/scripts/consult-opencode.sh"
+opencode_impl="$SKILL_DIR/scripts/opencode-implement.sh"
+codex_shim="$SKILL_DIR/scripts/consult-codex.sh"
 
-[ -x "$codex_wrapper" ] && ok "canonical Codex wrapper executable: $codex_wrapper" || warn "canonical Codex wrapper missing or not executable: $codex_wrapper"
-[ -x "$codex_agent" ] && ok "Codex agent caller executable: $codex_agent" || warn "Codex agent caller missing or not executable: $codex_agent"
-[ -x "$opencode_wrapper" ] && ok "canonical OpenCode wrapper executable: $opencode_wrapper" || warn "canonical OpenCode wrapper missing or not executable: $opencode_wrapper"
-[ -x "$legacy_codex" ] && ok "legacy Codex wrapper available: $legacy_codex" || warn "legacy Codex wrapper missing or not executable: $legacy_codex"
-[ -x "$legacy_opencode" ] && ok "legacy OpenCode wrapper available: $legacy_opencode" || warn "legacy OpenCode wrapper missing or not executable: $legacy_opencode"
+[ -x "$codex_agent" ] && ok "Codex entry point executable: $codex_agent" || warn "Codex entry point missing or not executable: $codex_agent"
+[ -x "$opencode_wrapper" ] && ok "OpenCode consult wrapper executable: $opencode_wrapper" || warn "OpenCode consult wrapper missing or not executable: $opencode_wrapper"
+[ -x "$opencode_impl" ] && ok "OpenCode implement wrapper executable: $opencode_impl" || warn "OpenCode implement wrapper missing or not executable: $opencode_impl"
+[ -x "$codex_shim" ] && ok "legacy consult-codex shim executable: $codex_shim" || warn "legacy consult-codex shim missing or not executable: $codex_shim"
 
-cat <<'EOF'
-
-Claude Code plugin setup is optional. If you still want it, run inside Claude Code:
-  /plugin marketplace add openai/codex-plugin-cc
-  /plugin install codex@openai-codex
-  /reload-plugins
-  /codex:setup
+echo
+if [ "$status" -eq 0 ]; then
+  info "All lanes ready. Delegate heavy work off-Claude:"
+else
+  info "Some lanes degraded (see WARN above). Working lanes:"
+fi
+cat <<EOF
+  codex-agent.sh consult|review|implement          -> gpt-5.5 via Codex (primary)
+  consult-opencode.sh --lane code      --sealed    -> $lane_code
+  consult-opencode.sh --lane reasoning --sealed    -> $lane_reasoning (high reasoning)
+  consult-opencode.sh --lane context   --sealed    -> $lane_context (cheap, ~1M ctx)
+  consult-opencode.sh --lane prose     --sealed    -> $lane_prose
+  opencode-implement.sh --allow-write (Codex fallback; edits only, no shell)
 EOF
 
 exit "$status"
