@@ -3,8 +3,8 @@
 #
 # The technical lane (default Kimi K2.7 Code) and the writing lane (default MiMo
 # v2.5 Pro) each run SEALED (no repo access; all context inline) and time-bounded
-# via the audited opencode-consult wrapper. Both results are printed labeled for
-# the calling agent to reconcile against the source.
+# via the audited Agent Orchestra OpenCode wrapper. Both results are printed
+# labeled for the calling agent to reconcile against the source.
 #
 # Sequential by default: opencode shares one SQLite DB, so concurrent runs can
 # fail with "database is locked". Sealed mode already makes each lane fast
@@ -23,7 +23,18 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WRAPPER="$(cd "$SCRIPT_DIR/../../opencode-consult/scripts" 2>/dev/null && pwd)/consult-opencode.sh"
+WRAPPER=""
+for candidate in \
+  "$SCRIPT_DIR/../../../engineering/agent-orchestra/scripts/consult-opencode.sh" \
+  "$SCRIPT_DIR/../../agent-orchestra/scripts/consult-opencode.sh" \
+  "$SCRIPT_DIR/../../../engineering/opencode-consult/scripts/consult-opencode.sh" \
+  "$SCRIPT_DIR/../../opencode-consult/scripts/consult-opencode.sh"
+do
+  if [ -x "$candidate" ]; then
+    WRAPPER="$candidate"
+    break
+  fi
+done
 
 TECH_MODEL="openrouter/moonshotai/kimi-k2.7-code"
 WRITE_MODEL="openrouter/xiaomi/mimo-v2.5-pro"
@@ -51,7 +62,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-[ -x "$WRAPPER" ] || die "consult-opencode.sh wrapper not found/executable at: $WRAPPER"
+[ -x "$WRAPPER" ] || die "consult-opencode.sh wrapper not found/executable from study-consult-panel"
 [ -n "$TECH_PROMPT" ] && [ -f "$TECH_PROMPT" ] || die "--tech-prompt FILE is required and must exist"
 [ -n "$WRITE_PROMPT" ] && [ -f "$WRITE_PROMPT" ] || die "--write-prompt FILE is required and must exist"
 

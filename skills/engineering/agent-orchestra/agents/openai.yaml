@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Orchestra"
+  short_description: "Wrapper-first Claude/Codex/OpenCode routing"
+  default_prompt: "Use $agent-orchestra to route this task through the Codex/OpenCode wrappers with safe model defaults."

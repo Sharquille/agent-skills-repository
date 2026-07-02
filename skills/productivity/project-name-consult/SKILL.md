@@ -1,6 +1,6 @@
 ---
 name: project-name-consult
-description: "Consult Kimi K2.7 Code and MiMo v2.5 Pro for a domain-accurate, professional project name during project-build-loop bootstrap. Use when the user gives a rough project description and needs a clean title, slug, and category that captures the right technical concepts (Kimi), reads well for a portfolio (MiMo), and benefits from conductor-led synthesis. Runs both models sealed and bounded via the tuned opencode-consult wrapper, then the conductor independently selects, rewrites, or creates the final ranked shortlist. Do not trigger for naming skills (use name-skill), for renaming variables (use naming-analyzer), or outside a project-build-loop context."
+description: "Consult Kimi K2.7 Code and MiMo v2.5 Pro for a domain-accurate, professional project name during project-build-loop bootstrap. Use when the user gives a rough project description and needs a clean title, slug, and category that captures the right technical concepts (Kimi), reads well for a portfolio (MiMo), and benefits from conductor-led synthesis. Runs both models sealed and bounded via the tuned OpenCode wrapper exposed by agent-orchestra, then the conductor independently selects, rewrites, or creates the final ranked shortlist. Do not trigger for naming skills (use name-skill), for renaming variables (use naming-analyzer), or outside a project-build-loop context."
 # --- provenance ---
 category: productivity
 source: self-authored; part of the project orchestra (docs/plans/project-orchestra-plan.md)
@@ -20,7 +20,7 @@ Get a proper project name by routing through two specialist models:
   and discoverable for a portfolio? Does it avoid jargon overload while staying
   specific?
 
-Both run **sealed and timeout-bounded** via the tuned `opencode-consult` wrapper
+Both run **sealed and timeout-bounded** via the tuned `agent-orchestra` OpenCode wrapper
 (no repo access, advisory only). The conductor treats their output as raw signal,
 adds its own naming judgment, and presents a refined ranked shortlist: title,
 slug, category, and the recommended pick.
@@ -59,11 +59,11 @@ invoked standalone when naming or renaming a project.
 
 ```text
 # Technical naming (Kimi) — domain accuracy
-opencode-consult/scripts/consult-opencode.sh --sealed --timeout 120 \
+agent-orchestra/scripts/consult-opencode.sh --sealed --timeout 120 \
   --model openrouter/moonshotai/kimi-k2.7-code -- "<naming prompt>"
 
 # Prose naming (MiMo) — readability and portfolio fit
-opencode-consult/scripts/consult-opencode.sh --sealed --timeout 120 \
+agent-orchestra/scripts/consult-opencode.sh --sealed --timeout 120 \
   --model openrouter/xiaomi/mimo-v2.5-pro -- "<naming prompt>"
 ```
 

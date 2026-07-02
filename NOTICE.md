@@ -6,8 +6,8 @@ This repository uses a **mixed-licensing model**.
 
 The root [LICENSE](LICENSE) (MIT) covers all original content:
 
-- **Self-authored skills:** `agent-repo-security`, `build-security-policy`,
-  `deploy-agent-skills`, `enhance-skill`, `name-skill`,
+- **Self-authored skills:** `agent-orchestra`, `agent-repo-security`,
+  `build-security-policy`, `deploy-agent-skills`, `enhance-skill`, `name-skill`,
   `powershell-enterprise-app`, `vet-skill`.
 - **Curation & tooling:** `REGISTRY.md`, `install.sh`, `scripts/`,
   `skills/_template/`, and the repository structure.
@@ -29,6 +29,10 @@ their original author's copyright. Each skill's `SKILL.md` frontmatter records:
 Enhancing a third-party skill does **not** transfer its ownership. Such skills
 are derivative works: original author's content + this repository's modifications,
 each credited separately.
+
+`agent-orchestra` references OpenAI's `openai/codex-plugin-cc` behavior and
+installation flow, but does not vendor the plugin source. The upstream plugin
+retains its Apache-2.0 license.
 
 ## If you reuse a skill from here
 

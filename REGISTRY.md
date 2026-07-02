@@ -85,6 +85,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [modern-web-ui](skills/design/modern-web-ui/) | design | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [ui-styling](skills/design/ui-styling/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
 | [design-tokens](skills/design/design-tokens/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
+| [agent-orchestra](skills/engineering/agent-orchestra/) | engineering | Sharquille Andrew (self-authored; informed by OpenAI codex-plugin-cc) | [github.com/openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc) + this repo | MIT | 2026-07-02 |
 | [codex-consult](skills/engineering/codex-consult/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [opencode-consult](skills/engineering/opencode-consult/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-24 |
 | [consult-orchestrator](skills/engineering/consult-orchestrator/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-24 |

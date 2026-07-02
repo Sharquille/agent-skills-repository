@@ -1,4 +1,4 @@
 interface:
   display_name: "OpenCode Consult"
-  short_description: "Read-only OpenCode second opinions"
-  default_prompt: "Use $opencode-consult to get a read-only OpenCode second opinion with my selected provider/model."
+  short_description: "Legacy OpenCode consult wrapper"
+  default_prompt: "Use $agent-orchestra to route an OpenCode consult with an explicit provider/model."

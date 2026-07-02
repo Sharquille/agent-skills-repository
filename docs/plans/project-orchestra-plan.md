@@ -2,7 +2,7 @@
 
 > Status: **plan only** — no skills built, no `projects/` tree created.
 > Date: 2026-06-27 · Author: Sharquille Andrew (with Claude)
-> Method: drafted by Claude, pressure-tested via `consult-orchestrator`
+> Method: drafted by Claude, pressure-tested via the `agent-orchestra` predecessor
 > (Codex/gpt-5.5 engineering angle + Kimi K2.7 domain angle), then verified
 > against the real repo and synthesized.
 
@@ -39,7 +39,7 @@ shaped around avoiding both.
 | Skill | Role | Notes |
 |---|---|---|
 | **`project-build-loop`** | The conductor. Sole owner of lifecycle state, git checkpoints, task loop, and gates. | Absorbs the originally-proposed `project-scaffold` and `project-discovery` as bundled scripts/references — they are safety-critical and low-freedom, so they belong inside the conductor, not as standalone skills. |
-| **`project-consult-panel`** | Thin preset over `consult-orchestrator` + the tuned consult wrappers. | Justified as its own skill only because it **adds an artifact redaction/scrubber + manifest**. Roles are **capability-based, not hard-coded model names** (maps to Kimi K2.7 = code, MiMo v2.5 = prose, Codex = impl/diff review, Claude = conductor). |
+| **`project-consult-panel`** | Thin preset over `agent-orchestra` + the tuned consult wrappers. | Justified as its own skill only because it **adds an artifact redaction/scrubber + manifest**. Roles are **capability-based, not hard-coded model names** (maps to Kimi K2.7 = code, MiMo v2.5 = prose, Codex = impl/diff review, Claude = conductor). |
 | **`eve-ng-topology`** | Parse EVE-NG **`.unl` (XML) as source of truth** → `topology.json` → emit Mermaid + Graphviz DOT→SVG. | The genuinely novel capability; no existing skill covers it. PNG is a thumbnail only. Excalidraw/LaTeX deferred to a later version. |
 | **`project-publish`** | Consume the **sanitized publish manifest** → **Astro + Tailwind + MDX** page bundle for Cloudflare Pages. | Separate skill because it crosses the public-site boundary. Reuses `site-architecture`, `modern-web-ui`, `design-tokens`, `ui-styling`, `portable-markdown`, `humanizer`. |
 | **`undo-project-build-loop`** | Rollback companion. | Shares the conductor's manifest/checkpoint machinery — **no separate state model**. |
@@ -81,8 +81,9 @@ shaped around avoiding both.
   `network-interface-health`
 - **Web/presentation:** `site-architecture`, `modern-web-ui`, `design-tokens`,
   `ui-styling`
-- **Consult + authoring:** `consult-orchestrator`, `codex-consult`,
-  `opencode-consult`; `skill-creator`, `name-skill`, `vet-skill`, `enhance-skill`
+- **Consult + authoring:** `agent-orchestra` (with `consult-orchestrator`,
+  `codex-consult`, and `opencode-consult` as compatibility shims);
+  `skill-creator`, `name-skill`, `vet-skill`, `enhance-skill`
 
 ## 5. Directory & safety model
 
@@ -160,7 +161,7 @@ SVG. Accessibility: alt text, captions, keyboard-navigable diagrams.
 
 ## 10. Consult integration
 
-Reuse `consult-orchestrator` + the tuned `consult-opencode.sh` / `consult-codex.sh`
+Reuse `agent-orchestra` + the tuned `consult-opencode.sh` / `consult-codex.sh`
 wrappers (sealed, timeout-bounded, provider-pinned, `--title` set to suppress the
 auto-title side-call). `project-consult-panel` adds the redaction/manifest layer.
 Roles by capability: code correctness, prose, implementation/diff review,
@@ -206,7 +207,7 @@ security review, synthesis.
 
 # 15. Project classification & dual-use rating (keystone)
 
-> Added 2026-06-27 after a second `consult-orchestrator` round (Codex + Kimi).
+> Added 2026-06-27 after a second consult round (Codex + Kimi).
 > **Refines §5 (placement) and §6 (lifecycle).** This is the layer that lets the
 > conductor infer correct tooling and handling *from the project type* — the
 > piece the first pass missed.

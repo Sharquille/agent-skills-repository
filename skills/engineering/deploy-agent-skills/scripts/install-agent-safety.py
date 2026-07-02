@@ -223,17 +223,25 @@ def install_opencode_config(asset_dir: Path, repo_dir: Path, home: Path, dry_run
     write_if_changed(dest, content, dry_run)
 
 
-def install_safety(repo_dir: Path, home: Path, dry_run: bool) -> None:
+def install_safety(repo_dir: Path, home: Path, dry_run: bool, targets: set[str]) -> None:
     asset_dir = repo_dir / "skills" / "engineering" / "deploy-agent-skills" / "assets" / "safety"
     if not asset_dir.exists():
         raise SystemExit(f"safety assets not found: {asset_dir}")
 
+    def wants(target: str) -> bool:
+        return "all" in targets or target in targets
+
     print("--- Installing local agent safety guardrails ---")
-    install_opencode_config(asset_dir, repo_dir, home, dry_run)
-    install_markdown_template(asset_dir / "opencode-AGENTS.md", home / ".config" / "opencode" / "AGENTS.md", repo_dir, home, dry_run)
-    install_markdown_template(asset_dir / "claude-CLAUDE.md", home / ".claude" / "CLAUDE.md", repo_dir, home, dry_run)
-    install_markdown_template(asset_dir / "gemini-GEMINI.md", home / ".gemini" / "GEMINI.md", repo_dir, home, dry_run)
-    install_markdown_template(asset_dir / "codex-AGENTS.md", home / ".codex" / "AGENTS.md", repo_dir, home, dry_run)
+    if wants("opencode-config"):
+        install_opencode_config(asset_dir, repo_dir, home, dry_run)
+    if wants("opencode-agents"):
+        install_markdown_template(asset_dir / "opencode-AGENTS.md", home / ".config" / "opencode" / "AGENTS.md", repo_dir, home, dry_run)
+    if wants("claude"):
+        install_markdown_template(asset_dir / "claude-CLAUDE.md", home / ".claude" / "CLAUDE.md", repo_dir, home, dry_run)
+    if wants("gemini"):
+        install_markdown_template(asset_dir / "gemini-GEMINI.md", home / ".gemini" / "GEMINI.md", repo_dir, home, dry_run)
+    if wants("codex"):
+        install_markdown_template(asset_dir / "codex-AGENTS.md", home / ".codex" / "AGENTS.md", repo_dir, home, dry_run)
     print("")
 
 
@@ -242,9 +250,16 @@ def main() -> int:
     parser.add_argument("--repo-dir", type=Path, required=True)
     parser.add_argument("--home", type=Path, default=Path.home())
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--target",
+        action="append",
+        choices=["all", "opencode-config", "opencode-agents", "claude", "gemini", "codex"],
+        help="Install only one target. Repeat for multiple targets. Defaults to all.",
+    )
     args = parser.parse_args()
 
-    install_safety(args.repo_dir.expanduser().resolve(), args.home.expanduser().resolve(), args.dry_run)
+    targets = set(args.target or ["all"])
+    install_safety(args.repo_dir.expanduser().resolve(), args.home.expanduser().resolve(), args.dry_run, targets)
     return 0
 
 

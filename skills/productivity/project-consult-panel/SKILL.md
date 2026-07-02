@@ -1,6 +1,6 @@
 ---
 name: project-consult-panel
-description: "Multi-model advisory review for project artifacts in the project-build-loop, adding a redaction/allowlist layer on top of consult-orchestrator and the read-only consult wrappers. Use when a project task, diff, config, topology, or write-up needs an independent technical, security, or prose review before the conductor accepts it. Routes by capability (code correctness, security review, prose, implementation/diff review) to the user's configured models, sends only redacted/allowlisted artifacts, runs sealed and timeout-bounded and sequentially, and returns advisory findings the conductor must verify. Do not trigger for general coding questions (use codex-consult/opencode-consult) or to let a consultant edit the repo."
+description: "Multi-model advisory review for project artifacts in the project-build-loop, adding a redaction/allowlist layer on top of agent-orchestra and the read-only compatibility wrappers. Use when a project task, diff, config, topology, or write-up needs an independent technical, security, or prose review before the conductor accepts it. Routes by capability (code correctness, security review, prose, implementation/diff review) to the user's configured models, sends only redacted/allowlisted artifacts, runs sealed and timeout-bounded and sequentially, and returns advisory findings the conductor must verify. Do not trigger for general coding questions (use agent-orchestra) or to let a consultant edit the repo."
 # --- provenance ---
 category: productivity
 source: self-authored; part of the project orchestra (docs/plans/project-orchestra-plan.md)
@@ -11,7 +11,7 @@ retrieved: 2026-06-27
 
 # Project Consult Panel
 
-A project-aware preset over [[consult-orchestrator]] that adds the one thing a
+A project-aware preset over [[agent-orchestra]] that adds the one thing a
 project review needs and a generic consult does not: a **redaction/allowlist
 gate** tied to the project's dual-use tier. It does not replace the orchestrator;
 it constrains it for project artifacts. The calling agent (the conductor) remains
@@ -56,11 +56,11 @@ opencode are different binaries and may run in parallel with each other.
 
 ```text
 # technical/security (opencode), sealed + bounded
-skills/engineering/opencode-consult/scripts/consult-opencode.sh --sealed --timeout 300 \
+skills/engineering/agent-orchestra/scripts/consult-opencode.sh --sealed --timeout 300 \
   --model openrouter/moonshotai/kimi-k2.7-code -- "<redacted brief>"
 
 # implementation/diff (codex), read-only
-skills/engineering/codex-consult/scripts/consult-codex.sh --cd <repo> -- "<redacted brief>"
+skills/engineering/agent-orchestra/scripts/consult-codex.sh --cd <repo> -- "<redacted brief>"
 ```
 
 ## Provenance

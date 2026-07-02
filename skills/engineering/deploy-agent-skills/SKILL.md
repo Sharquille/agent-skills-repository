@@ -1,6 +1,6 @@
 ---
 name: deploy-agent-skills
-description: "Automates deployment and symlinking of agent skills in this repository to Claude Desktop/Code (~/.claude/skills), Gemini CLI (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents (~/.agents/skills). Also installs reproducible local safety guardrails for destructive command review and protected agent data paths. Run with no flag to deploy skills and safety to all supported agents, combine --claude-only / --gemini-only / --codex-only / --opencode-only, use --safety-only for guardrails only, or --skip-safety for skills only. Trigger when the user wants to configure, install, link, deploy, update, or reproduce local repository skills and agent safety rules across terminal or AI assistants."
+description: "Automates deployment and symlinking of agent skills in this repository to Claude Desktop/Code (~/.claude/skills), Gemini CLI (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents (~/.agents/skills). Also installs reproducible local safety and orchestration guardrails for destructive command review, protected agent data paths, and Agent Orchestra wrapper-first model routing. Run with no flag to deploy skills and safety to all supported agents, combine --claude-only / --gemini-only / --codex-only / --opencode-only, use --safety-only for guardrails only, or --skip-safety for skills only. Trigger when the user wants to configure, install, link, deploy, update, or reproduce local repository skills and agent safety rules across terminal or AI assistants."
 category: engineering
 source: self-authored (this repository)
 author: Sharquille Andrew
@@ -10,7 +10,7 @@ retrieved: 2026-06-14
 
 # Deploy Agent Skills
 
-Deploy and symlink agent skills from this repository to your global configuration environments for Claude (Desktop & Code), Gemini CLI, Codex CLI, and OpenCode/shared agents. The deployment also installs tracked safety guardrails so destructive commands must be reviewed with target-aware context before they run.
+Deploy and symlink agent skills from this repository to your global configuration environments for Claude (Desktop & Code), Gemini CLI, Codex CLI, and OpenCode/shared agents. The deployment also installs tracked safety and orchestration guardrails so destructive commands must be reviewed with target-aware context and agents prefer Agent Orchestra's wrapper-first model routing defaults.
 
 ## When to use
 
@@ -50,8 +50,8 @@ regardless of this repo's category nesting (`skills/<category>/<name>/`).
 | **Codex CLI** | `~/.codex/skills/` | Flat per-skill symlinks (same 1-deep discovery) |
 | **OpenCode / shared agents** | `~/.agents/skills/` | Flat per-skill symlinks independent of Claude's user-data directory |
 
-### 3) Safety Guardrails
-By default, deployment installs safety rules from `assets/safety/` through `scripts/install-agent-safety.py`.
+### 3) Safety And Orchestration Guardrails
+By default, deployment installs safety and Agent Orchestra routing rules from `assets/safety/` through `scripts/install-agent-safety.py`.
 
 The safety installer:
 
@@ -64,6 +64,13 @@ The safety installer:
   - `~/.gemini/GEMINI.md`
   - `~/.codex/AGENTS.md`
 - Backs up files before changing them.
+- Adds Agent Orchestra defaults to the Claude, Gemini, and OpenCode managed
+  blocks: wrapper-first Codex and OpenCode calls, optional plugin use only,
+  `gpt-5.5` via Codex CLI for bulk work, taste-aware model routing, no Haiku,
+  and guarded Codex implementation through
+  `codex-agent.sh --allow-write --scope`.
+- Keeps Codex's own `AGENTS.md` safety-only so invoked Codex workers do not
+  recursively route back through Agent Orchestra.
 
 ### 4) Command Line Options
 
@@ -75,6 +82,15 @@ The safety installer:
 - `--safety-only`: Only install safety guardrails.
 - `--skip-safety` / `--no-safety`: Deploy skills without installing safety guardrails.
 - Flags **combine** — e.g. `--claude-only --codex-only` deploys to Claude and Codex but not Gemini.
+
+For a narrow guardrail refresh, call the installer directly with `--target`:
+
+```text
+skills/engineering/deploy-agent-skills/scripts/install-agent-safety.py --repo-dir <repo> --target claude
+```
+
+Targets: `claude`, `codex`, `gemini`, `opencode-agents`, `opencode-config`, or
+`all` (default).
 
 ### 5) Verification
 After running the script, verify correct discovery in your interactive agents:

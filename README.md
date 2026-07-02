@@ -39,6 +39,18 @@ See [deploy-agent-skills](skills/engineering/deploy-agent-skills/SKILL.md) for t
 - `REGISTRY.md`: The "Source of Truth" table tracking every skill, its author, and provenance.
 - `NOTICE.md`: Detailed attribution and licensing information.
 
+## Agent orchestration
+
+Use [agent-orchestra](skills/engineering/agent-orchestra/) as the canonical
+Claude Code/Codex/OpenCode routing skill. It is wrapper-first: the primary path
+is `scripts/codex-agent.sh` for Codex consult/review/implementation and
+`scripts/consult-opencode.sh` for OpenCode specialist lanes. It also documents
+the optional [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc)
+Claude Code plugin for environments where that plugin is available. The older
+`codex-consult`, `opencode-consult`, and
+`consult-orchestrator` skills remain as compatibility entry points for existing
+scripts.
+
 ## 🛡️ Security & Auditing
 
 Every third-party skill in this repository has been vetted before inclusion. We recommend using the built-in [vet-skill](skills/engineering/vet-skill/) to audit any new skills before adding them to your registry.
