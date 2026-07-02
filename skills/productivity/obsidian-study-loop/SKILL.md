@@ -28,6 +28,12 @@ When installing the workflow into a vault, read
 `STUDY-PROTOCOL.md`, replacing only the documented placeholders. Do not
 reconstruct the protocol from memory when the reference is available.
 
+This SKILL.md and `references/study-protocol-template.md` intentionally carry
+the same workflow: the template is what gets installed into vaults. Any change
+to shared workflow content must be made in both files, and installed vaults
+then need `scripts/sync_study_protocol.py <VAULT_PATH>` (dry-run, then
+`--apply`) to pick it up.
+
 If the user needs to roll back a mistaken install, wrong-workspace scaffold, or
 false-start session, use the companion `undo-obsidian-study-loop` skill instead
 of improvising deletion steps.
@@ -131,6 +137,41 @@ without `.md`. If the target note does not exist, write the concept as plain tex
 instead of a wikilink. Only create a wikilink to a not-yet-existing concept when
 the user explicitly asks to create future concept pages.
 
+The same verification applies to heading anchors. Before writing
+`[[Note#Heading]]` or a same-note `[[#Heading]]` link, confirm the exact heading
+text exists in the target note. When a heading is renamed, merged, or
+consolidated away, search the vault for `#<old heading>` references in the same
+edit and update them so no anchor dangles.
+
+## Vault Structure and Note Granularity
+
+A scaffolded study vault has this shape. Keep writes inside these locations:
+
+```text
+<VAULT_PATH>/
+  STUDY-PROTOCOL.md                    # installed protocol (sync-managed)
+  CLAUDE.md / AGENTS.md / GEMINI.md    # pointer blocks only
+  Notes/                               # study notes; this skill writes here
+  Maps/                                # study-map output; never written here
+  _study/
+    state.json                         # active-session pointer
+    sessions/                          # one file per study session
+    README.md                          # one-paragraph explainer (see Setup)
+```
+
+Note granularity and naming:
+
+- When the course has numbered sections and quizzes run per section, default to
+  **one note per section**, named `<Course short name> Ch<N> - <Section
+  title>.md` (for example `Security+ Ch1 - Security Controls.md`), with
+  frontmatter `section` set to that section's number.
+- Use a single chapter- or topic-wide note only when the session is one
+  unsectioned topic.
+- If an existing note already covers the chapter and a new section is about to
+  be written, ask whether to append the new section to that note or start a
+  per-section note. Never fork a second note for the same scope.
+- Do not add an H1 title line to note bodies. The filename and frontmatter
+  `title` carry the display name; body headings start at `##`.
 
 ## Sync Existing Vault Protocol
 
@@ -399,9 +440,19 @@ When I ask to study, quiz, or review notes, follow the workflow in `STUDY-PROTOC
 }
 ```
 
-6. Copy `references/study-protocol-template.md` to `STUDY-PROTOCOL.md`, replacing
+6. Write `_study/README.md` with this one-paragraph explainer:
+
+```markdown
+# _study
+
+State and session logs for the Obsidian study loop. Managed by the study
+workflow in `STUDY-PROTOCOL.md`. Do not hand-edit `state.json` unless
+recovering.
+```
+
+7. Copy `references/study-protocol-template.md` to `STUDY-PROTOCOL.md`, replacing
    `<VAULT_PATH>` and `<NOTES_DIR>` with the confirmed paths.
-7. If the reference file is unavailable, write a `STUDY-PROTOCOL.md` that
+8. If the reference file is unavailable, write a `STUDY-PROTOCOL.md` that
    contains the phase workflow below.
 
 ## Phase 1 - Setup a Session
@@ -497,6 +548,22 @@ not invent missing definitions, outcomes, or exam objectives during setup.
 ```
 
 8. Confirm the objectives in one short list and stop. Do not quiz yet.
+
+Maintain this section order in the session file for the whole session
+lifecycle, inserting each new block within its group rather than appending at
+the end of the file:
+
+1. frontmatter
+2. `## Study content`
+3. `## Unit progress`
+4. `## Assessment — <scope>` blocks, in section order
+5. `## Notes written — <scope>` blocks, in section order
+6. `## Review — <date>` blocks, oldest first
+7. `## Mastery evidence` (optional)
+8. `## Session log` (always last)
+
+When a heading already exists, append under it instead of creating a duplicate
+heading. Do not reorder an existing session file without user approval.
 
 ## Phase 2 - Study Break
 
@@ -615,10 +682,11 @@ Write notes for the assessed scope, not necessarily the whole session. If the
 latest quiz covered only `1.1`, write only the `1.1` note sections and gap stubs.
 If the latest quiz covered the full session, write all assessed objectives.
 
-Write one note per session topic in `NOTES_DIR`, for example:
+Choose the note file per the Vault Structure and Note Granularity rules:
+one note per section when quizzes run per section, for example:
 
 ```text
-Notes/Security+ - Ch3 - Access Control.md
+Notes/Security+ Ch3 - Access Control.md
 ```
 
 Never overwrite an existing notes file silently. If the file exists, ask whether
@@ -654,6 +722,21 @@ related: []
 
 Use lower-case kebab-case tags. Add or adjust tags to match the vault's existing
 tag style when one is visible.
+
+Frontmatter field contract:
+
+- `type`: `learning` for graded study notes; `reference` for non-graded
+  reference notes (for example, tool mechanics captured without a quiz).
+- Note `status` lifecycle: `draft` when written; `reviewed` once every gap and
+  answered study-check in the note has been reviewed. Reference notes use
+  `status: reference`. Note status is independent of session status.
+- Before creating a note, read the frontmatter of an existing note from the
+  same course and copy the exact `course` and `domain` value formats. Do not
+  introduce a second spelling of the same course or domain.
+- Bump `updated:` to the local date on every substantive edit, including
+  review corrections and consolidations.
+- Keep frontmatter `related:` and the `## Related` section listing the same
+  verified notes.
 
 For each assessed in-scope objective, write one `##` section:
 
@@ -920,7 +1003,11 @@ Trigger examples: "review my additions", "check my gap notes".
    - Transfer, limitations, alternatives, or distractor rejection: `0-2`
    - `solid`: 7-8, `partial`: 4-6, `gap`: 0-3
 9. After scoring, explain every false positive, false negative, and weak
-   rationale. Preserve the user's original choices and answer text. Convert the
+   rationale. Preserve the user's original choices and answer text. Never
+   replace the learner's text on `learner-answer` lines: corrections and model
+   answers belong in the feedback callout, quoting the learner's original words
+   when discussing them. Leave unanswered fields as `Write here.` and report
+   them as pending instead of filling them in. Convert the
    reviewed task boxes to explicit **Selected** / **Not selected** lines only
    after recording the original choices and score.
    Place feedback after `#### Your confidence before review` and before the
@@ -935,7 +1022,7 @@ Trigger examples: "review my additions", "check my gap notes".
 > **Why:** <reasoning or transfer explanation>
 ```
 
-10. Append and print this changelog:
+10. Append this changelog to the session file and print it in chat:
 
 ```markdown
 ## Review — <date>
@@ -945,6 +1032,11 @@ Trigger examples: "review my additions", "check my gap notes".
 - <study-check-id>: <score>/8 — <solid|partial|gap>; tutor confidence <level>;
   learner confidence <level>; calibration <result>. <reasoning feedback>
 ```
+
+    The session file holds the canonical changelog. When edits to the note were
+    substantive, a brief dated `## Review — <date>` provenance section may also
+    be appended at the end of the note, after a `---` rule; keep it shorter
+    than the session entry and never contradicting it.
 
 11. Record every answered check's score and mastery in the review changelog, and
    optionally roll it into `## Mastery evidence`. Recalculate tutor confidence for
@@ -963,6 +1055,18 @@ Trigger examples: "review my additions", "check my gap notes".
    active pointer after review. The next agent should be able to see what was
    just reviewed and whether the user wants to continue, start the next unit, or
    start the next chapter.
+15. Finish the bookkeeping in the same pass as the note edits — review feedback
+    in a note with no matching session-side record means an interrupted review.
+    Complete, in order: note feedback and callout swaps → note frontmatter
+    (`status`, `updated`) → session `## Review — <date>` changelog → `## Unit
+    progress` Review column set to `reviewed` for the scope → session
+    frontmatter status → session log entry. Then cross-check: the note and the
+    session file must tell the same story.
+16. If, when a review starts, a note already contains review feedback newer
+    than the session's last review entry, a previous review was interrupted.
+    Reconstruct the missing session-side records from the evidence in the note
+    (scores, dates, callouts) before doing new review work, and log the repair
+    in the session log.
 
 ## Safety Rules
 

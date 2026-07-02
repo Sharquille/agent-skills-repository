@@ -109,6 +109,11 @@ without `.md`. If the target note does not exist, write the concept as plain tex
 instead of a wikilink. Only create a wikilink to a not-yet-existing concept when
 the user explicitly asks to create future concept pages.
 
+The same verification applies to heading anchors. Before writing
+`[[Note#Heading]]` or a same-note `[[#Heading]]` link, confirm the exact heading
+text exists in the target note. When a heading is renamed, merged, or
+consolidated away, search the vault for `#<old heading>` references in the same
+edit and update them so no anchor dangles.
 
 ## Syncing This Protocol
 
@@ -445,6 +450,22 @@ setup.
    was captured, also confirm the section titles captured, but keep it brief.
 10. Stop. Do not quiz the user yet.
 
+Maintain this section order in the session file for the whole session
+lifecycle, inserting each new block within its group rather than appending at
+the end of the file:
+
+1. frontmatter
+2. `## Study content`
+3. `## Unit progress`
+4. `## Assessment — <scope>` blocks, in section order
+5. `## Notes written — <scope>` blocks, in section order
+6. `## Review — <date>` blocks, oldest first
+7. `## Mastery evidence` (optional)
+8. `## Session log` (always last)
+
+When a heading already exists, append under it instead of creating a duplicate
+heading. Do not reorder an existing session file without user approval.
+
 ## Phase 2 - Study Break
 
 Nothing happens during the study break. The user closes the agent and studies
@@ -576,11 +597,24 @@ not necessarily the whole session. If the latest quiz covered only `1.1`, write
 only the `1.1` note sections and gap stubs. If the latest quiz covered the full
 session, write all assessed objectives.
 
-Use one note file per session topic. Example:
+Choose note granularity and names by these rules:
+
+- When the course has numbered sections and quizzes run per section, default to
+  **one note per section**, named `<Course short name> Ch<N> - <Section
+  title>.md`, with frontmatter `section` set to that section's number.
+  Example:
 
 ```text
-Notes/Security+ - Ch3 - Access Control.md
+Notes/Security+ Ch3 - Access Control.md
 ```
+
+- Use a single chapter- or topic-wide note only when the session is one
+  unsectioned topic.
+- If an existing note already covers the chapter and a new section is about to
+  be written, ask whether to append the new section to that note or start a
+  per-section note. Never fork a second note for the same scope.
+- Do not add an H1 title line to note bodies. The filename and frontmatter
+  `title` carry the display name; body headings start at `##`.
 
 Before writing:
 
@@ -617,6 +651,21 @@ related: []
 
 Use lower-case kebab-case tags. If the vault already has a visible tag style,
 match it.
+
+Frontmatter field contract:
+
+- `type`: `learning` for graded study notes; `reference` for non-graded
+  reference notes (for example, tool mechanics captured without a quiz).
+- Note `status` lifecycle: `draft` when written; `reviewed` once every gap and
+  answered study-check in the note has been reviewed. Reference notes use
+  `status: reference`. Note status is independent of session status.
+- Before creating a note, read the frontmatter of an existing note from the
+  same course and copy the exact `course` and `domain` value formats. Do not
+  introduce a second spelling of the same course or domain.
+- Bump `updated:` to the local date on every substantive edit, including
+  review corrections and consolidations.
+- Keep frontmatter `related:` and the `## Related` section listing the same
+  verified notes.
 
 For each assessed in-scope objective, write one `##` section.
 
@@ -920,7 +969,11 @@ When the user asks for review:
    - Transfer, limitations, alternatives, or distractor rejection: `0-2`
    - `solid`: 7-8, `partial`: 4-6, `gap`: 0-3
 10. After scoring, explain every false positive, false negative, and weak
-    rationale. Preserve the user's original choices and answer text. Convert the
+    rationale. Preserve the user's original choices and answer text. Never
+    replace the learner's text on `learner-answer` lines: corrections and model
+    answers belong in the feedback callout, quoting the learner's original
+    words when discussing them. Leave unanswered fields as `Write here.` and
+    report them as pending instead of filling them in. Convert the
     reviewed task boxes to explicit **Selected** / **Not selected** lines only
     after recording the original choices and score.
     Place feedback after `#### Your confidence before review` and before the
@@ -945,6 +998,11 @@ When the user asks for review:
   learner confidence <level>; calibration <result>. <reasoning feedback>
 ```
 
+    The session file holds the canonical changelog. When edits to the note were
+    substantive, a brief dated `## Review — <date>` provenance section may also
+    be appended at the end of the note, after a `---` rule; keep it shorter
+    than the session entry and never contradicting it.
+
 12. Record every answered check's score and mastery in the review changelog, and
     optionally roll it into `## Mastery evidence`. Recalculate tutor confidence
     for the objective from all available independent evidence. Do not rewrite the
@@ -964,11 +1022,25 @@ When the user asks for review:
     active pointer after review. The next agent should be able to see what was
     just reviewed and whether the user wants to continue, start the next unit,
     or start the next chapter.
+18. Finish the bookkeeping in the same pass as the note edits — review feedback
+    in a note with no matching session-side record means an interrupted review.
+    Complete, in order: note feedback and callout swaps → note frontmatter
+    (`status`, `updated`) → session `## Review — <date>` changelog → `## Unit
+    progress` Review column set to `reviewed` for the scope → session
+    frontmatter status → session log entry. Then cross-check: the note and the
+    session file must tell the same story.
+19. If, when a review starts, a note already contains review feedback newer
+    than the session's last review entry, a previous review was interrupted.
+    Reconstruct the missing session-side records from the evidence in the note
+    (scores, dates, callouts) before doing new review work, and log the repair
+    in the session log.
 
 ## Markdown Rules (portable)
 
 - Use portable GFM markdown per the `portable-markdown` skill, not Obsidian-only
   syntax. Run its `scripts/lint.sh` on a note before considering it done.
+- No H1 title line in note bodies; the filename and frontmatter `title` carry
+  the display name.
 - Use `##` headings for objective sections.
 - Use `###` only for durable subsections. Format short worked examples as
   `[!NOTE]` callouts and review feedback as mastery-appropriate callouts.
@@ -980,6 +1052,9 @@ When the user asks for review:
   answers belong. Never use Obsidian `%% ... %%` comments.
 - Use `[[wikilinks]]` only after verifying that the target note already exists
   in the vault. If the target note does not exist, use plain text instead.
+- Verify heading anchors (`[[Note#Heading]]`, `[[#Heading]]`) against the
+  target note's actual headings, and update anchor references whenever a
+  heading is renamed or consolidated away.
 - Use lower-case kebab-case tags and keep them consistent across the course.
 - Add `## Related` and `## Mind map seeds` when they help future graph or mind
   map views.
@@ -1034,3 +1109,11 @@ unambiguous:
     contributes to mastery and confidence.
 12. Answered `study-check` blocks are scored during review without changing the
     user's checkbox selections before grading.
+13. Note frontmatter follows the field contract: one spelling of `course` and
+    `domain` per course, `type` is `learning` or `reference`, the note status
+    lifecycle is respected, and `updated` is bumped on every substantive edit.
+14. After review, the note and session file agree: feedback in a note has a
+    matching `## Review` changelog, an updated `## Unit progress` Review
+    column, and a session log entry.
+15. Learner text on `learner-answer` lines was never replaced; corrections
+    live in feedback callouts.
