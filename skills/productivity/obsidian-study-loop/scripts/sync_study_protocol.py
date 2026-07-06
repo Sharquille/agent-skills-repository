@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import re
 import sys
 from pathlib import Path
@@ -51,6 +52,11 @@ def parse_args() -> argparse.Namespace:
         help="Write the rendered protocol to STUDY-PROTOCOL.md. Without this, only prints a diff.",
     )
     parser.add_argument(
+        "--allow-external-notes-dir",
+        action="store_true",
+        help="Permit a --notes-dir outside the vault. Off by default because the protocol promises vault-local writes.",
+    )
+    parser.add_argument(
         "--no-diff",
         action="store_true",
         help="Suppress unified diff output.",
@@ -83,6 +89,14 @@ def notes_dir_from_existing(existing: str, vault: Path) -> Path:
     match = re.search(r"^- `NOTES_DIR`: `([^`]+)`", existing, flags=re.MULTILINE)
     if match:
         return Path(match.group(1)).expanduser().resolve()
+    if existing.strip():
+        # A protocol exists but its NOTES_DIR line is missing or malformed.
+        # Falling back silently could redirect future notes away from the
+        # user's real notes directory; require an explicit choice instead.
+        raise SyncError(
+            "Existing STUDY-PROTOCOL.md has no parseable NOTES_DIR line. "
+            "Re-run with --notes-dir <path> to state it explicitly."
+        )
     return (vault / "Notes").resolve()
 
 
@@ -115,6 +129,12 @@ def main() -> int:
         target = vault / PROTOCOL_NAME
         current = read_existing_protocol(target)
         notes_dir = args.notes_dir.expanduser().resolve() if args.notes_dir else notes_dir_from_existing(current, vault)
+        if not args.allow_external_notes_dir and not notes_dir.is_relative_to(vault):
+            raise SyncError(
+                f"Notes dir {notes_dir} is outside the vault {vault}. "
+                "The protocol promises vault-local writes; pass "
+                "--allow-external-notes-dir to override deliberately."
+            )
         desired = render_template(template, vault, notes_dir)
 
         if current == desired:
@@ -132,6 +152,17 @@ def main() -> int:
         print(f"UPDATED: {target}")
         print(f"SOURCE:  {template}")
         print("Protected: Notes/, _study/sessions/, and _study/state.json were not touched.")
+        state_file = vault / "_study" / "state.json"
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                state = {}
+            if isinstance(state, dict) and state.get("active_session"):
+                print(
+                    "NOTICE: _study/state.json points at an active session. Agents mid-session "
+                    "should re-read STUDY-PROTOCOL.md before their next study-loop action."
+                )
         return 0
     except SyncError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

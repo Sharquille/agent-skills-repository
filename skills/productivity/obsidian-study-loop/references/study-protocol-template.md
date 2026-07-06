@@ -118,10 +118,13 @@ edit and update them so no anchor dangles.
 ## Syncing This Protocol
 
 If this vault may be stale relative to the source `obsidian-study-loop` skill,
-ask the agent to run the skill's bundled sync helper in dry-run mode first:
+ask the agent to run the skill's bundled sync helper in dry-run mode first.
+The script lives in the installed skill directory, not in this vault — for
+example `~/.claude/skills/obsidian-study-loop/scripts/`, or
+`skills/productivity/obsidian-study-loop/scripts/` in the skills repository:
 
 ```text
-scripts/sync_study_protocol.py <VAULT_PATH>
+<skill-dir>/scripts/sync_study_protocol.py <VAULT_PATH>
 ```
 
 The helper compares the source template to this `STUDY-PROTOCOL.md` and prints a
@@ -375,7 +378,17 @@ When creating the session:
 1. Read `_study/state.json` first. If it points at an existing session, report
    the active topic and status. If the user is clearly starting a new study
    session, preserve the existing session file and ask for confirmation before
-   replacing the active pointer.
+   replacing the active pointer. While state is open, run the session-start
+   sweep and surface anything found before proceeding:
+   - Pending gap stubs: notes whose `<!-- gap:` markers still contain the
+     unchanged `Write here.` sentinel. Report file and count; offer resume
+     (fill and review), keep waiting, or archive the stub.
+   - Unconsumed `## Quiz progress` blocks in session files: an interrupted
+     quiz. Offer to resume it before starting anything new.
+   - Due re-reviews: `next review` dates in the latest assessment blocks that
+     are on or before today. Offer to prepend 1-2 retrieval questions for
+     those objectives to the next quiz; if the re-check score drops, demote
+     the objective's mastery and reopen a gap stub.
 2. Create a slug from the topic:
    - Lowercase the topic.
    - Replace spaces and punctuation with hyphens.
@@ -501,11 +514,31 @@ When the user asks to be quizzed:
    - If the user says "quiz everything", quiz the full active session.
    - If the requested scope is ambiguous, ask one clarifying question and do not
      start the quiz yet.
+   - If scope filtering leaves zero eligible objectives (for example, the named
+     section has no in-scope learning outcomes, or everything in scope is
+     already assessed and the user asked only for new material), stop: report
+     why nothing is quizzable, do not run an empty quiz, do not write an
+     assessment, and ask for a different scope or an updated study packet.
 5. Quiz thoroughly, covering every objective in scope. If `## Study content`
    exists, use the in-scope learning outcomes, key terms, labs, activities, and
    practice expectations as the quiz blueprint. Use certification exam objective
    mappings only to align question wording to the exam, not to introduce
-   future-section content.
+   future-section content. Before the first question, start a disk-backed
+   progress block in the session file so an interrupted quiz can resume:
+
+```markdown
+## Quiz progress — <scope>
+
+- Planned: <objective 1>; <objective 2>; <objective 3>
+- <ISO datetime> - Q1 <objective 1> - score <0-8> - <one-line answer summary>
+```
+
+   Append one line per scored answer as it is scored. When Phase 4 writes the
+   assessment, mark the block consumed by appending
+   `- Consumed by Assessment — <scope> on <ISO datetime>` rather than deleting
+   it. If a quiz starts and an unconsumed `## Quiz progress` block already
+   exists for the same scope, offer to resume from the first unanswered planned
+   objective instead of restarting.
 6. Mix question formats:
    - Direct recall: "What does X stand for and what does it do?"
    - Fill-in-the-blank: "In ___ access control, permissions attach to roles, not users."
@@ -513,7 +546,8 @@ When the user asks to be quizzed:
    - One applied/scenario question per major objective where it makes sense.
 7. Ask exactly one quiz question at a time. Do not list the full quiz or multiple
    lettered questions in one message. Keep the remaining questions as an
-   internal queue.
+   internal queue, mirrored by the `## Quiz progress` block on disk — context
+   can evaporate between turns; the block is the recovery point.
 8. If a section has several planned prompts, ask only the next prompt, wait for
    the user's answer, give brief feedback, record assessment notes, and then ask
    the next prompt.
@@ -525,7 +559,10 @@ When the user asks to be quizzed:
    and the correct answer before moving on.
 12. Keep enough notes during the quiz to assess each objective later.
 13. When key terms are provided, include term-definition recall and at least one
-   question requiring the user to distinguish similar terms.
+   question requiring the user to distinguish similar terms. Also include at
+   least one pure free-recall prompt per section — describe a scenario and ask
+   the user to produce the term or mechanism with no candidate list in sight.
+   Recognition among presented options is weaker evidence than production.
 14. When certification objectives are provided, include questions that map the
    user's understanding back to those exam objectives.
 15. When lab or simulator expectations are provided, include practical or
@@ -533,8 +570,10 @@ When the user asks to be quizzed:
 16. For applied questions, state a concrete subject or asset, situation or
     failure path, and relevant facts. Ask the user to explain why the answer or
     decision fits that context, not merely name a term.
-17. When practical, ask for learner confidence before giving feedback. Record
-    each answer as mastery evidence using the universal 8-point rubric.
+17. When practical, ask for learner confidence before giving feedback. Score
+    each answer with the universal 8-point rubric; the scores feed the required
+    `## Assessment — <scope>` block in Phase 4 (the separate `## Mastery
+    evidence` ledger stays optional).
 18. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
@@ -546,19 +585,35 @@ After the quiz is complete:
    - `solid` - The user demonstrated competence.
    - `partial` - The user got the gist but missed key details.
    - `gap` - The user could not recall it or got it materially wrong.
-2. Append or update a scoped assessment heading in the active session file using
+2. Append a scoped assessment heading in the active session file using
    this format:
 
 ```markdown
 ## Assessment — <scope>
 
-- <objective 1>: solid (<score>) - <brief evidence from quiz>
+- <objective 1>: solid (<score>) - <brief evidence from quiz> - next review <YYYY-MM-DD>
 - <objective 2>: partial (<score>) - <brief evidence from quiz>
 - <objective 3>: gap (<score>) - <brief evidence from quiz>
 ```
 
+   Assessment and re-assessment records:
+
+   - An objective whose supporting evidence is entirely recall or definition
+     items is labeled `solid (recall-only)`, and its tutor confidence stays at
+     most `medium` until at least one applied or transfer evidence item is
+     recorded.
+   - Give every `solid` objective a `next review` date: today + 7 days, or
+     today + 21 days when tutor confidence is `high`. `partial` and `gap`
+     objectives are re-tested through the normal loop and need no date.
+   - If an `## Assessment — <scope>` block already exists for this scope, do
+     not edit it. Create a new dated heading
+     `## Assessment — <scope> — <YYYY-MM-DD>` so attempts stay distinguishable;
+     the newest dated block is the current one.
+
 3. If the scope is not the full session, do not imply that the entire session
-   has been quizzed. Update or append a unit progress table:
+   has been quizzed. Update or append a unit progress table. Keep exactly one
+   row per scope — update the existing row in place on re-quiz or later phases;
+   never add a duplicate row for the same scope:
 
 ```markdown
 ## Unit progress
@@ -588,7 +643,8 @@ using the universal 8-point rubric (apply the recall exception for definition
 items). Use `unknown` learner confidence when confidence was not collected.
 Calculate tutor confidence from all evidence currently available for that
 objective, not from the newest answer alone. Optionally roll the result into
-`## Mastery evidence`.
+`## Mastery evidence`. Finally, mark the scope's `## Quiz progress` block
+consumed (`- Consumed by Assessment — <scope> on <ISO datetime>`).
 
 ## Phase 5 - Write Notes
 
@@ -662,6 +718,10 @@ Frontmatter field contract:
 - Before creating a note, read the frontmatter of an existing note from the
   same course and copy the exact `course` and `domain` value formats. Do not
   introduce a second spelling of the same course or domain.
+- `domain` precedence: when the course has certification exam domains (for
+  example "1.0 General Security Concepts"), use the exam domain; otherwise use
+  the course chapter. Pick one meaning per course and never mix the two within
+  the same vault.
 - Bump `updated:` to the local date on every substantive edit, including
   review corrections and consolidations.
 - Keep frontmatter `related:` and the `## Related` section listing the same
@@ -777,12 +837,15 @@ Add discovery metadata near the end when useful:
 After writing notes:
 
 1. Append a scoped `## Notes written` entry to the session log listing which
-   objectives received full notes and which received gap stubs:
+   objectives received full notes and which received gap stubs. `<notes-dir>`
+   is the vault-relative configured notes directory (`NOTES_DIR` above,
+   `Notes` by default) — log the path actually written, not a hardcoded
+   `Notes/`:
 
 ```markdown
 ## Notes written — <scope>
 
-- <ISO datetime> - Wrote `Notes/<note-file>.md`.
+- <ISO datetime> - Wrote `<notes-dir>/<note-file>.md`.
 - Full notes: <objective 1>, <objective 2>
 - Gap stubs: <objective 3>
 ```
@@ -871,7 +934,11 @@ When the user asks for review:
    objective heading to find the section that was formerly a gap.
 7. Find `<!-- study-check:start ... -->` blocks. Review a block when at least one
    checkbox is selected or the field after a `<!-- learner-answer:<field> -->`
-   marker no longer equals `Write here.`. Leave untouched checks pending.
+   marker no longer equals `Write here.`. Leave untouched checks pending. A
+   changed field with no substance — a bare acknowledgement ("ok", "done",
+   "idk"), or a fragment carrying no term, mechanism, or reasoning — is
+   non-substantive: report it as such, leave the check pending, and do not
+   score it. A string change is a presence signal, not evidence.
 7.5. **Duplicate content resolution.** Before editing individual sections, scan the
    opened notes for content that repeats across sections. Not all repetition
    is duplication — purposeful cross-references and worked examples that
@@ -950,6 +1017,11 @@ When the user asks for review:
    - If wrong or incomplete, edit it to be correct and complete.
    - If uncertain about a technical detail, do not guess. Add a
      `> [!WARNING]` callout explaining what needs verification.
+   - Provenance gate: approved gap content must either name a source the user
+     can point to (course material, vendor doc, RFC/NIST, reputable reference)
+     or be flagged — tutor confidence at most `low` plus a `[!WARNING]` callout
+     noting unverified provenance. Plausible-sounding prose with no source is a
+     plausibility check, not a knowledge check; do not let it earn `solid`.
    - Replace the stale pending `[!IMPORTANT]` research callout after review. Keep
      the alert tag alone on its line and put the status on the next line:
      - `solid` or approved without edits → `[!TIP]`, body **Research reviewed — <date>**
@@ -1011,8 +1083,16 @@ When the user asks for review:
     there is nothing new to review. Do not change frontmatter, unit progress, or
     the session log.
 14. Print the same changelog to the user.
-15. Set frontmatter `status: reviewed`.
-16. Append an audit entry under `## Session log`:
+15. Status gates — set statuses only inside the step-18 ordered pass, never
+    before it:
+    - Note `status: reviewed` requires zero unreviewed gap placeholders and
+      zero answered-but-unreviewed study-checks in that note (a reviewed gap
+      may stay open under a `[!WARNING]` without blocking). Untouched
+      optional checks stay pending and do not block the note, but note their
+      count in the review changelog.
+    - Session frontmatter `status: reviewed` and the closing session log entry
+      come at the end of the ordered pass, not here.
+16. The closing session log entry uses this format:
 
 ```markdown
 - <ISO datetime> - Review completed. Status: reviewed.
@@ -1026,8 +1106,11 @@ When the user asks for review:
     in a note with no matching session-side record means an interrupted review.
     Complete, in order: note feedback and callout swaps → note frontmatter
     (`status`, `updated`) → session `## Review — <date>` changelog → `## Unit
-    progress` Review column set to `reviewed` for the scope → session
-    frontmatter status → session log entry. Then cross-check: the note and the
+    progress` Review column set to `reviewed` for the scope → calibration
+    rollup: count the scope's evidence rows by calibration and append one line
+    to the session log (`- <ISO datetime> - Calibration: <n> well-calibrated,
+    <n> overconfident, <n> underconfident, <n> unknown.`) → session frontmatter
+    status → closing session log entry. Then cross-check: the note and the
     session file must tell the same story.
 19. If, when a review starts, a note already contains review feedback newer
     than the session's last review entry, a previous review was interrupted.
