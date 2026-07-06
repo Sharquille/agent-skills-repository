@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # secret_scan.sh — fail-closed secret/PII gate. Run before staging, committing,
 # consulting, and publishing. Scans given paths (or staged git diff) for secret
-# patterns and non-documentation IPs/hosts. Exit: 0 clean, 1 findings, 2 usage.
+# patterns always, and for non-documentation IPv4 in --publish mode. Does NOT
+# detect IPv6/hostnames/EXIF/timestamps — those stay manual-review items.
+# A missing/unreadable scan target is a finding (fail closed).
+# Exit: 0 clean, 1 findings, 2 usage.
 #
 # Usage:
 #   secret_scan.sh <path> [<path> ...]     # scan files/dirs
@@ -67,7 +70,9 @@ else
     elif [ -f "$p" ]; then
       scan_text "$p" "$(cat "$p" 2>/dev/null)"
     else
-      echo "warn: not found: $p" >&2
+      # Fail closed: a scan target that cannot be read must not pass silently.
+      echo "ERROR: scan target not found or unreadable: $p" >&2
+      rc=1
     fi
   done
 fi

@@ -294,9 +294,12 @@ invoked there.
   `references/schemas/project.json`) + append-only `event-log.jsonl`.
 - **Per-project (local only, gitignored):** `.project/lock` (host+pid, stale-lock
   recovery), absolute paths, secrets.
-- Use atomic writes. Validate `project.json` against the schema before every
-  state transition. Tracked state uses **relative** paths; absolute paths live
-  only in gitignored local state (cross-machine safety).
+- Use atomic writes. Validate `project.json` against the documented shape in
+  `references/schemas/` before every state transition — those files are
+  annotated **examples** (they show field shapes and enum options as literal
+  strings), not machine JSON Schema; validate structurally, do not feed them to
+  a JSON Schema validator. Tracked state uses **relative** paths; absolute paths
+  live only in gitignored local state (cross-machine safety).
 
 ## Lifecycle
 
@@ -368,12 +371,17 @@ the tools it depends on. See the Tooling & software setup convention.
 For "work on task N.N":
 
 1. **Per-action gate** (`scripts/policy_check.sh`): re-validate the tier against
-   the task's declared capability flags; confirm authorization + isolation for
-   T2+. If a task introduces `mitm_proxy` / `traffic_decryption` / `exploit_poc`
-   / `malware_sample` / live targets, **reclassify** before routing. Adding an
-   external reference never changes `dual_use_tier` or gates; if a referenced
-   technique leads the task to adopt a new capability, reclassify the task, not
-   the reference.
+   the task's declared capability flags; pass the gate's proof inputs
+   (`--authorized`, `--scoped`, `--isolated` for T2+ tooling; `--approval yes`
+   for git-remote/publish; `--consult-kind planning|artifact` for consults).
+   The gate reads tier and `publish_policy` from `project.json` and treats any
+   unconfirmed `classification.status` as at least T3. If a task introduces
+   `packet_capture` / `active_scan` / `mitm_proxy` / `traffic_decryption` /
+   `exploit_poc` / `malware_sample` / `credential_material` / live targets,
+   **reclassify** before routing (a rerun may keep the tier — see
+   `dual-use-rating.md`). Adding an external reference never changes
+   `dual_use_tier` or gates; if a referenced technique leads the task to adopt a
+   new capability, reclassify the task, not the reference.
 2. **Baseline/snapshot** the relevant state (git status, env snapshot).
 3. **Execute** by routing to the archetype's domain skills. Each returns a
    structured report: changed files, commands run, risks, tests, blockers.
@@ -479,8 +487,12 @@ never invents deletion steps; it reverses recorded checkpoints.
 
 - `scripts/bootstrap_project.sh` — safe, idempotent, dry-run-first root/project
   creation.
-- `scripts/secret_scan.sh` — secret/PII scan gate.
+- `scripts/secret_scan.sh` — fail-closed secret + IPv4 scan gate (secrets always;
+  real IPv4 in `--publish` mode). IPv6, hostnames, EXIF, and timestamps remain
+  manual-review items per `dual-use-rating.md`.
 - `scripts/policy_check.sh` — fail-closed pre-action tier/gate validator.
+- `scripts/policy_selftest.sh` — regression matrix asserting `policy_check.sh`
+  matches the `dual-use-rating.md` fixtures; run after editing either.
 - `scripts/markdown_gate.sh` — wraps portable-markdown lifecycle lint for touched project Markdown.
 - `assets/gitignore-baseline` — strong `.gitignore`.
 - `references/intake-questions.md` — governance-complete discovery bank.

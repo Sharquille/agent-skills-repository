@@ -27,10 +27,20 @@ action. Fail closed.
 `mitm_proxy`, `exploit_poc`, `malware_sample`, `credential_material`,
 `production_target`, `third_party_target`, `internet_egress`.
 
-A task **declares** the flags it introduces. Introducing a higher-risk flag
-(`mitm_proxy`, `traffic_decryption`, `exploit_poc`, `malware_sample`,
-`production_target`, `third_party_target`) forces **reclassification** before the
-conductor routes execution.
+A task **declares** the flags it introduces. Two distinct mechanisms apply, and
+they are not the same thing:
+
+1. **Reclassification (rerun the decision tree).** Any of `packet_capture`,
+   `active_scan`, live targets, `credential_material`, `malware_sample`,
+   `exploit_poc`, `mitm_proxy`, `traffic_decryption`, or public-publish intent
+   **invalidates and reruns** classification before the conductor routes
+   execution. A rerun may keep the tier the same (e.g. `packet_capture` in an
+   isolated lab stays T1–T2) — it forces a re-decision, not an automatic bump.
+2. **Tier floor (fail-closed enforcement in `policy_check.sh`).** Some flags
+   cannot resolve below a floor no matter the narrative: `credential_material`,
+   `production_target`, `third_party_target` floor at **T4**; `active_scan`,
+   `mitm_proxy`, `traffic_decryption`, `exploit_poc`, `malware_sample` floor at
+   **T3**. `packet_capture` has no floor (T1–T2 by the tree).
 
 ## Tier decision tree (first match wins, top-down)
 

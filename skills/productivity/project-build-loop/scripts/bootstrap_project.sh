@@ -31,19 +31,32 @@ ALLOWED_CATS="networking-and-cybersecurity software-development"
 
 die() { echo "error: $*" >&2; exit 2; }
 note() { echo "  $*"; }
+# Guard a value-taking flag: require an argument that is not another option, so
+# `--title --apply` can never silently set TITLE=--apply.
+need_val() {
+  [ "$#" -ge 2 ] || die "$1 needs a value"
+  case "$2" in -*|"") die "$1 needs a non-option value (got: '${2:-}')" ;; esac
+}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --install-root) MODE="install"; shift ;;
-    --title) [ "$#" -ge 2 ] || die "--title needs a value"; TITLE="$2"; MODE="${MODE:-project}"; shift 2 ;;
-    --category) [ "$#" -ge 2 ] || die "--category needs a value"; CATEGORY="$2"; shift 2 ;;
-    --base) [ "$#" -ge 2 ] || die "--base needs a value"; BASE="$2"; shift 2 ;;
+    --title) need_val "$@"; TITLE="$2"; MODE="${MODE:-project}"; shift 2 ;;
+    --category) need_val "$@"; CATEGORY="$2"; shift 2 ;;
+    --base) need_val "$@"; BASE="$2"; shift 2 ;;
     --allow-new-category) ALLOW_NEW_CAT=1; shift ;;
     --apply) APPLY=1; shift ;;
     -h|--help) sed -n '2,22p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
+
+# --- json_escape: make an arbitrary string safe to embed between JSON quotes.
+# Strip control chars (to spaces), then escape backslash and double-quote.
+# Without this, a title like  My "cool" project  produces invalid project.json.
+json_escape() {
+  printf '%s' "$1" | tr '\000-\037' ' ' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
 
 # --- slugify: lowercase, spaces/underscores -> '-', strip unsafe, collapse '-'
 slugify() {
@@ -109,8 +122,10 @@ SLUG="$(slugify "$TITLE")"
 BASE_REAL="$(resolve "$BASE")" || die "cannot resolve base"
 TARGET="$BASE/$CATEGORY/$SLUG"
 
-# refuse symlinks in any existing ancestor of the target
+# refuse symlinks in any existing ancestor of the target AND in the target
+# itself — a pre-existing symlinked project dir would otherwise escape the base.
 ensure_no_symlink_chain "$BASE_REAL/$CATEGORY"
+[ -L "$TARGET" ] && die "refusing: target path is a symlink -> $TARGET"
 
 # no-clobber: existing non-empty dir must already be a project
 if [ -d "$TARGET" ]; then
@@ -129,6 +144,7 @@ note "target   : $TARGET"
 note "mkdir    : build-log/ evidence/ .vault/ topology/ publish/ .project/ references/"
 note "git init : LOCAL ONLY (no remote)"
 note "write    : .gitignore, project.json, event-log.jsonl, PROJECT-PROTOCOL.md"
+note "seed     : build-log/{tasks.md,observations.md,artifact-manifest.json}, references/{external-references.md,tooling.md}"
 if [ "$APPLY" -ne 1 ]; then echo "(dry-run; re-run with --apply to write)"; exit 0; fi
 
 # verify resolved category dir stays under base after creation
@@ -150,24 +166,81 @@ else
 fi
 
 NOW="$(date +%Y-%m-%dT%H:%M:%S%z)"
+TITLE_J="$(json_escape "$TITLE")"
+CATEGORY_J="$(json_escape "$CATEGORY")"
 cat > "$TARGET/project.json" <<JSON
 {
   "schema_version": "1.0",
   "id": "$SLUG",
-  "title": "$TITLE",
-  "category": "$CATEGORY",
+  "title": "$TITLE_J",
+  "category": "$CATEGORY_J",
   "created": "$NOW",
   "phase": "intake",
-  "classification": { "status": "provisional", "dual_use_tier": "T2", "publish_policy": "no-publish", "git_policy": "local-only" },
+  "authorization": null,
+  "classification": {
+    "status": "provisional",
+    "archetype": null,
+    "capability_flags": [],
+    "data_classes": [],
+    "dual_use_tier": "T2",
+    "artifact_class_floor": "private",
+    "publish_policy": "no-publish",
+    "git_policy": "local-only"
+  },
   "tasks": []
 }
 JSON
 
-printf '{"ts":"%s","event":"bootstrap","slug":"%s","category":"%s"}\n' "$NOW" "$SLUG" "$CATEGORY" > "$TARGET/event-log.jsonl"
+# event-log is append-only; seq gives a stable order independent of timestamps.
+printf '{"seq":1,"ts":"%s","event":"bootstrap","slug":"%s","category":"%s"}\n' "$NOW" "$SLUG" "$CATEGORY_J" > "$TARGET/event-log.jsonl"
 
 if [ -f "$SCRIPT_DIR/../references/project-protocol-template.md" ]; then
   cp "$SCRIPT_DIR/../references/project-protocol-template.md" "$TARGET/PROJECT-PROTOCOL.md"
 fi
+
+# Seed the first-class lifecycle files the SKILL.md workflow expects, so later
+# gates (markdown hygiene, manifest, references registry) never run against a
+# missing path. Minimal skeletons only; the conductor fills them per phase.
+cat > "$TARGET/build-log/tasks.md" <<'MD'
+# Tasks
+
+Sequential task board (low-noise status view). One row per task; keep
+reproducibility detail in `task-N.N.steps.md`, not here.
+
+| Task | Status | Next / Blocked | Notes |
+|---|---|---|---|
+MD
+
+cat > "$TARGET/build-log/observations.md" <<'MD'
+# Observations
+
+Working notes: assumptions, defaults before resolution, current-state review,
+issue context, candidate decisions, and rationale. Not a checkpoint log.
+MD
+
+printf '{\n  "schema_version": "1.0",\n  "artifacts": []\n}\n' > "$TARGET/build-log/artifact-manifest.json"
+
+cat > "$TARGET/references/external-references.md" <<'MD'
+# External references
+
+Governed registry of authoritative external sources this project relies on.
+Task notes and steps ledgers cite a row here plus the advisory caveat; they do
+not duplicate this table.
+
+| ID | Source | Why authoritative | Retrieved | Advisory caveat |
+|---|---|---|---|---|
+MD
+
+cat > "$TARGET/references/tooling.md" <<'MD'
+# Tooling & software setup
+
+Tool bill of materials for hands-on tasks. Each task's `tools[]` sources from
+this registry: what it needs, install method, and where to obtain non-repo
+artifacts.
+
+| Tool | Version / lock | Install method | Source | Used by task |
+|---|---|---|---|---|
+MD
 
 ( cd "$TARGET" && git init -q && git symbolic-ref HEAD refs/heads/main 2>/dev/null || true )
 echo "git remote check: $(cd "$TARGET" && git remote -v | wc -l | tr -d ' ') remotes (expected 0)"
