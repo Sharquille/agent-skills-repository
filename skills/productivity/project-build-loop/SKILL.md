@@ -424,7 +424,11 @@ For "work on task N.N":
 6. **Closure gate:** Do not mark a task `done` merely because proposed defaults
    were accepted or candidate commands were written. A task closes only after
    the user explicitly confirms completion and the steps ledger contains
-   observed validation/evidence rows or documented limitations. An auto-retained
+   observed validation/evidence rows or documented limitations. Enforce this
+   with `scripts/state_check.sh closure --project <dir> --task <N.N>` (fail
+   closed: it blocks a `done` without a real validation/evidence row or a
+   documented limitation), and validate the status transition itself with
+   `scripts/state_check.sh task --from <current> --to done`. An auto-retained
    chat-paste satisfies the evidence requirement only when the steps ledger and
    `checkpoint.limitations[]` record that the original image bytes were not
    retained. Open advisories do not block closure unless promoted to a checklist item.
@@ -434,10 +438,16 @@ For "work on task N.N":
    Markdown. Fix errors before checkpoint; warnings may remain only when they
    are historical observations, not the current user-facing action surface.
 8. **Checkpoint**: before/after git status, exit codes, limitations, rollback
-   point; append to `event-log.jsonl`. **Kill-switch** on unexpected egress or
-   live-malware beaconing.
+   point (git sha, so `undo-project-build-loop` can revert to it). Append events
+   with `scripts/append_event.sh --project <dir> --event checkpoint --field …`
+   so `seq` stays monotonic; `scripts/validate_state.py event-log <log>` and
+   `… project <project.json>` guard the log and state shape before a transition.
+   **Kill-switch** on unexpected egress or live-malware beaconing.
 
-The conductor records every checkpoint; domain skills never checkpoint.
+The conductor records every checkpoint; domain skills never checkpoint. Before
+advancing `project.json` `phase`, validate the move with
+`scripts/state_check.sh phase --project <dir> --to <next-phase>` (backward moves
+need `--allow-regress` plus a logged rationale).
 
 ### Phase 6 — Consult gates
 
@@ -445,8 +455,13 @@ Use `project-consult-panel` (capability-based roles → your Kimi/MiMo/Codex/Cla
 models). Send **only** redacted/allowlisted artifacts. Sequential + locked
 (opencode shares one SQLite DB → concurrent runs hit "database is locked").
 Record provenance: model, prompt hash, artifact hash, timeout status, result
-path. **T2+** requires a redaction manifest; **T3+** requires a security-review
-consult. Advisory only — verify before acting.
+path. Emit the gate decision as an auditable receipt with
+`scripts/policy_check.sh --action consult --consult-kind artifact --project <dir>
+--receipt <dir> --model <m> --artifact <path> [--prompt-hash <hex>]`, which
+appends a `gate` event (model + artifact sha256) to `event-log.jsonl` via
+`append_event.sh`. **T2+** requires a redaction manifest; **T3+** requires a
+security-review consult; **T4** permits only `--consult-kind planning`.
+Advisory only — verify before acting.
 
 ### Phase 7 — Completion & publish handoff
 
@@ -490,9 +505,19 @@ never invents deletion steps; it reverses recorded checkpoints.
 - `scripts/secret_scan.sh` — fail-closed secret + IPv4 scan gate (secrets always;
   real IPv4 in `--publish` mode). IPv6, hostnames, EXIF, and timestamps remain
   manual-review items per `dual-use-rating.md`.
-- `scripts/policy_check.sh` — fail-closed pre-action tier/gate validator.
-- `scripts/policy_selftest.sh` — regression matrix asserting `policy_check.sh`
-  matches the `dual-use-rating.md` fixtures; run after editing either.
+- `scripts/policy_check.sh` — fail-closed pre-action tier/gate validator;
+  `--receipt <dir>` appends an audit `gate` event.
+- `scripts/state_check.sh` — fail-closed phase/task-status transition validator
+  and closure-proof gate (a `done` task needs a real validation/evidence row or
+  a documented limitation in its steps ledger).
+- `scripts/append_event.sh` — append an `event-log.jsonl` line with a monotonic
+  `seq`; single source of truth for event/receipt writes.
+- `scripts/validate_state.py` — stdlib structural validation of `project.json`,
+  task JSON, and `event-log.jsonl` (enums + seq monotonicity). The
+  `references/schemas/*` files are shape examples, not JSON Schema.
+- `scripts/policy_selftest.sh` — regression matrix over the `dual-use-rating.md`
+  fixtures plus the state-machine/closure/seq/receipt machinery; run after
+  editing any gate script.
 - `scripts/markdown_gate.sh` — wraps portable-markdown lifecycle lint for touched project Markdown.
 - `assets/gitignore-baseline` — strong `.gitignore`.
 - `references/intake-questions.md` — governance-complete discovery bank.

@@ -20,12 +20,40 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ACTION=""; TIER=""; PROJECT=""; FLAGS=""; AUTHZ=""; ISO=""; PUBPOL=""; TIER_CLI=""
 SCOPED=""; APPROVAL=""; CONSULT_KIND=""
+RECEIPT=""; MODEL=""; ARTIFACT=""; PROMPT_HASH=""
 
 die() { echo "error: $*" >&2; exit 2; }
-block() { echo "BLOCK ($ACTION): $*" >&2; exit 1; }
-allow() { echo "ALLOW ($ACTION): $*"; exit 0; }
+
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
+  else python3 -c 'import hashlib,sys;print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$1"; fi
+}
+
+# Optional audit receipt: appended to <project>/event-log.jsonl via append_event.sh.
+# Best-effort — a receipt-write failure warns but never flips the gate decision.
+write_receipt() {
+  local decision="$1"
+  [ -n "$RECEIPT" ] || return 0
+  local args=(--project "$RECEIPT" --event gate --field gate=policy_check \
+              --field action="$ACTION" --field tier="$TIER" --field decision="$decision")
+  [ -n "$MODEL" ] && args+=(--field model="$MODEL")
+  [ -n "$PROMPT_HASH" ] && args+=(--field prompt_sha256="$PROMPT_HASH")
+  if [ -n "$ARTIFACT" ]; then
+    if [ -f "$ARTIFACT" ] && _h=$(sha256_of "$ARTIFACT" 2>/dev/null) && [ -n "$_h" ]; then
+      args+=(--field artifact_sha256="$_h")
+    else
+      args+=(--field artifact_hash_error="could not hash: $ARTIFACT")
+    fi
+  fi
+  "$SCRIPT_DIR/append_event.sh" "${args[@]}" >/dev/null 2>&1 || echo "warn: gate receipt not recorded" >&2
+}
+
+block() { write_receipt block; echo "BLOCK ($ACTION): $*" >&2; exit 1; }
+allow() { write_receipt allow; echo "ALLOW ($ACTION): $*"; exit 0; }
 
 # need_val "$@": guard a value-taking flag. Missing value would leave $1
 # unchanged and spin the loop forever (shift 2 fails silently when $# < 2); a
@@ -48,6 +76,10 @@ while [ "$#" -gt 0 ]; do
     --approval) need_val "$@"; APPROVAL="$2"; shift 2 ;;
     --consult-kind) need_val "$@"; CONSULT_KIND="$2"; shift 2 ;;
     --publish-policy) need_val "$@"; PUBPOL="$2"; shift 2 ;;
+    --receipt) need_val "$@"; RECEIPT="$2"; shift 2 ;;
+    --model) need_val "$@"; MODEL="$2"; shift 2 ;;
+    --artifact) need_val "$@"; ARTIFACT="$2"; shift 2 ;;
+    --prompt-hash) need_val "$@"; PROMPT_HASH="$2"; shift 2 ;;
     -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac

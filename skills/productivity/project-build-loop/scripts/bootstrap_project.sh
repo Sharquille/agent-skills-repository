@@ -245,5 +245,29 @@ MD
 ( cd "$TARGET" && git init -q && git symbolic-ref HEAD refs/heads/main 2>/dev/null || true )
 echo "git remote check: $(cd "$TARGET" && git remote -v | wc -l | tr -d ' ') remotes (expected 0)"
 
+# Created-files manifest for undo-project-build-loop: records exactly what this
+# bootstrap made so a mistaken/false-start scaffold can be reversed precisely
+# (never improvised). Local-only (.project is gitignored).
+cat > "$TARGET/.project/bootstrap-manifest.json" <<JSON
+{
+  "schema_version": "1.0",
+  "created_by": "bootstrap_project.sh",
+  "created_at": "$NOW",
+  "project_dir": "$CATEGORY/$SLUG",
+  "seed_files": [
+    ".gitignore", "project.json", "event-log.jsonl", "PROJECT-PROTOCOL.md",
+    "build-log/tasks.md", "build-log/observations.md", "build-log/artifact-manifest.json",
+    "references/external-references.md", "references/tooling.md",
+    ".project/bootstrap-manifest.json"
+  ],
+  "seed_dirs": [
+    "build-log", "evidence", ".vault", "topology", "publish", ".project", "references"
+  ],
+  "git_initialized": true,
+  "global_pointer": "_index/last-active.json"
+}
+JSON
+
 echo "Created project at $TARGET"
+echo "Wrote undo manifest: $TARGET/.project/bootstrap-manifest.json"
 echo "Set the global pointer next: $BASE/_index/last-active.json -> $CATEGORY/$SLUG"

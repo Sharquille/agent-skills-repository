@@ -18,7 +18,9 @@ deletions. Always inventory and dry-run before removing anything.
 ## Prime directives
 
 1. **Inventory first.** Read `project.json`, `event-log.jsonl`, and the bootstrap
-   created-files manifest. Show exactly what exists and what would change.
+   created-files manifest at `.project/bootstrap-manifest.json` (records the seed
+   files/dirs, git init, and the global pointer that `bootstrap_project.sh`
+   created). Show exactly what exists and what would change.
 2. **Dry-run by default.** Print the plan; only act on explicit confirmation.
 3. **Reverse recorded state only.** Roll back to a checkpoint's `rollback_point`
    (git sha) or remove only files the bootstrap manifest recorded creating.

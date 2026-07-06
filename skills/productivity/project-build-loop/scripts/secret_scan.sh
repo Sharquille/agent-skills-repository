@@ -13,14 +13,17 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MODE="paths"
 STRICT=0
+RECEIPT=""
 PATHS=()
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --staged) MODE="staged"; shift ;;
     --publish) MODE="paths"; STRICT=1; shift ;;
+    --receipt) shift; [ "$#" -ge 1 ] || { echo "error: --receipt needs a value" >&2; exit 2; }; RECEIPT="$1"; shift ;;
     -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
     *) PATHS+=("$1"); shift ;;
   esac
@@ -57,18 +60,40 @@ scan_text() {
   fi
 }
 
+# Read a file into a variable, failing closed if it cannot be read.
+read_file() { # sets REPLYTEXT; returns nonzero on failure
+  [ -r "$1" ] || return 1
+  REPLYTEXT=$(cat -- "$1" 2>/dev/null) || return 1
+  return 0
+}
+
 if [ "$MODE" = "staged" ]; then
   command -v git >/dev/null 2>&1 || { echo "error: git not found" >&2; exit 2; }
-  scan_text "git staged diff" "$(git diff --cached 2>/dev/null)"
+  # Fail closed: if git cannot produce the staged diff, do not report "clean".
+  if ! staged=$(git diff --cached 2>&1); then
+    echo "ERROR: could not read staged diff (git failed): $staged" >&2
+    exit 2
+  fi
+  scan_text "git staged diff" "$staged"
 else
   [ "${#PATHS[@]}" -gt 0 ] || { echo "error: no paths given" >&2; exit 2; }
   for p in "${PATHS[@]}"; do
     if [ -d "$p" ]; then
       while IFS= read -r f; do
-        scan_text "$f" "$(cat "$f" 2>/dev/null)"
+        if read_file "$f"; then
+          scan_text "$f" "$REPLYTEXT"
+        else
+          echo "ERROR: unreadable file in scan target (fail closed): $f" >&2
+          rc=1
+        fi
       done < <(find "$p" -type f ! -path '*/.git/*' 2>/dev/null)
     elif [ -f "$p" ]; then
-      scan_text "$p" "$(cat "$p" 2>/dev/null)"
+      if read_file "$p"; then
+        scan_text "$p" "$REPLYTEXT"
+      else
+        echo "ERROR: unreadable file (fail closed): $p" >&2
+        rc=1
+      fi
     else
       # Fail closed: a scan target that cannot be read must not pass silently.
       echo "ERROR: scan target not found or unreadable: $p" >&2
@@ -78,4 +103,14 @@ else
 fi
 
 if [ "$rc" -eq 0 ]; then echo "secret_scan: clean"; else echo "secret_scan: FINDINGS (fail closed)" >&2; fi
+
+# Optional audit receipt (best-effort; never changes rc).
+if [ -n "$RECEIPT" ]; then
+  decision=$([ "$rc" -eq 0 ] && echo clean || echo findings)
+  scan_mode=$([ "$STRICT" -eq 1 ] && echo publish || echo "$MODE")
+  "$SCRIPT_DIR/append_event.sh" --project "$RECEIPT" --event gate \
+    --field gate=secret_scan --field mode="$scan_mode" --field decision="$decision" \
+    >/dev/null 2>&1 || echo "warn: secret_scan receipt not recorded" >&2
+fi
+
 exit "$rc"
