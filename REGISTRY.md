@@ -32,6 +32,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [study-consult-panel](skills/productivity/study-consult-panel/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [study-map](skills/productivity/study-map/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [study-research-queries](skills/productivity/study-research-queries/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
+| [evidence-research-loop](skills/productivity/evidence-research-loop/) | productivity | Sharquille Andrew (self-authored on top of agent-orchestra) | this repo | MIT | 2026-07-06 |
 | [task-steps-ledger](skills/productivity/task-steps-ledger/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-28 |
 | [teach-complex-concepts](skills/productivity/teach-complex-concepts/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [undo-obsidian-study-loop](skills/productivity/undo-obsidian-study-loop/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
