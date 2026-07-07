@@ -2,7 +2,8 @@
 
 This vault contains a reusable study workflow for agentic CLIs. The agent
 reading this file is the tutor. Do not call any LLM API, request API keys, or
-run a standalone study app. Read and write plain files in this Obsidian vault.
+run a standalone study app except for explicit read-only advisory consults
+allowed by this protocol. Read and write plain files in this Obsidian vault.
 
 ## Paths and Conventions
 
@@ -45,10 +46,11 @@ When available, use these helper skills while following this protocol:
   the user explicitly asks for that.
 - `literature-review` only for formal, citation-backed research. Routine
   certification notes should stay lighter.
-- `study-consult-panel` (optional) for a read-only, advisory two-model second
-  opinion on a drafted section — MiMo v2.5 Pro for writing, Kimi K2.7 Code for
-  technical accuracy — cross-checked to manage single-model bias. The agent
-  stays the tutor and gatekeeper, verifies every claim, and re-applies
+- `study-consult-panel` (optional) for a read-only, advisory second opinion on a
+  drafted section — MiMo v2.5 Pro for writing, Kimi K2.7 Code for technical
+  accuracy — cross-checked to manage single-model bias. It may also run a single
+  MiMo prose lane to clean learner answer grammar after grading. The agent stays
+  the tutor and gatekeeper, verifies every claim, and re-applies
   `portable-markdown`.
 - `study-map` to build the tiered map stack (Home index, chapter maps, section
   sub-maps, concept maps, tag-lens, prerequisite map) once the vault has more than
@@ -62,9 +64,10 @@ and do not add API keys.
 The agent is the tutor and never outsources the teaching, quizzing, or grading
 to an external LLM API. The single exception is `study-consult-panel`: an
 explicit, opt-in, read-only **advisory** consult through the already-configured
-`opencode-consult` wrapper. It adds no API keys, never becomes the tutor, and its
-output is untrusted until the agent verifies it against the source. If that
-wrapper or its provider is unavailable, proceed from the agent's own draft.
+`opencode-consult` wrapper, including bounded MiMo learner-answer grammar
+cleanup. It adds no API keys, never becomes the tutor, and its output is
+untrusted until the agent verifies it against the source. If that wrapper or its
+provider is unavailable, proceed from the agent's own draft.
 
 ## Status Values
 
@@ -266,10 +269,10 @@ labels, but each editable line must retain a preceding
 `<!-- learner-answer:<field> -->` marker and the `Write here.` sentinel.
 
 Use HTML `<!-- ... -->` comments for all machine markers — never Obsidian
-`%% ... %%`. HTML comments stay hidden in every Markdown renderer (GitHub,
-VS Code, pandoc, and Obsidian's reading view), keeping the note portable, while
-`%%` leaks as literal text outside Obsidian. The `portable-markdown` skill owns
-this rule.
+percent-delimited comments. HTML comments stay hidden in every Markdown renderer
+(GitHub, VS Code, pandoc, and Obsidian's reading view), keeping the note
+portable, while Obsidian-only comments leak as literal text outside Obsidian.
+The `portable-markdown` skill owns this rule.
 
 While a check is pending, task boxes provide clickable choices. After review,
 replace each task line with a non-task answer-state line so checked choices do
@@ -283,6 +286,56 @@ not appear struck through:
 Do the same for learner confidence. This is a presentation-only normalization:
 preserve every original choice exactly and record it in mastery evidence before
 changing the rendering.
+
+## Learner Answer Grammar Cleanup
+
+Learner grammar cleanup is a readability aid, not tutoring, grading, or answer
+generation. Use it only when the user asks for grammar cleanup or when a review
+workflow explicitly needs a readable copy of learner-produced text. The original
+learner wording remains the evidence of learning.
+
+Default to the MiMo prose lane through `study-consult-panel` when available:
+
+```text
+agent-orchestra/scripts/consult-opencode.sh --lane prose --sealed --timeout 240 -- "<bounded cleanup prompt>"
+```
+
+Use this bounded prompt shape. Paste only learner answer snippets, never secrets
+or unrelated notes:
+
+```text
+Correct grammar, spelling, punctuation, and light sentence flow only.
+Preserve the learner's meaning, uncertainty, confidence, omissions, and technical
+claims. Do not add facts, fix cybersecurity concepts, upgrade weak reasoning, or
+make the answer sound more expert. If a correction would change meaning, leave
+the original wording and mark it "meaning-risk".
+Return one cleaned line per input field and no commentary.
+```
+
+Rules:
+
+- Never replace text on `<!-- learner-answer:* -->` lines or inside
+  `<!-- learner-edit:start -->` / `<!-- learner-edit:end -->` boundaries.
+- Score and calibrate mastery from the original learner answer only. A cleaned
+  copy is not new evidence and must not improve a score.
+- Add the cleaned copy immediately below the original field, outside any
+  learner-owned boundary when possible:
+
+```markdown
+<!-- learner-answer-cleaned:<field> source=mimo date=<YYYY-MM-DD> -->
+- **Grammar-cleaned:** <minimal corrected wording>
+```
+
+- For gap research inside learner-edit boundaries, place the cleaned copy in a
+  review callout after the boundary instead of editing the learner-owned region.
+- Preserve the learner's voice and uncertainty markers such as "I think",
+  "maybe", and "not sure"; these are calibration evidence.
+- Do not correct cybersecurity substance in the cleaned copy. Put technical
+  corrections in review feedback callouts.
+- If MiMo is unavailable, do only a conservative local cleanup or skip the
+  cleanup and report that the prose lane was unavailable.
+- Record the cleanup in the session review changelog or session log, including
+  whether it used `source=mimo` or `source=local`.
 
 ## Mastery Evidence and Confidence
 
@@ -881,6 +934,9 @@ Available support-helpers:
   research when a gap needs stronger sources.
 - Advisory check: `study-consult-panel` can provide an optional read-only second
   opinion on uncertain sections before finalizing.
+- Grammar cleanup: `study-consult-panel` can use MiMo to add minimal
+  grammar-cleaned copies of learner answers after grading, without changing the
+  original evidence.
 - Map refresh: `study-map` can refresh course maps after reviewed notes are
   ready to link.
 - Note polish: `humanizer` and `portable-markdown` can clean reviewed prose and
@@ -1059,6 +1115,12 @@ When the user asks for review:
 > **Correction:** <what was wrong or incomplete>
 > **Why:** <reasoning or transfer explanation>
 ```
+
+If the user asked for grammar cleanup, apply the **Learner Answer Grammar
+Cleanup** rules after scoring and before final bookkeeping. Add cleaned copies
+only; do not replace the original learner answer text and do not let the cleaned
+copy affect the score.
+
 11. Append a changelog to the session file under this exact heading format:
 
 ```markdown
@@ -1132,7 +1194,7 @@ When the user asks for review:
   line. Never use custom callout types (`[!example]`, `[!question]`, …).
 - Keep hidden HTML `<!-- ... -->` `learner-edit` boundaries and `learner-answer`
   markers intact so the user and future review agents can identify exactly where
-  answers belong. Never use Obsidian `%% ... %%` comments.
+  answers belong. Never use Obsidian percent-delimited comments.
 - Use `[[wikilinks]]` only after verifying that the target note already exists
   in the vault. If the target note does not exist, use plain text instead.
 - Verify heading anchors (`[[Note#Heading]]`, `[[#Heading]]`) against the
@@ -1160,6 +1222,9 @@ When the user asks for review:
 - Record every state change in the session file.
 - The agent reading this protocol is the tutor. Do not call Anthropic, OpenAI,
   Gemini, or other LLM APIs directly.
+- Learner grammar cleanup never changes the original answer or learner-owned
+  research text. MiMo output is advisory-only and must remain separate from
+  graded evidence.
 
 ## Dry Run Checklist for Agents
 
@@ -1200,3 +1265,5 @@ unambiguous:
     column, and a session log entry.
 15. Learner text on `learner-answer` lines was never replaced; corrections
     live in feedback callouts.
+16. Grammar-cleaned learner copies, when present, were added separately with a
+    `learner-answer-cleaned` marker and did not affect mastery scoring.

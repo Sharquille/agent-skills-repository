@@ -1,6 +1,6 @@
 ---
 name: study-consult-panel
-description: "Within an obsidian-study-loop session, get a two-model second opinion on study notes before finalizing: route prose, readability, and visualization to Xiaomi MiMo v2.5 Pro and technical/factual accuracy to Moonshot Kimi K2.7 Code through the read-only OpenCode wrapper exposed by agent-orchestra, then cross-check the two to manage single-model bias. The calling agent verifies every claim and owns the final note. Use when writing, reviewing, or visualizing study notes and gap fills and you want independent writing and technical passes. Do not trigger for general code consults (use agent-orchestra), for autonomous model edits, or when the opencode CLI or its OpenRouter provider is unavailable."
+description: "Within an obsidian-study-loop session, get a read-only advisory second opinion on study notes before finalizing: route prose, readability, learner-answer grammar cleanup, and visualization to Xiaomi MiMo v2.5 Pro and technical/factual accuracy to Moonshot Kimi K2.7 Code through the read-only OpenCode wrapper exposed by agent-orchestra, then cross-check when technical meaning may change. The calling agent verifies every claim and owns the final note. Use when writing, reviewing, or visualizing study notes and gap fills, or when adding grammar-cleaned copies of learner answers without changing the original evidence. Do not trigger for general code consults (use agent-orchestra), for autonomous model edits, or when the opencode CLI or its OpenRouter provider is unavailable."
 # --- provenance ---
 category: productivity
 source: self-authored (this repository)
@@ -52,6 +52,8 @@ from `agent-orchestra`). Never auto-apply it.
   pass before it is saved.
 - A learner-filled `gap` is being reviewed and a technical claim needs an
   independent check.
+- A learner answer has already been scored and the user wants a grammar-cleaned
+  copy for readability without changing the original evidence.
 - A visualization, analogy, or worked example should read more naturally without
   losing correctness.
 
@@ -91,6 +93,45 @@ every line.
 6. **Format and persist.** Re-apply the [[portable-markdown]] standard (the
    models do not know it) and let `obsidian-study-loop` write the note and log
    the change.
+
+## Learner-Answer Grammar Cleanup Mode
+
+Use this lighter single-lane mode only after the learner answer has already been
+captured and, if applicable, scored. It is for readability, not for learning
+evidence.
+
+1. Preserve the original learner answer exactly. Do not ask MiMo to edit the
+   learner-owned line or learner-edit region in place.
+2. Send only the relevant learner snippets and field labels to MiMo with this
+   constraint:
+
+```text
+Correct grammar, spelling, punctuation, and light sentence flow only.
+Preserve the learner's meaning, uncertainty, confidence, omissions, and technical
+claims. Do not add facts, fix cybersecurity concepts, upgrade weak reasoning, or
+make the answer sound more expert. If a correction would change meaning, leave
+the original wording and mark it "meaning-risk".
+Return one cleaned line per input field and no commentary.
+```
+
+3. Run the prose lane directly:
+
+```text
+../../engineering/agent-orchestra/scripts/consult-opencode.sh --lane prose --sealed --timeout 240 "<cleanup prompt>"
+```
+
+4. The calling agent verifies that every cleaned line preserves meaning. Reject
+   any line that changes a security term, adds missing reasoning, removes
+   uncertainty, or upgrades confidence.
+5. Persist the cleaned copy separately, for example:
+
+```markdown
+<!-- learner-answer-cleaned:<field> source=mimo date=<YYYY-MM-DD> -->
+- **Grammar-cleaned:** <minimal corrected wording>
+```
+
+6. Record in the session log or review changelog that MiMo supplied a
+   grammar-cleaned copy. State explicitly that scoring used the original answer.
 
 ## Invocation
 
