@@ -123,15 +123,21 @@ Return one cleaned line per input field and no commentary.
 4. The calling agent verifies that every cleaned line preserves meaning. Reject
    any line that changes a security term, adds missing reasoning, removes
    uncertainty, or upgrades confidence.
-5. Persist the cleaned copy separately, for example:
+5. Apply the materiality gate before persisting: keep a cleaned line only when
+   it fixes real spelling, grammar, or sentence flow. Drop any line that
+   matches the original apart from trivia (capitalization, terminal
+   punctuation, formatting) and report that field as already clean. Mirror the
+   original line's field-label formatting, including bold labels, and never
+   merge fields. Persist the surviving copies separately, for example:
 
 ```markdown
-<!-- learner-answer-cleaned:<field> source=mimo date=<YYYY-MM-DD> -->
+<!-- learner-answer-cleaned:<check-id>.<field> source=mimo date=<YYYY-MM-DD> -->
 - **Grammar-cleaned:** <minimal corrected wording>
 ```
 
 6. Record in the session log or review changelog that MiMo supplied a
-   grammar-cleaned copy. State explicitly that scoring used the original answer.
+   grammar-cleaned copy, which fields were skipped as already clean, and that
+   scoring used the original answer.
 
 ## Invocation
 
