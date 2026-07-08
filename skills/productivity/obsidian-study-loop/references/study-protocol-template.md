@@ -11,6 +11,7 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - `STUDY_DIR`: `_study`
 - `NOTES_DIR`: `<NOTES_DIR>`
 - Session logs live in `_study/sessions/`.
+- Generated browser-review quizzes live in `_study/quizzes/`.
 - Active session state lives in `_study/state.json`.
 - `state.json` must always be valid JSON and must contain exactly one active
   session pointer or `null`:
@@ -621,6 +622,94 @@ When the user asks to be quizzed:
     evidence` ledger stays optional).
 18. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
+
+## Phase 3 (browser mode) - Browser Review
+
+Browser review is an alternative rendering of the Quiz phase, not a new phase.
+The agent authors questions from the same in-scope material, generates a
+self-contained offline HTML quiz the learner takes in a web browser, then reads
+the exported results back and runs Assess, Write Notes, and Review exactly as
+for a chat quiz. The disk state must end up indistinguishable from a chat quiz
+of the same scope. It is ideal for chapter review.
+
+Trigger examples: "quiz me in the browser", "make me a browser review", "test me
+on a webpage", "browser quiz for chapter 2", "spin up the review site".
+
+The page is static and offline: it carries only the questions, answer key, and
+per-choice feedback the agent wrote. It calls no LLM API and no network.
+
+### Author questions for understanding, not recall
+
+1. **One concept per question**, with a short `concept` label.
+2. **Scenario-first.** Lead with a concrete situation; ask the learner to
+   classify, compare, sequence, diagnose, prioritize, or explain why. Prefer
+   applied items over "define X".
+3. **Distractors are misconceptions.** Every choice gets a `feedback` string
+   explaining why it is right or wrong — the teaching lives there.
+4. **Teach on feedback.** Every question has an `explanation`; written/scenario
+   items also get a `model` answer shown only after the learner commits.
+5. **Ramp difficulty** concrete → abstract.
+6. **Match type to target:** discrimination → `mcq`; select-all → `multi`;
+   grouping → `classify`; ordering → `order`; term recall → `short` with
+   `accept`; reasoning/transfer → `long` (agent-graded).
+7. **Low stakes.** A wrong answer is the useful part.
+8. **Stay in scope** per the Scope Boundary Rules — in-scope outcomes, key
+   terms, labs, and prior `gap`/`partial` objectives only; no future-section
+   content. Every question carries an `objective` mapping to a session objective
+   and a `scope`. Cover each in-scope objective with at least one applied item.
+
+### Generate the quiz file
+
+1. Read the engine `references/quiz-template.html` from the `obsidian-study-loop`
+   skill bundle (the vault does not carry it). Its header documents the
+   `QUIZ_DATA` schema and the single `INJECT-QUIZ-DATA` placeholder line.
+2. Author a `QUIZ_DATA` object per that schema and validate it as JSON.
+3. Copy the template to `_study/quizzes/<YYYY-MM-DD>-<scope-slug>.html` and
+   replace **only** the code line tagged `INJECT-QUIZ-DATA`. Change nothing else.
+4. Keep it offline: never add remote `<script src>`, `<link>`, fonts, or images.
+5. Tell the learner the exact path, how to open it (double-click, `open "<path>"`,
+   or a `file://` URL), and to click **Download results** when done.
+6. Log generation under `## Session log`.
+
+### Ingest results
+
+Trigger examples: "ingest my quiz results", "read my quiz results", or a pasted
+results block.
+
+1. Read the downloaded `<quizId>-results.json` (default `~/Downloads/`; ask for
+   the path if absent), or accept a pasted `results` block.
+2. Validate before touching any session file. Verify `schema` is
+   `obsidian-study-loop/quiz-results@1` and that `quizId`, `vaultName`, and
+   `session` match the active session. Reject a partial or malformed payload —
+   missing `answers`, duplicate or unknown question ids, or a count that does
+   not match the generated quiz — and ask for a re-export. If not, stop and ask.
+3. Map each answer's `objective`/`scope` onto assessment. Auto-graded items
+   (`correct: true|false`) are evidence directly. `needsGrading: true` items
+   carry the learner's raw `response` — score them yourself with the 8-point
+   rubric (recall exception applies) and preserve the raw text as evidence.
+   Use each item's `confidence` for calibration.
+4. Do not enter Assess without a complete results block; the browser auto-grade
+   is an input, your grading is authoritative.
+5. Run Phase 4 Assess, Phase 5 Write Notes, and Phase 7 Review exactly as for a
+   chat quiz. `## Assessment`, `## Unit progress`, gap stubs, `## Mastery
+   evidence`, and `## Session log` must match a chat quiz of the same scope.
+6. Record ingestion in `## Session log`, including the source and quiz file.
+
+### Guardrails
+
+- The key/feedback live in the file so it can grade offline but are never shown
+  until the learner submits each question — a self-study honesty aid, not a
+  proctored exam. The agent's grading is authoritative over the auto-grade.
+- Every question must carry an in-scope `objective`; validate coverage before
+  writing the file. No future-section drift.
+- Every `needsGrading` item must be scored before Write Notes.
+- No network, CDN, `localStorage`, telemetry, accounts, or question bank. The
+  page is stateless; the agent is the sole writer of disk state.
+- The `QUIZ_DATA` and results schemas are versioned (`@1`); evolve them
+  additively and bump the version so older results stay parseable.
+- Instruct the learner to Download (default) or Copy (fallback) before closing
+  the tab. Quizzes live only in `_study/quizzes/`; ingestion never overwrites a
+  notes file without the normal Phase 5 ask.
 
 ## Phase 4 - Assess
 
@@ -1260,3 +1349,8 @@ unambiguous:
 16. Grammar-cleaned learner copies, when present, were added separately with a
     `learner-answer-cleaned` marker, only where the text materially differs
     from the original, and did not affect mastery scoring.
+17. A browser review is a Phase 3 rendering: questions are in-scope and carry
+    `objective`/`scope`, the quiz file lives in `_study/quizzes/` and runs
+    offline, results were validated on ingest, `needsGrading` items were scored
+    by the agent, and the resulting disk state matches a chat quiz of the same
+    scope.
