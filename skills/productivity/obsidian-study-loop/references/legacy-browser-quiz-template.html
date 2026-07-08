@@ -1,70 +1,19 @@
 <!DOCTYPE html>
 <!--
-  obsidian-study-loop — Browser Review quiz engine (self-contained, offline).
+  DEPRECATED LEGACY TEMPLATE.
 
-  HOW THE CONDUCTOR USES THIS FILE
-  1. Copy this template to  <VAULT>/_study/quizzes/<YYYY-MM-DD>-<scope-slug>.html
-  2. Replace the placeholder line in the script (the one tagged INJECT-QUIZ-DATA)
-     with a valid  const QUIZ_DATA = { ... };  object (schema below). That tag
-     appears on exactly one code line; replace that whole line only.
-  3. Change nothing else. All CSS/JS is inline; the file must open from file://
-     with no network access. Do not add <script src>, <link>, fonts, or images
-     from remote hosts — a study vault is offline-first.
-
-  The learner opens the file in a browser, answers one question at a time, gets
-  immediate Brilliant-style feedback, then clicks "Download results" to save a
-  results.json the tutor agent reads back into the disk-backed study loop.
-
-  ── QUIZ_DATA schema (obsidian-study-loop/quiz@1) ────────────────────────────
-  {
-    "schema": "obsidian-study-loop/quiz@1",
-    "quizId": "2026-07-07-2.1-understanding-attacks",   // stable id
-    "vaultName": "ComptiaSec+",                          // for the agent to confirm
-    "session": "_study/sessions/2026-06-25-threats-...md",
-    "scope": "2.1 Understanding Attacks",
-    "title": "Chapter 2.1 — Understanding Attacks",
-    "generated": "2026-07-07T09:00:00-04:00",
-    "intro": "Short, low-stakes framing shown on the start screen.",
-    "questions": [
-      {
-        "id": "q1",                        // stable, unique
-        "objective": "threat-actor-motivations",  // maps to a session objective
-        "scope": "2.1",
-        "type": "mcq",                     // mcq | multi | short | long | order | classify
-        "concept": "Motivation vs. resources",   // one-concept label (Brilliant style)
-        "scenario": "Optional scenario paragraph shown before the question.",
-        "prompt": "The actual question.",
-        // --- mcq / multi ---
-        "choices": [
-          { "id": "a", "text": "…", "correct": true,
-            "feedback": "Why this option is right/wrong (shown after Check)." }
-        ],
-        // --- short ---  (optional auto-check; omit accept[] to force agent grading)
-        "accept": ["least privilege", "principle of least privilege"],
-        "placeholder": "Type a short answer…",
-        // --- long ---  (never auto-graded; captured raw for the agent)
-        "model": "A model answer / reflection shown AFTER the learner commits.",
-        // --- order ---
-        "items": [ { "id": "s1", "text": "Reconnaissance" }, … ],
-        "answer": ["s1","s2","s3"],        // correct order of item ids
-        // --- classify ---
-        "categories": [ { "id": "internal", "label": "Internal" }, … ],
-        // items for classify: { "id","text","answer": "<categoryId>" }
-        "explanation": "The teaching moment — why the answer is what it is.",
-        "hint": "Optional nudge available before answering."
-      }
-    ]
-  }
-  Every question that can be auto-graded (mcq, multi, short-with-accept, order,
-  classify) carries its own answer key so the page can grade offline. The key is
-  NEVER shown until the learner submits that question. long / short-without-accept
-  are captured verbatim and graded later by the tutor agent.
+  This browser-quiz engine is retained only so old generated artifacts remain
+  understandable. The active study-loop protocol no longer uses HTML as a quiz,
+  grading surface, result-ingestion path, or mastery evidence source. New HTML
+  output belongs to the Optional Visual Review Artifact flow and should be
+  written as static, self-contained visual reference material under
+  _study/visuals/.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Study Review</title>
+<title>Legacy Study Review</title>
 <style>
   :root {
     /* neutrals carry a faint cool bias so they read as chosen, not default grey */
@@ -506,14 +455,14 @@ const QUIZ_DATA = null; /* INJECT-QUIZ-DATA — conductor replaces this whole li
       html += "<h2 style='font-size:18px;margin:22px 0 6px'>Waiting on your tutor</h2>";
       pending.forEach(s => { html += '<div class="pending">' + esc(s.concept || s.objective || s.id) + " — your written answer was recorded for grading.</div>"; });
     }
-    if (!missed.length && !pending.length) html += '<div class="callout">Clean sweep on the auto-graded items. Send the results so your tutor can confirm mastery.</div>';
+    if (!missed.length && !pending.length) html += '<div class="callout">Clean sweep on the old self-check items. This page is archival and is not accepted as mastery evidence.</div>';
 
-    html += '<div class="callout"><b>Send results to your tutor</b><ol style="margin:8px 0 0;padding-left:20px">'
-      + '<li>Click <b>Download results</b> (saves <code>' + esc(fname) + '</code> to your Downloads).</li>'
-      + '<li>Back in your agent, say: <code>ingest my quiz results</code>.</li>'
-      + '<li>If download is blocked, use <b>Copy results</b> and paste them into the chat.</li></ol></div>';
-    html += '<div class="row"><button class="btn" id="dlBtn">⤓ Download results</button>'
-      + '<button class="btn ghost" id="copyBtn">Copy results</button>'
+    html += '<div class="callout"><b>Legacy export only</b><ol style="margin:8px 0 0;padding-left:20px">'
+      + '<li>The current study loop ignores results from this legacy page.</li>'
+      + '<li>Use chat for mastery assessment and <code>_study/visuals/</code> for current-scope visual artifacts.</li>'
+      + '<li>The export buttons remain only so old artifacts can be inspected if needed.</li></ol></div>';
+    html += '<div class="row"><button class="btn" id="dlBtn">Download legacy JSON</button>'
+      + '<button class="btn ghost" id="copyBtn">Copy legacy JSON</button>'
       + '<button class="btn ghost" id="reviewBtn">Review answers</button></div>';
     html += '<label class="sr" for="rbox">Results JSON</label><textarea id="rbox" class="results-box" readonly>' + esc(json) + "</textarea>";
     html += "</div>";

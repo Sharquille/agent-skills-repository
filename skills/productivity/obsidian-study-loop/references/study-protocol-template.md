@@ -11,7 +11,7 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - `STUDY_DIR`: `_study`
 - `NOTES_DIR`: `<NOTES_DIR>`
 - Session logs live in `_study/sessions/`.
-- Generated browser-review quizzes live in `_study/quizzes/`.
+- Generated visual-review artifacts live in `_study/visuals/`.
 - Active session state lives in `_study/state.json`.
 - `state.json` must always be valid JSON and must contain exactly one active
   session pointer or `null`:
@@ -623,129 +623,76 @@ When the user asks to be quizzed:
 18. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
-## Phase 3 (browser mode) - Browser Review
+## Optional Visual Review Artifact
 
-Browser review is an alternative rendering of the Quiz phase, not a new phase.
-The agent authors questions from the same in-scope material, generates a
-self-contained offline HTML quiz the learner takes in a web browser, then reads
-the exported results back and runs Assess, Write Notes, and Review exactly as
-for a chat quiz. The disk state must end up indistinguishable from a chat quiz
-of the same scope. It is ideal for chapter review.
+Chat remains the exam-standard quiz and mastery path. HTML artifacts are
+optional post-assessment study aids: they can help the learner see relationships
+between concepts, but they never quiz, grade, ingest results, or write mastery
+evidence.
 
-Trigger examples: "quiz me in the browser", "make me a browser review", "test me
-on a webpage", "browser quiz for chapter 2", "spin up the review site".
+Trigger examples: "make me a visual review for the current scope", "make an
+HTML concept map for 2.3", "diagram this scope", "visualize the malware
+taxonomy", or "make a comparison page for these controls".
 
-The page is static and offline: it carries only the questions, answer key, and
-per-choice feedback the agent wrote. It calls no LLM API and no network.
+Generate a visual review artifact only for the current active study scope after
+a chat quiz, assessment, notes write, or review has established that scope. If
+the user names a different scope, verify that it has already been assessed or
+written before treating it as the artifact scope. If the requested scope has not
+been assessed or written yet, explain that mastery remains chat-based and offer
+to quiz first.
 
-### Author questions for understanding, not recall
+### Purpose and content
 
-1. **One concept per question**, with a short `concept` label.
-2. **Scenario-first.** Lead with a concrete situation; ask the learner to
-   classify, compare, sequence, diagnose, prioritize, or explain why. Prefer
-   applied items over "define X".
-3. **Distractors are misconceptions.** Every choice gets a `feedback` string
-   explaining why it is right or wrong — the teaching lives there.
-4. **Teach on feedback.** Every question has an `explanation`; written/scenario
-   items also get a `model` answer shown only after the learner commits.
-5. **Ramp difficulty** concrete → abstract.
-6. **Match type to target:** discrimination → `mcq`; select-all → `multi`;
-   grouping → `classify`; ordering → `order`; term recall → `short` with
-   `accept`; reasoning/transfer → `long` (agent-graded).
-7. **Low stakes.** A wrong answer is the useful part.
-8. **Stay in scope** per the Scope Boundary Rules — in-scope outcomes, key
-   terms, labs, and prior `gap`/`partial` objectives only; no future-section
-   content. Every question carries an `objective` mapping to a session objective
-   and a `scope`. Cover each in-scope objective with at least one applied item.
+Use the artifact to visually reinforce concepts already covered in the current
+scope. Useful formats include:
 
-### Generate the quiz file
+- Concept maps and relationship diagrams.
+- Comparison tables for similar terms or controls.
+- Process flows, timelines, and remediation ladders.
+- Attack paths, supply-chain dependency maps, and taxonomy diagrams.
+- Visual retrieval prompts such as unlabeled diagrams or "explain this flow"
+  cues, without scoring or answer collection.
 
-1. Read the engine `references/quiz-template.html` from the `obsidian-study-loop`
-   skill bundle (the vault does not carry it). Its header documents the
-   `QUIZ_DATA` schema and the single `INJECT-QUIZ-DATA` placeholder line.
-2. Author a `QUIZ_DATA` object per that schema and validate it as JSON.
-3. Copy the template to `_study/quizzes/<YYYY-MM-DD>-<scope-slug>.html` and
-   replace **only** the code line tagged `INJECT-QUIZ-DATA`. Change nothing else.
-4. Keep it offline: never add remote `<script src>`, `<link>`, fonts, or images.
-5. Tell the learner the exact path, how to open it (double-click, `open "<path>"`,
-   or a `file://` URL), and to click **Download results** when done.
-6. Log generation under `## Session log`.
+Every visual artifact must be self-contained offline HTML. Inline CSS, JS, and
+SVG are allowed when they support the visual explanation. Do not add remote
+scripts, stylesheets, fonts, images, telemetry, accounts, persistence, or
+network calls.
 
-### Ingest results
+This is a local-first, agent-agnostic vault artifact. Do not route it through a
+Claude Artifact, cloud-hosted page, or Claude-specific workflow; write the
+current-scope HTML directly into this vault.
 
-Trigger examples: "ingest my quiz results", "read my quiz results", or a pasted
-results block.
+### Generation rules
 
-1. Read the downloaded `<quizId>-results.json` (default `~/Downloads/`; ask for
-   the path if absent), or accept a pasted `results` block.
-2. Validate before touching any session file. Verify `schema` is
-   `obsidian-study-loop/quiz-results@1` and that `quizId`, `vaultName`, and
-   `session` match the active session. Reject a partial or malformed payload —
-   missing `answers`, duplicate or unknown question ids, or a count that does
-   not match the generated quiz — and ask for a re-export. If not, stop and ask.
-3. Map each answer's `objective`/`scope` onto assessment. Auto-graded items
-   (`correct: true|false`) are evidence directly. `needsGrading: true` items
-   carry the learner's raw `response` — score them yourself with the 8-point
-   rubric (recall exception applies) and preserve the raw text as evidence.
-   Use each item's `confidence` for calibration.
-4. Do not enter Assess without a complete results block; the browser auto-grade
-   is an input, your grading is authoritative.
-5. Run the understanding pass — a static page captures written answers but cannot
-   probe them, so the conductor must:
-   - Never trust an auto-grade blindly. Re-read each auto-graded item's raw
-     `response` against its objective and override the browser verdict when the
-     answer is right for a wrong reason, wrong for a trivial reason, or a `short`
-     accept-list misfired.
-   - Probe weak or ambiguous written answers. For any `partial`/`gap`,
-     low-confidence, or ambiguous item, ask one adaptive follow-up in chat to
-     locate the misconception before finalizing mastery.
-   - Persist what the probe reveals. Write the inferred misconception and the
-     follow-up back into the note (review callout or `## Mastery evidence`) — a
-     follow-up that lives only in chat is lost.
-   - Reserve the deepest, reasoning-defending items for a short live chat round
-     instead of the static page.
-6. Run Phase 4 Assess, Phase 5 Write Notes, and Phase 7 Review exactly as for a
-   chat quiz. `## Assessment`, `## Unit progress`, gap stubs, `## Mastery
-   evidence`, and `## Session log` must match a chat quiz of the same scope.
-7. Record ingestion in `## Session log`, including the source and quiz file.
+1. Keep the artifact scope locked to the assessed or written scope. Do not use a
+   visual artifact to introduce future-section content.
+2. Put the current scope in the page title and filename.
+3. Write generated files to `_study/visuals/<YYYY-MM-DD>-<scope-slug>.html`.
+4. Label the page visibly as "Visual review artifact - not an assessment".
+5. Do not include quiz scoring, submit buttons, answer collection, automatic
+   grading code, mastery ledger writes, or pass/fail language.
+6. Visual retrieval prompts may ask the learner to recall or explain, but the
+   artifact must not collect, score, store, or export answers.
+7. Log generation under `## Session log`, for example:
+   "Generated visual review artifact for 2.3 -> `_study/visuals/...html`."
 
-### Guardrails
+### Mastery boundary
 
-- The key/feedback live in the file so it can grade offline but are never shown
-  until the learner submits each question — a self-study honesty aid, not a
-  proctored exam. The agent's grading is authoritative over the auto-grade.
-- Every question must carry an in-scope `objective`; validate coverage before
-  writing the file. No future-section drift.
-- Every `needsGrading` item must be scored before Write Notes.
-- No network, CDN, `localStorage`, telemetry, accounts, or question bank. The
-  page is stateless; the agent is the sole writer of disk state.
-- The `QUIZ_DATA` and results schemas are versioned (`@1`); evolve them
-  additively and bump the version so older results stay parseable.
-- Instruct the learner to Download (default) or Copy (fallback) before closing
-  the tab. Quizzes live only in `_study/quizzes/`; ingestion never overwrites a
-  notes file without the normal Phase 5 ask.
-- Server hygiene: the default mode needs no server (quizzes open from `file://`).
-  If the conductor ever starts a local server (e.g., to preview a quiz), bind it
-  to `127.0.0.1` only, tell the learner, and stop it — verifying the port is
-  closed — once results are downloaded/copied and ingest is requested. At the
-  start of any study action, offer to stop a leftover study server. Never leave
-  one running.
+HTML visual artifacts are not evidence. Opening, completing, annotating, or
+discussing a visual artifact does not change `## Assessment`, `## Unit progress`,
+`## Mastery evidence`, note status, or session status.
 
-### Delivery modes
+If the learner wants to use a visual prompt as mastery evidence, run a normal
+chat quiz or review exchange and score that learner-produced answer in the
+session file. The canonical mastery path remains:
 
-- Default — local `file://` quiz. The only mode built here: offline, on-machine,
-  no server, results bridged by download/copy. Use it unless the learner asks
-  otherwise.
-- Opt-in (not yet built) — localhost server mode: a `127.0.0.1` server that
-  auto-persists answers and auto-triggers ingest so no file download is needed.
-  Grading still happens in the conductor, never in the page or via an API key.
-  Needs the full server lifecycle discipline (registry, TTL, finish sentinel,
-  self-shutdown, verified teardown, orphan recovery). Build only on request.
-- Opt-in (not yet built) — cloud Claude Artifact: grades free text in-page but is
-  hosted off-machine, billed to the learner's usage, cannot write the vault, and
-  still needs copy/download to bridge back. A deliberate cloud-demo choice only,
-  never the default, never with private vault content unless the learner
-  confirms.
+```text
+chat quiz -> assessment -> notes/gaps -> review -> mastery evidence
+```
+
+Legacy files from the old HTML quiz flow may still exist in `_study/quizzes/`,
+but new study-loop work should treat them as archival and should not generate,
+read, score, or rely on HTML quiz results.
 
 ## Phase 4 - Assess
 
@@ -1385,10 +1332,9 @@ unambiguous:
 16. Grammar-cleaned learner copies, when present, were added separately with a
     `learner-answer-cleaned` marker, only where the text materially differs
     from the original, and did not affect mastery scoring.
-17. A browser review is a Phase 3 rendering: questions are in-scope and carry
-    `objective`/`scope`, the quiz file lives in `_study/quizzes/` and runs
-    offline, results were validated on ingest, `needsGrading` items were scored
-    by the agent, the understanding pass ran (auto-grades re-verified, weak or
-    ambiguous written answers probed and the findings written back to the vault),
-    any preview/verify server was torn down, and the resulting disk state matches
-    a chat quiz of the same scope.
+17. A visual review artifact, when generated, is post-assessment, scope-locked,
+    self-contained offline HTML, visibly labeled as not an assessment, written
+    to `_study/visuals/`, and logged in the session file. It contains no quiz
+    scoring, answer collection, automatic grading code, mastery ledger writes,
+    pass/fail state, telemetry, or network calls. Chat remains the only
+    exam-standard mastery path.

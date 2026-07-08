@@ -1,6 +1,6 @@
 ---
 name: obsidian-study-loop
-description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs except explicit read-only advisory consults. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz the full session or a scoped unit like 1.1 / Security Controls, generate a self-contained offline browser-review quiz (HTML) the learner takes in their web browser and then ingest its downloaded results back into the loop, assess objective mastery, write professional tagged Obsidian notes with gap placeholders and applied checkbox exercises, review user-filled gaps and applied reasoning, or grammar-clean learner answers with MiMo while preserving the original evidence. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
+description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs except explicit read-only advisory consults. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz the full session or a scoped unit like 1.1 / Security Controls, assess objective mastery, write professional tagged Obsidian notes with gap placeholders and applied checkbox exercises, generate optional self-contained offline HTML visual review artifacts for already assessed scopes, review user-filled gaps and applied reasoning, or grammar-clean learner answers with MiMo while preserving the original evidence. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
 # --- provenance ---
 category: productivity
 source: self-authored from the ComptiaSec+ Obsidian study-loop protocol
@@ -158,7 +158,7 @@ A scaffolded study vault has this shape. Keep writes inside these locations:
   _study/
     state.json                         # active-session pointer
     sessions/                          # one file per study session
-    quizzes/                           # generated browser-review .html quizzes
+    visuals/                           # generated visual-review .html artifacts
     README.md                          # one-paragraph explainer (see Setup)
 ```
 
@@ -466,7 +466,7 @@ When the user asks to install or set up the study loop:
     state.json
     sessions/
       .gitkeep
-    quizzes/
+    visuals/
       .gitkeep
     README.md
 ```
@@ -487,7 +487,7 @@ When I ask to study, quiz, or review notes, follow the workflow in `STUDY-PROTOC
 }
 ```
 
-6. Write `_study/README.md` with this one-paragraph explainer:
+6. Write `_study/README.md` with this explainer:
 
 ```markdown
 # _study
@@ -495,6 +495,12 @@ When I ask to study, quiz, or review notes, follow the workflow in `STUDY-PROTOC
 State and session logs for the Obsidian study loop. Managed by the study
 workflow in `STUDY-PROTOCOL.md`. Do not hand-edit `state.json` unless
 recovering.
+
+- `sessions/` stores study-session logs and assessment history.
+- `visuals/` stores current-scope visual review artifacts. These are
+  self-contained HTML study aids, not quizzes or mastery evidence.
+- `quizzes/` is legacy archival space from the deprecated HTML quiz experiment.
+  Do not generate, ingest, score, or rely on files there for the active process.
 ```
 
 7. Copy `references/study-protocol-template.md` to `STUDY-PROTOCOL.md`, replacing
@@ -718,179 +724,76 @@ Trigger examples:
 18. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
-## Phase 3 (browser mode) - Browser Review
+## Optional Visual Review Artifact
 
-Browser review is an alternative rendering of the Quiz phase, not a new phase
-and not a parallel app. The conductor authors questions from the same in-scope
-material, generates a self-contained offline HTML quiz the learner takes in a
-web browser, then reads the exported results back and runs Assess, Write Notes,
-and Review **exactly** as for a chat quiz. The disk state must end up
-indistinguishable from a chat quiz of the same scope. It shines for chapter
-review: retrieval practice with immediate, explained feedback.
+Chat remains the exam-standard quiz and mastery path. HTML artifacts are
+optional post-assessment study aids: they can help the learner see relationships
+between concepts, but they never quiz, grade, ingest results, or write mastery
+evidence.
 
-Trigger examples: "quiz me in the browser", "make me a browser review", "test me
-on a webpage", "browser quiz for chapter 2", "spin up the review site".
+Trigger examples: "make me a visual review for the current scope", "make an
+HTML concept map for 2.3", "diagram this scope", "visualize the malware
+taxonomy", or "make a comparison page for these controls".
 
-The intelligence stays with the conductor. The page is static: it carries only
-the questions, the answer key, and per-choice feedback the conductor wrote at
-generation time. It calls no LLM API and no network — consistent with the
-skill's offline, no-keys rule.
+Generate a visual review artifact only for the current active study scope after
+a chat quiz, assessment, notes write, or review has established that scope. If
+the user names a different scope, verify that it has already been assessed or
+written before treating it as the artifact scope. If the requested scope has not
+been assessed or written yet, explain that mastery remains chat-based and offer
+to quiz first.
 
-### Author questions like Brilliant, not a flashcard dump
+### Purpose and content
 
-The goal is durable understanding, not recall regurgitation. Follow these
-authoring rules (they are the point of this feature):
+Use the artifact to visually reinforce concepts already covered in the current
+scope. Useful formats include:
 
-1. **One concept per question.** Give each a short `concept` label. Do not test
-   three ideas in one prompt.
-2. **Scenario-first, apply over recall.** Lead with a concrete situation and ask
-   the learner to classify, compare, sequence, diagnose, prioritize, or explain
-   *why*. Prefer `mcq`/`classify`/`order`/`short`/`long` scenarios over "define
-   X". Reserve bare recall for a few anchor terms.
-3. **Distractors are made of misconceptions.** Each wrong option should be a
-   plausible mistake a real learner makes, not filler. Give **every** choice a
-   `feedback` string that says why it is right or wrong — this is where the
-   teaching happens.
-4. **Teach on feedback.** Every question needs an `explanation` (the durable
-   takeaway). Written/scenario items also get a `model` answer shown only after
-   the learner commits, so they think first.
-5. **Ramp difficulty.** Order questions concrete → abstract; open with an
-   accessible win before the harder discrimination questions.
-6. **Match type to the cognitive target.** Discrimination → `mcq` with
-   misconception distractors; "select all" → `multi`; grouping → `classify`;
-   process/kill-chain/remediation order → `order`; term recall → `short` with
-   `accept`; reasoning/transfer → `long` (agent-graded).
-7. **Low stakes.** Framing and microcopy treat a wrong answer as the useful
-   part. No scores shown as pass/fail.
-8. **Stay in scope.** Draw only from the in-scope section's learning outcomes,
-   key terms, labs, and prior `gap`/`partial` objectives per the Scope Boundary
-   Rules. No future-section content. Give every question an `objective` that
-   maps to a session objective and a `scope`. Cover each in-scope objective with
-   at least one applied item, and fold in prior gaps for retrieval practice.
+- Concept maps and relationship diagrams.
+- Comparison tables for similar terms or controls.
+- Process flows, timelines, and remediation ladders.
+- Attack paths, supply-chain dependency maps, and taxonomy diagrams.
+- Visual retrieval prompts such as unlabeled diagrams or "explain this flow"
+  cues, without scoring or answer collection.
 
-### Generate the quiz file
+Every visual artifact must be self-contained offline HTML. Inline CSS, JS, and
+SVG are allowed when they support the visual explanation. Do not add remote
+scripts, stylesheets, fonts, images, telemetry, accounts, persistence, or
+network calls.
 
-1. Read the bundled engine `references/quiz-template.html`. Do not reconstruct
-   it from memory. Its header documents the `QUIZ_DATA` schema and the single
-   `INJECT-QUIZ-DATA` placeholder line.
-2. Author a `QUIZ_DATA` object per that schema. Validate it as JSON before
-   injecting (a broken object makes the page show "Quiz not generated").
-3. Copy the template to `<VAULT>/_study/quizzes/<YYYY-MM-DD>-<scope-slug>.html`
-   and replace **only** the one code line tagged `INJECT-QUIZ-DATA` with
-   `const QUIZ_DATA = { ... };`. Change nothing else in the engine.
-4. Keep it offline: never add remote `<script src>`, `<link>`, fonts, or images.
-   The file must run from `file://` with no network.
-5. Tell the learner the exact path and that they can open it by double-clicking,
-   with `open "<path>"` (macOS), or pasting the `file://` URL into a browser.
-   Remind them to click **Download results** when done. Do not read it back to
-   them in chat.
-6. Log generation under `## Session log` (for example: "Generated browser review
-   for 2.1 → `_study/quizzes/…html`.").
+This is a local-first, agent-agnostic vault artifact. Do not route it through a
+Claude Artifact, cloud-hosted page, or Claude-specific workflow; write the
+current-scope HTML directly into this vault.
 
-### Ingest results back into the loop
+### Generation rules
 
-Trigger examples: "ingest my quiz results", "read my quiz results", or the
-learner pasting a results block.
+1. Keep the artifact scope locked to the assessed or written scope. Do not use a
+   visual artifact to introduce future-section content.
+2. Put the current scope in the page title and filename.
+3. Write generated files to `<VAULT>/_study/visuals/<YYYY-MM-DD>-<scope-slug>.html`.
+4. Label the page visibly as "Visual review artifact - not an assessment".
+5. Do not include quiz scoring, submit buttons, answer collection, automatic
+   grading code, mastery ledger writes, or pass/fail language.
+6. Visual retrieval prompts may ask the learner to recall or explain, but the
+   artifact must not collect, score, store, or export answers.
+7. Log generation under `## Session log`, for example:
+   "Generated visual review artifact for 2.3 -> `_study/visuals/...html`."
 
-1. Obtain the results. Default: read the downloaded
-   `<quizId>-results.json` from `~/Downloads/` (ask for the path if it is not
-   there). Fallback: a `results` block the learner pasted into chat.
-2. Validate before touching any session file. Verify `schema` is
-   `obsidian-study-loop/quiz-results@1` and that `quizId`, `vaultName`, and
-   `session` match the active session. Reject a partial or malformed payload —
-   missing `answers`, duplicate or unknown question ids, or an answer count that
-   does not match the generated quiz — and ask the learner to re-export rather
-   than scoring a broken block. If any of this fails, stop and ask.
-3. For each answer, map `objective`/`scope` onto assessment:
-   - Auto-graded items (`correct: true|false`) are evidence directly. A
-     `false` on an objective feeds a `partial`/`gap` just like a missed chat
-     question.
-   - `needsGrading: true` items (long/scenario, and short answers with no
-     accept list) carry the learner's raw `response`. **Score these yourself**
-     with the universal 8-point rubric (recall exception applies); the browser
-     never grades them. Preserve the raw learner text as evidence — never
-     overwrite it.
-   - Use each item's `confidence` (when present) as the learner-confidence
-     signal for calibration.
-4. Do not enter Assess until you hold a complete results block for the scope. A
-   browser auto-grade is an input to your assessment, not the authoritative
-   record — your grading is.
-5. **Run the understanding pass.** A static page captures written answers but
-   cannot probe them, so the conductor must — this is where the loop reads the
-   learner's mental model, not just their score:
-   - **Never trust an auto-grade blindly.** Re-read the raw `response` of each
-     auto-graded item against its objective. An `mcq`/`classify`/`order` can be
-     right for a wrong reason or wrong for a trivial reason; a `short` accept-list
-     can misfire on wording. Override the browser verdict when the raw answer
-     warrants it, and note that you did.
-   - **Probe weak or ambiguous written answers.** For any item that scores
-     `partial`/`gap`, was low-confidence, or reads ambiguously, ask the learner
-     one adaptive follow-up in chat to locate the exact misconception before you
-     finalize mastery. Their written answer is the seed for the probe, not the
-     last word.
-   - **Persist what the probe reveals.** Write the inferred misconception and the
-     follow-up exchange back into the note (as a `> [!TIP]`/`> [!WARNING]` review
-     callout or `## Mastery evidence` row) before moving on. A follow-up that
-     lives only in chat is lost — the vault stays the source of truth.
-   - **Reserve the deepest items for chat on purpose.** When an objective's whole
-     point is defending reasoning, you may skip it in the HTML and run it as a
-     short live chat round instead. Use the page for recall and discrimination;
-     use chat for the questions that need interrogation.
-6. From here, run Phase 4 Assess, Phase 5 Write Notes (full sections for solid/
-   partial, gap stubs for missed objectives, `study-check` blocks and raw
-   written answers captured as `learner-answer` evidence), and Phase 7 Review
-   bookkeeping exactly as for a chat quiz. The `## Assessment`, `## Unit
-   progress`, gap stubs, `## Mastery evidence`, and `## Session log` must look
-   the same as if the quiz had happened in chat.
-7. Record ingestion in `## Session log`, including the source (`results.json` or
-   pasted block) and the quiz file.
+### Mastery boundary
 
-### Browser-review guardrails
+HTML visual artifacts are not evidence. Opening, completing, annotating, or
+discussing a visual artifact does not change `## Assessment`, `## Unit progress`,
+`## Mastery evidence`, note status, or session status.
 
-- **Answer key visibility.** The key and feedback live in the file so it can
-  grade offline; the engine never reveals them until the learner submits each
-  question. This is a self-study honesty aid, not a proctored exam. Treat the
-  agent's grading as authoritative over the browser's auto-grade.
-- **No scope drift.** Every question must carry an in-scope `objective`. Validate
-  coverage against the session scope before writing the file.
-- **No ungraded open responses.** Every `needsGrading` item must be scored
-  before Write Notes; none may silently skip grading.
-- **No parallel LMS.** The page uses no network, no CDN, no `localStorage`, and
-  no telemetry; it is stateless. The agent remains the sole writer of disk
-  state. Do not add persistence, accounts, or a question bank.
-- **Stable schema.** The `QUIZ_DATA` and results schemas are versioned (`@1`).
-  Evolve them additively and bump the version — never silently repurpose or drop
-  a field — so older results and quizzes stay parseable.
-- **Recoverable results.** Instruct the learner to Download (default) or Copy
-  (fallback) before closing the tab; do not proceed to Assess without a complete
-  results payload.
-- **Vault hygiene.** Generated quizzes live only in `_study/quizzes/`. Ingesting
-  results never overwrites a notes file without the normal Phase 5 ask.
-- **Server hygiene.** The default mode needs no server — quizzes open from
-  `file://`. If the conductor ever starts a local server (for example, to
-  preview or verify a quiz), bind it to `127.0.0.1` only, tell the learner it is
-  running, and stop it — verifying the port is closed — as soon as results are
-  downloaded/copied and ingest is requested. At the start of any study action,
-  check for and offer to stop a leftover study server. Never leave one running.
+If the learner wants to use a visual prompt as mastery evidence, run a normal
+chat quiz or review exchange and score that learner-produced answer in the
+session file. The canonical mastery path remains:
 
-### Delivery modes
+```text
+chat quiz -> assessment -> notes/gaps -> review -> mastery evidence
+```
 
-- **Default — local `file://` quiz.** The only mode built here. Offline,
-  on-machine, no server, results bridged by download/copy. Use it unless the
-  learner explicitly asks otherwise.
-- **Opt-in (not yet built) — localhost server mode.** A conductor-spawned
-  `127.0.0.1` server could auto-persist answers and auto-trigger ingest so the
-  learner never downloads a file. Grading still happens in the conductor, never
-  in the page or via an API key. It requires the full server lifecycle
-  discipline above (registry, TTL, finish sentinel, self-shutdown, verified
-  teardown, orphan recovery). Build it only if the learner asks for hands-free
-  results.
-- **Opt-in (not yet built) — cloud Claude Artifact.** A claude.ai Artifact can
-  grade free text in-page, but it is hosted off-machine, billed to the learner's
-  usage, cannot write the vault, and still needs copy/download to bridge back.
-  It breaks the local-first contract, so it is a deliberate cloud-demo choice
-  only — never the default, and never with private vault content unless the
-  learner confirms.
+Legacy files from the old HTML quiz flow may still exist in `_study/quizzes/`,
+but new study-loop work should treat them as archival and should not generate,
+read, score, or rely on HTML quiz results.
 
 ## Phase 4 - Assess
 
