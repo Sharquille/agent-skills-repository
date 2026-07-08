@@ -690,10 +690,24 @@ results block.
    Use each item's `confidence` for calibration.
 4. Do not enter Assess without a complete results block; the browser auto-grade
    is an input, your grading is authoritative.
-5. Run Phase 4 Assess, Phase 5 Write Notes, and Phase 7 Review exactly as for a
+5. Run the understanding pass — a static page captures written answers but cannot
+   probe them, so the conductor must:
+   - Never trust an auto-grade blindly. Re-read each auto-graded item's raw
+     `response` against its objective and override the browser verdict when the
+     answer is right for a wrong reason, wrong for a trivial reason, or a `short`
+     accept-list misfired.
+   - Probe weak or ambiguous written answers. For any `partial`/`gap`,
+     low-confidence, or ambiguous item, ask one adaptive follow-up in chat to
+     locate the misconception before finalizing mastery.
+   - Persist what the probe reveals. Write the inferred misconception and the
+     follow-up back into the note (review callout or `## Mastery evidence`) — a
+     follow-up that lives only in chat is lost.
+   - Reserve the deepest, reasoning-defending items for a short live chat round
+     instead of the static page.
+6. Run Phase 4 Assess, Phase 5 Write Notes, and Phase 7 Review exactly as for a
    chat quiz. `## Assessment`, `## Unit progress`, gap stubs, `## Mastery
    evidence`, and `## Session log` must match a chat quiz of the same scope.
-6. Record ingestion in `## Session log`, including the source and quiz file.
+7. Record ingestion in `## Session log`, including the source and quiz file.
 
 ### Guardrails
 
@@ -710,6 +724,28 @@ results block.
 - Instruct the learner to Download (default) or Copy (fallback) before closing
   the tab. Quizzes live only in `_study/quizzes/`; ingestion never overwrites a
   notes file without the normal Phase 5 ask.
+- Server hygiene: the default mode needs no server (quizzes open from `file://`).
+  If the conductor ever starts a local server (e.g., to preview a quiz), bind it
+  to `127.0.0.1` only, tell the learner, and stop it — verifying the port is
+  closed — once results are downloaded/copied and ingest is requested. At the
+  start of any study action, offer to stop a leftover study server. Never leave
+  one running.
+
+### Delivery modes
+
+- Default — local `file://` quiz. The only mode built here: offline, on-machine,
+  no server, results bridged by download/copy. Use it unless the learner asks
+  otherwise.
+- Opt-in (not yet built) — localhost server mode: a `127.0.0.1` server that
+  auto-persists answers and auto-triggers ingest so no file download is needed.
+  Grading still happens in the conductor, never in the page or via an API key.
+  Needs the full server lifecycle discipline (registry, TTL, finish sentinel,
+  self-shutdown, verified teardown, orphan recovery). Build only on request.
+- Opt-in (not yet built) — cloud Claude Artifact: grades free text in-page but is
+  hosted off-machine, billed to the learner's usage, cannot write the vault, and
+  still needs copy/download to bridge back. A deliberate cloud-demo choice only,
+  never the default, never with private vault content unless the learner
+  confirms.
 
 ## Phase 4 - Assess
 
@@ -1352,5 +1388,7 @@ unambiguous:
 17. A browser review is a Phase 3 rendering: questions are in-scope and carry
     `objective`/`scope`, the quiz file lives in `_study/quizzes/` and runs
     offline, results were validated on ingest, `needsGrading` items were scored
-    by the agent, and the resulting disk state matches a chat quiz of the same
-    scope.
+    by the agent, the understanding pass ran (auto-grades re-verified, weak or
+    ambiguous written answers probed and the findings written back to the vault),
+    any preview/verify server was torn down, and the resulting disk state matches
+    a chat quiz of the same scope.

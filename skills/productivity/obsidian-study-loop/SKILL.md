@@ -815,13 +815,34 @@ learner pasting a results block.
 4. Do not enter Assess until you hold a complete results block for the scope. A
    browser auto-grade is an input to your assessment, not the authoritative
    record — your grading is.
-5. From here, run Phase 4 Assess, Phase 5 Write Notes (full sections for solid/
+5. **Run the understanding pass.** A static page captures written answers but
+   cannot probe them, so the conductor must — this is where the loop reads the
+   learner's mental model, not just their score:
+   - **Never trust an auto-grade blindly.** Re-read the raw `response` of each
+     auto-graded item against its objective. An `mcq`/`classify`/`order` can be
+     right for a wrong reason or wrong for a trivial reason; a `short` accept-list
+     can misfire on wording. Override the browser verdict when the raw answer
+     warrants it, and note that you did.
+   - **Probe weak or ambiguous written answers.** For any item that scores
+     `partial`/`gap`, was low-confidence, or reads ambiguously, ask the learner
+     one adaptive follow-up in chat to locate the exact misconception before you
+     finalize mastery. Their written answer is the seed for the probe, not the
+     last word.
+   - **Persist what the probe reveals.** Write the inferred misconception and the
+     follow-up exchange back into the note (as a `> [!TIP]`/`> [!WARNING]` review
+     callout or `## Mastery evidence` row) before moving on. A follow-up that
+     lives only in chat is lost — the vault stays the source of truth.
+   - **Reserve the deepest items for chat on purpose.** When an objective's whole
+     point is defending reasoning, you may skip it in the HTML and run it as a
+     short live chat round instead. Use the page for recall and discrimination;
+     use chat for the questions that need interrogation.
+6. From here, run Phase 4 Assess, Phase 5 Write Notes (full sections for solid/
    partial, gap stubs for missed objectives, `study-check` blocks and raw
    written answers captured as `learner-answer` evidence), and Phase 7 Review
    bookkeeping exactly as for a chat quiz. The `## Assessment`, `## Unit
    progress`, gap stubs, `## Mastery evidence`, and `## Session log` must look
    the same as if the quiz had happened in chat.
-6. Record ingestion in `## Session log`, including the source (`results.json` or
+7. Record ingestion in `## Session log`, including the source (`results.json` or
    pasted block) and the quiz file.
 
 ### Browser-review guardrails
@@ -845,6 +866,31 @@ learner pasting a results block.
   results payload.
 - **Vault hygiene.** Generated quizzes live only in `_study/quizzes/`. Ingesting
   results never overwrites a notes file without the normal Phase 5 ask.
+- **Server hygiene.** The default mode needs no server — quizzes open from
+  `file://`. If the conductor ever starts a local server (for example, to
+  preview or verify a quiz), bind it to `127.0.0.1` only, tell the learner it is
+  running, and stop it — verifying the port is closed — as soon as results are
+  downloaded/copied and ingest is requested. At the start of any study action,
+  check for and offer to stop a leftover study server. Never leave one running.
+
+### Delivery modes
+
+- **Default — local `file://` quiz.** The only mode built here. Offline,
+  on-machine, no server, results bridged by download/copy. Use it unless the
+  learner explicitly asks otherwise.
+- **Opt-in (not yet built) — localhost server mode.** A conductor-spawned
+  `127.0.0.1` server could auto-persist answers and auto-trigger ingest so the
+  learner never downloads a file. Grading still happens in the conductor, never
+  in the page or via an API key. It requires the full server lifecycle
+  discipline above (registry, TTL, finish sentinel, self-shutdown, verified
+  teardown, orphan recovery). Build it only if the learner asks for hands-free
+  results.
+- **Opt-in (not yet built) — cloud Claude Artifact.** A claude.ai Artifact can
+  grade free text in-page, but it is hosted off-machine, billed to the learner's
+  usage, cannot write the vault, and still needs copy/download to bridge back.
+  It breaks the local-first contract, so it is a deliberate cloud-demo choice
+  only — never the default, and never with private vault content unless the
+  learner confirms.
 
 ## Phase 4 - Assess
 
