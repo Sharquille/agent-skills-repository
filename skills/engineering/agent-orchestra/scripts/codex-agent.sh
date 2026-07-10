@@ -18,6 +18,8 @@
 #   * Codex output is UNTRUSTED advisory text/diffs. The caller verifies.
 #   * Every mode is time-bounded by default so a stalled call cannot hang the
 #     conductor. Override with --timeout N (0 disables) or CODEX_AGENT_TIMEOUT.
+#   * Usage-limit guard: all modes clamp a max/ultra effort config down to
+#     xhigh (user policy — heavy modes devour Plus-subscription limits).
 
 set -euo pipefail
 
@@ -111,16 +113,21 @@ run_bounded() {
   fi
 }
 
-# Reasoning floor for consults: inherit configured effort when already at
-# high or above (high/xhigh/max/ultra); otherwise raise to high so a consult
-# is never shallow. Never downgrade a deliberately heavy config.
-reasoning_floor_needed() {
+# Effort policy (user: Plus subscription, gpt-5.6-sol lane):
+#   * every mode clamps max/ultra down to xhigh — those tiers devour
+#     subscription usage limits (ultra spawns provider-side subagents);
+#   * consults additionally floor shallow configs up to high so a consult
+#     is never shallow.
+# Prints the override effort, or nothing when the config value stands.
+effort_override() {
+  # effort_override <mode>
   local cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
   local eff
   eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')
   case "$eff" in
-    high|xhigh|max|ultra) return 1 ;;
-    *) return 0 ;;
+    max|ultra) printf 'xhigh' ;;
+    high|xhigh) : ;;
+    *) [ "$1" = "consult" ] && printf 'high' ;;
   esac
 }
 
@@ -154,9 +161,9 @@ run_consult() {
   # legitimate, so skip that check when the target is not a repo.
   is_git_repo "${cd_dir:-$PWD}" || cmd+=(--skip-git-repo-check)
   [ -n "$model" ] && cmd+=(-m "$model")
-  if reasoning_floor_needed; then
-    cmd+=(-c 'model_reasoning_effort="high"')
-  fi
+  local eff_ov
+  eff_ov="$(effort_override consult)"
+  [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   cmd+=(-- "$prompt")
 
   echo "Codex consult: read-only; model=${model:-config-default}; cd=${cd_dir:-$PWD}; timeout=${timeout}s" >&2
@@ -202,6 +209,9 @@ run_review() {
 
   [ "$target_seen" -eq 1 ] || cmd+=(--uncommitted)
   [ -n "$model" ] && cmd+=(-c "model=\"$model\"")
+  local eff_ov
+  eff_ov="$(effort_override review)"
+  [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   if [ -n "$prompt" ]; then
     check_prompt "$prompt"
     cmd+=("$prompt")
@@ -277,6 +287,9 @@ Rules:
 
   local cmd=(codex exec --sandbox workspace-write -c 'mcp_servers={}' --cd "$cd_dir")
   [ -n "$model" ] && cmd+=(-m "$model")
+  local eff_ov
+  eff_ov="$(effort_override implement)"
+  [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   cmd+=(-- "$guarded_prompt")
 
   echo "Codex implementation: workspace-write; model=${model:-config-default}; cd=$cd_dir; branch=${branch:-unknown}; timeout=${timeout}s" >&2

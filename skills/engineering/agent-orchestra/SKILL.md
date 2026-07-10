@@ -158,24 +158,23 @@ Only use `implement` when the user clearly wants Codex to make changes. Prefer
 a working branch or isolated worktree. The wrapper never uses
 `danger-full-access` or `--dangerously-bypass-approvals-and-sandbox`.
 
-The wrapper pins no model: with no `--model`, Codex uses its config default
-(the flagship engineering lane), and `--model M` steers any model the Codex
-CLI can reach. The conductor steers by capability and cost, not novelty:
-`gpt-5.6-luna` or `gpt-5.4-mini` fit mechanical, tightly-specified subtasks —
-especially inside a fan-out — `gpt-5.6-terra` covers everyday engineering at
-half the flagship price, and the flagship (`gpt-5.6-sol`) keeps hard
-debugging, architecture, and anything merged with light review. See "Codex
-Model Tiers" in `references/model-routing.md` for the verified table, and
-never route work to a model you have not onboarded ("Onboarding a New Model",
-same file).
+The wrapper pins no model: with no `--model`, Codex uses its config default,
+and `--model M` can steer any model the Codex CLI reaches. **User policy
+(Plus subscription): the Codex lane is `gpt-5.6-sol` only, at effort
+`high`–`xhigh`, never `max` or `ultra`.** The conductor supplies all steering
+intelligence — decomposition, tight briefs, verification — so the orchestra
+wants one strong executor, not a spread of cheaper Codex tiers; Terra and
+Luna exist (see "Codex Model Tiers" in `references/model-routing.md`) but are
+not routed to. Cheap-volume work goes to the OpenCode lanes instead, which
+bill OpenRouter rather than the Codex subscription. Never route work to a
+model you have not onboarded ("Onboarding a New Model", same file).
 
-Effort is config-steered (`model_reasoning_effort`: low, medium, high, xhigh,
-max, ultra). The consult wrapper floors effort to high and never downgrades a
-heavier config. Treat `ultra` with care: it is not longer thinking but a
-provider-side parallel-subagent mode that consumes usage limits much faster —
-prefer this skill's own fan-out (conductor-verified, cost-visible), and
-reserve `ultra` for a single hard flagship task, never inside an
-already-parallel fan-out.
+Effort is config-steered (`model_reasoning_effort`). The wrapper enforces the
+policy: consults floor a shallow config up to `high`, and every mode clamps
+`max`/`ultra` down to `xhigh` — `ultra` is not longer thinking but a
+provider-side parallel-subagent mode that devours subscription usage limits.
+This skill's own fan-out gives the same parallelism, conductor-verified and
+cost-visible.
 
 ### OpenCode Specialist Lanes From Any Agent
 
