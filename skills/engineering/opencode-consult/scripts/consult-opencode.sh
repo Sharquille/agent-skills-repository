@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # DEPRECATED forwarder: the canonical read-only OpenCode consult wrapper lives
 # in agent-orchestra (scripts/consult-opencode.sh). Same interface plus new
-# --lane code|prose|reasoning shortcuts. Safety unchanged: explicit model,
-# deny-all inline agent, sealed mode, timeouts, secret guard.
+# --lane code|reasoning|context|prose shortcuts. Safety unchanged: explicit
+# model, deny-all inline agent, sealed mode, timeouts, secret guard.
 
 set -euo pipefail
 
