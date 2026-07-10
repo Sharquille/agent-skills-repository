@@ -83,7 +83,7 @@ ships their mistakes.
   `consult-opencode.sh` / `opencode-implement.sh` for the specialist panel.
 - **Independence rule for non-Claude conductors:** never use your own driving
   model as your second-opinion lane. An OpenCode conductor running on Kimi
-  cross-checks with `--lane reasoning`, `--lane context`, or `gpt-5.5` via
+  cross-checks with `--lane reasoning`, `--lane context`, or the Codex flagship via
   `codex-agent.sh` — not Kimi again. A consult only has value if it comes
   from a different brain.
 - **Taste-sensitive signoff** (taste >= 7) prefers a Claude-tier model. When
@@ -160,21 +160,26 @@ a working branch or isolated worktree. The wrapper never uses
 
 The wrapper pins no model: with no `--model`, Codex uses its config default,
 and `--model M` can steer any model the Codex CLI reaches. **User policy
-(Plus subscription): the Codex lane is `gpt-5.6-sol` only, at effort
-`high`–`xhigh`, never `max` or `ultra`.** The conductor supplies all steering
-intelligence — decomposition, tight briefs, verification — so the orchestra
-wants one strong executor, not a spread of cheaper Codex tiers; Terra and
-Luna exist (see "Codex Model Tiers" in `references/model-routing.md`) but are
-not routed to. Cheap-volume work goes to the OpenCode lanes instead, which
-bill OpenRouter rather than the Codex subscription. Never route work to a
-model you have not onboarded ("Onboarding a New Model", same file).
+(Plus subscription): the Codex lane is `gpt-5.6-sol` only, default effort
+`medium`, escalating to `high`/`xhigh` per call only for genuinely hard
+tasks, never `max` or `ultra`.** Sol's effort tiers are not 1:1 with older
+generations — OpenAI staff guidance (2026-07-10) is that Sol `medium` already
+beats 5.5 `xhigh`, while higher Sol tiers burn usage limits much faster. The
+conductor supplies all steering intelligence — decomposition, tight briefs,
+verification — so the orchestra wants one strong executor, not a spread of
+cheaper Codex tiers; Terra and Luna exist (see "Codex Model Tiers" in
+`references/model-routing.md`) but are not routed to. Cheap-volume work goes
+to the OpenCode lanes instead, which bill OpenRouter rather than the Codex
+subscription. Never route work to a model you have not onboarded
+("Onboarding a New Model", same file).
 
-Effort is config-steered (`model_reasoning_effort`). The wrapper enforces the
-policy: consults floor a shallow config up to `high`, and every mode clamps
-`max`/`ultra` down to `xhigh` — `ultra` is not longer thinking but a
-provider-side parallel-subagent mode that devours subscription usage limits.
-This skill's own fan-out gives the same parallelism, conductor-verified and
-cost-visible.
+Effort is steered per call with `--effort low|medium|high|xhigh` (wins over
+config; `max`/`ultra` are refused outright). Without `--effort`, the wrapper
+enforces the policy from config: consults floor a `low` config up to
+`medium`, and every mode clamps a `max`/`ultra` config down to `xhigh` —
+`ultra` is not longer thinking but a provider-side parallel-subagent mode
+that devours subscription usage limits. This skill's own fan-out gives the
+same parallelism, conductor-verified and cost-visible.
 
 ### OpenCode Specialist Lanes From Any Agent
 
@@ -217,7 +222,7 @@ call at zero bytes. The wrappers' own timeouts already bound a stalled run.
 
 ### If Codex Cannot Continue
 
-`gpt-5.5` via Codex is the main implementor and investigator. Only when Codex
+The Codex flagship (`gpt-5.6-sol`) is the main implementor and investigator. Only when Codex
 fails — rate-limit/usage errors, auth errors, outage, or repeated timeouts —
 step down to OpenCode instead of pulling the work back into Claude, and pick
 the lane by task shape:
@@ -284,7 +289,8 @@ cleanly split should stay serial rather than gain a coordination bug.
 When the user does not specify a model, apply their defaults:
 
 - Bulk/mechanical implementation, migrations, data analysis, repo
-  investigation, and hard debugging: `gpt-5.5` through Codex CLI defaults.
+  investigation, and hard debugging: the Codex flagship through Codex CLI
+  defaults.
 - Technical second opinions and security framing: `--lane code` (Kimi K2.7
   Code). Deep reasoning, architecture/plan critique: `--lane reasoning`
   (MiniMax M3, high reasoning). Huge-context sweeps and bulk summarization:
@@ -294,7 +300,7 @@ When the user does not specify a model, apply their defaults:
   use `fable-5` when available, otherwise `sonnet-5` or another taste-suitable
   lane.
 - Plan and implementation reviews: `fable-5` or `opus-4.8`, optionally plus a
-  separate `gpt-5.5` Codex review.
+  separate Codex flagship review.
 - Thin Claude wrapper subagents (only when a subagent must own the call): use
   `sonnet-5` with low effort; the wrapper writes a self-contained Codex prompt,
   runs `scripts/codex-agent.sh`, and returns the output.

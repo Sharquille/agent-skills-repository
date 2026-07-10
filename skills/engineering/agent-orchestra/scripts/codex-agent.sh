@@ -6,8 +6,9 @@
 #   review     native codex review (defaults to --uncommitted)
 #   implement  guarded workspace-write codex exec (bounded delegation)
 #
-# Purpose: offload token-heavy work to Codex/gpt-5.5 so Claude usage and rate
-# limits are preserved for conductor judgment, verification, and final edits.
+# Purpose: offload token-heavy work to Codex (config-default flagship,
+# gpt-5.6-sol under current policy) so Claude usage and rate limits are
+# preserved for conductor judgment, verification, and final edits.
 #
 # SAFETY (do not weaken):
 #   * Never uses danger-full-access or --dangerously-bypass-approvals-and-sandbox.
@@ -26,18 +27,21 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  codex-agent.sh consult [--cd DIR] [--model MODEL] [--with-mcp] [--timeout N] -- "<prompt>"
-  codex-agent.sh review  [--cd DIR] [--base REF|--commit SHA|--uncommitted] [--model MODEL] [--timeout N] [--prompt TEXT]
-  codex-agent.sh implement --allow-write [--cd DIR] [--model MODEL] [--scope PATH]... [--allow-main] [--timeout N] -- "<task>"
+  codex-agent.sh consult [--cd DIR] [--model MODEL] [--effort E] [--with-mcp] [--timeout N] -- "<prompt>"
+  codex-agent.sh review  [--cd DIR] [--base REF|--commit SHA|--uncommitted] [--model MODEL] [--effort E] [--timeout N] [--prompt TEXT]
+  codex-agent.sh implement --allow-write [--cd DIR] [--model MODEL] [--effort E] [--scope PATH]... [--allow-main] [--timeout N] -- "<task>"
 
 Defaults:
-  consult    read-only codex exec, MCP off, reasoning effort floored to high, 900s timeout
+  consult    read-only codex exec, MCP off, effort floored to medium, 900s timeout
   review     codex review --uncommitted, 1800s timeout
   implement  workspace-write codex exec guarded by --allow-write, 3600s timeout
 
 Timeout precedence: --timeout > CODEX_AGENT_TIMEOUT > per-mode default. 0 disables.
 Model: intentionally not pinned; with no --model, Codex uses ~/.codex/config.toml
-(e.g. gpt-5.5), so nothing here goes stale. Override per call with --model.
+(e.g. gpt-5.6-sol), so nothing here goes stale. Override per call with --model.
+Effort: --effort low|medium|high|xhigh wins over config; max/ultra are refused
+(they devour subscription usage limits) and a max/ultra config is clamped to
+xhigh. Escalate to high/xhigh only for genuinely hard tasks.
 
 The wrapper never uses danger-full-access, never bypasses sandbox/approvals,
 and instructs Codex to never commit or push.
@@ -113,11 +117,21 @@ run_bounded() {
   fi
 }
 
-# Effort policy (user: Plus subscription, gpt-5.6-sol lane):
-#   * every mode clamps max/ultra down to xhigh — those tiers devour
-#     subscription usage limits (ultra spawns provider-side subagents);
-#   * consults additionally floor shallow configs up to high so a consult
-#     is never shallow.
+# Effort policy (user: Plus subscription, gpt-5.6-sol lane; recalibrated
+# 2026-07-10 — OpenAI staff: Sol medium already beats 5.5 xhigh, and higher
+# Sol tiers burn usage limits much faster):
+#   * per-call --effort accepts low|medium|high|xhigh and wins over config;
+#     max/ultra are refused outright;
+#   * without --effort, every mode clamps a max/ultra config down to xhigh,
+#     and consults floor a low config up to medium.
+validate_effort() {
+  case "$1" in
+    low|medium|high|xhigh) : ;;
+    max|ultra) die "--effort $1 refused (policy: max/ultra devour Plus usage limits; ceiling is xhigh)" ;;
+    *) die "invalid --effort '$1' (use low, medium, high, or xhigh)" ;;
+  esac
+}
+
 # Prints the override effort, or nothing when the config value stands.
 effort_override() {
   # effort_override <mode>
@@ -126,17 +140,18 @@ effort_override() {
   eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')
   case "$eff" in
     max|ultra) printf 'xhigh' ;;
-    high|xhigh) : ;;
-    *) [ "$1" = "consult" ] && printf 'high' ;;
+    medium|high|xhigh) : ;;
+    *) [ "$1" = "consult" ] && printf 'medium' ;;
   esac
 }
 
 run_consult() {
-  local cd_dir="" model="" with_mcp=0 prompt="" timeout_flag=""
+  local cd_dir="" model="" with_mcp=0 prompt="" timeout_flag="" effort=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --cd|-C) need_value "$1" "$#"; cd_dir="$2"; shift 2 ;;
       --model|-m) need_value "$1" "$#"; model="$2"; shift 2 ;;
+      --effort) need_value "$1" "$#"; validate_effort "$2"; effort="$2"; shift 2 ;;
       --timeout) need_value "$1" "$#"; timeout_flag="$2"; shift 2 ;;
       --with-mcp) with_mcp=1; shift ;;
       --) shift; prompt="$*"; break ;;
@@ -162,7 +177,7 @@ run_consult() {
   is_git_repo "${cd_dir:-$PWD}" || cmd+=(--skip-git-repo-check)
   [ -n "$model" ] && cmd+=(-m "$model")
   local eff_ov
-  eff_ov="$(effort_override consult)"
+  eff_ov="${effort:-$(effort_override consult)}"
   [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   cmd+=(-- "$prompt")
 
@@ -171,7 +186,7 @@ run_consult() {
 }
 
 run_review() {
-  local cd_dir="" model="" prompt="" target_seen=0 timeout_flag=""
+  local cd_dir="" model="" prompt="" target_seen=0 timeout_flag="" effort=""
   local cmd=(codex review)
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -188,6 +203,7 @@ run_review() {
         ;;
       --cd|-C) need_value "$1" "$#"; cd_dir="$2"; shift 2 ;;
       --model|-m) need_value "$1" "$#"; model="$2"; shift 2 ;;
+      --effort) need_value "$1" "$#"; validate_effort "$2"; effort="$2"; shift 2 ;;
       --timeout) need_value "$1" "$#"; timeout_flag="$2"; shift 2 ;;
       --prompt) need_value "$1" "$#"; prompt="$2"; shift 2 ;;
       --) shift; prompt="$*"; break ;;
@@ -210,7 +226,7 @@ run_review() {
   [ "$target_seen" -eq 1 ] || cmd+=(--uncommitted)
   [ -n "$model" ] && cmd+=(-c "model=\"$model\"")
   local eff_ov
-  eff_ov="$(effort_override review)"
+  eff_ov="${effort:-$(effort_override review)}"
   [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   if [ -n "$prompt" ]; then
     check_prompt "$prompt"
@@ -222,12 +238,13 @@ run_review() {
 }
 
 run_implement() {
-  local cd_dir="$PWD" model="" prompt="" allow_write=0 allow_main=0 timeout_flag=""
+  local cd_dir="$PWD" model="" prompt="" allow_write=0 allow_main=0 timeout_flag="" effort=""
   local scopes=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --cd|-C) need_value "$1" "$#"; cd_dir="$2"; shift 2 ;;
       --model|-m) need_value "$1" "$#"; model="$2"; shift 2 ;;
+      --effort) need_value "$1" "$#"; validate_effort "$2"; effort="$2"; shift 2 ;;
       --scope) need_value "$1" "$#"; scopes+=("$2"); shift 2 ;;
       --timeout) need_value "$1" "$#"; timeout_flag="$2"; shift 2 ;;
       --allow-write) allow_write=1; shift ;;
@@ -288,7 +305,7 @@ Rules:
   local cmd=(codex exec --sandbox workspace-write -c 'mcp_servers={}' --cd "$cd_dir")
   [ -n "$model" ] && cmd+=(-m "$model")
   local eff_ov
-  eff_ov="$(effort_override implement)"
+  eff_ov="${effort:-$(effort_override implement)}"
   [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   cmd+=(-- "$guarded_prompt")
 

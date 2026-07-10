@@ -33,12 +33,13 @@ user's effective cost and limits, not provider list price.
 3. For anything that ships, prioritize intelligence, then taste, then cost.
    Cost breaks ties only. If a cheap model misses the bar, escalate or redo
    with the smarter model without asking.
-4. Bulk or mechanical work goes to `gpt-5.5` through Codex CLI.
+4. Bulk or mechanical work goes to the Codex flagship (`gpt-5.6-sol`) through
+   Codex CLI.
 5. User-facing UI, API design, copy, and portfolio prose need taste >= 7. Do
-   not rely on `gpt-5.5` alone for taste-sensitive signoff.
+   not rely on the Codex flagship alone for taste-sensitive signoff.
 6. Reviews of plans or implementations go to `fable-5` or `opus-4.8`; add a
-   separate `gpt-5.5` Codex review when an independent engineering angle
-   helps. When Claude quota is tight, run the Codex review first and use
+   separate Codex (`gpt-5.6-sol`) review when an independent engineering
+   angle helps. When Claude quota is tight, run the Codex review first and use
    Claude only to adjudicate its findings.
 7. Never use Haiku.
 8. The conductor is whichever agent leads the session — Claude by default;
@@ -68,9 +69,9 @@ work that is *input-heavy* (reading lots of files/logs/diffs) or
 Do **not** delegate: secret-adjacent work, final accept/reject decisions,
 anything where verifying the consultant would cost more than doing it.
 
-## Using gpt-5.5 From Claude Workflows
+## Using the Codex Flagship From Claude Workflows
 
-The Claude Agent/Workflow `model` parameter cannot select `gpt-5.5`. From the
+The Claude Agent/Workflow `model` parameter cannot select Codex models. From the
 conductor, just run the wrapper directly with Bash — no subagent needed:
 
 ```text
@@ -126,11 +127,14 @@ Codex config default, and `--model M` steers any model the Codex CLI can
 reach. When more than one Codex model is available:
 
 **User policy (2026-07-10, Plus subscription): the Codex lane is
-`gpt-5.6-sol` only, at `model_reasoning_effort` high or xhigh — never max or
-ultra, which devour subscription usage limits (`codex-agent.sh` clamps them
-to xhigh in every mode). Terra and Luna are not routed to: the conductor
-supplies the steering intelligence, so the orchestra wants one strong
-executor rather than a spread of cheaper Codex tiers.**
+`gpt-5.6-sol` only, default effort `medium`, escalating per call to `high` or
+`xhigh` only for genuinely hard tasks — never max or ultra, which devour
+subscription usage limits (`codex-agent.sh --effort` refuses them and clamps
+a max/ultra config to xhigh). Basis: OpenAI staff guidance that Sol effort is
+not 1:1 with older generations — Sol medium already beats 5.5 xhigh, and
+higher Sol tiers burn limits much faster. Terra and Luna are not routed to:
+the conductor supplies the steering intelligence, so the orchestra wants one
+strong executor rather than a spread of cheaper Codex tiers.**
 
 - Under this policy the flagship takes every Codex task — hard debugging,
   architecture, bulk implementation alike.
@@ -154,13 +158,16 @@ executor rather than a spread of cheaper Codex tiers.**
 
 Effort tokens (`model_reasoning_effort`): `low`, `medium`, `high`, `xhigh`,
 `max`, `ultra` (the app shows these as Light / Medium / High / Extra High /
-Ultra; `max`/`ultra` may need enabling in settings). `ultra` is not longer
-thinking — it spawns provider-side parallel subagents and burns usage limits
-much faster. User policy: never max or ultra on this account (Plus
-subscription); `codex-agent.sh` clamps either down to xhigh in every mode,
-and never stack heavy effort inside this skill's own fan-out (the
-multiplication is invisible until the bill). The orchestra's fan-out is the
-better tool anyway: same parallelism, conductor-verified, cost-visible.
+Ultra; `max`/`ultra` may need enabling in settings). Sol's tiers are not 1:1
+with older generations: per OpenAI staff (2026-07-10), Sol `medium` already
+beats 5.5 `xhigh`, so default to medium and escalate per call
+(`codex-agent.sh --effort high|xhigh`) only when the task earns it. `ultra`
+is not longer thinking — it spawns provider-side parallel subagents and burns
+usage limits much faster. User policy: never max or ultra on this account
+(Plus subscription); `--effort` refuses them and a max/ultra config is
+clamped to xhigh. Never stack heavy effort inside this skill's own fan-out
+(the multiplication is invisible until the bill) — the fan-out is the better
+tool anyway: same parallelism, conductor-verified, cost-visible.
 
 ## Onboarding a New Model
 

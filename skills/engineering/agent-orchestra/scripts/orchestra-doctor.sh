@@ -65,7 +65,7 @@ fi
 printf 'Agent Orchestra readiness check\n'
 printf 'Skill: %s\n\n' "$SKILL_DIR"
 
-# --- Codex CLI (gpt-5.5 lane) ---
+# --- Codex CLI (flagship lane) ---
 if have codex; then
   codex_version="$(version_of codex --version)"
   ok "codex CLI available: ${codex_version:-unknown version}"
@@ -132,7 +132,7 @@ else
   info "Some lanes degraded (see WARN above). Working lanes:"
 fi
 cat <<EOF
-  codex-agent.sh consult|review|implement          -> gpt-5.5 via Codex (primary)
+  codex-agent.sh consult|review|implement          -> Codex config-default flagship (primary)
   consult-opencode.sh --lane code      --sealed    -> $lane_code
   consult-opencode.sh --lane reasoning --sealed    -> $lane_reasoning (high reasoning)
   consult-opencode.sh --lane context   --sealed    -> $lane_context (cheap, ~1M ctx)
