@@ -1,6 +1,6 @@
 ---
 name: obsidian-study-loop
-description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs except explicit read-only advisory consults. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz the full session or a scoped unit like 1.1 / Security Controls, assess objective mastery, write professional tagged Obsidian notes with gap placeholders and applied checkbox exercises, generate optional self-contained offline HTML visual review artifacts for already assessed scopes, review user-filled gaps and applied reasoning, or grammar-clean learner answers with MiMo while preserving the original evidence. Do not trigger for generic note capture without tutoring or for standalone app/API-based study tools."
+description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs except explicit read-only advisory consults. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz a full session or scoped unit, assess objective mastery, write tagged notes with gap placeholders and applied exercises, generate optional self-contained offline HTML review artifacts for assessed scopes, review learner additions, or grammar-clean learner answers while preserving the original evidence. Do not trigger for generic note capture, one-off quizzes the user does not want persisted, general Obsidian administration, flashcard export, or standalone app/API-based study tools."
 # --- provenance ---
 category: productivity
 source: self-authored from the ComptiaSec+ Obsidian study-loop protocol
@@ -198,12 +198,41 @@ scripts/sync_study_protocol.py <VAULT_PATH> --apply
 The helper updates only `STUDY-PROTOCOL.md`. It must not touch `Notes/`,
 `_study/state.json`, or `_study/sessions/`.
 
+The helper always uses its bundled canonical template and permits only a notes
+directory inside the resolved vault. Relative `--notes-dir` values resolve from
+the vault root. It refuses a symlinked `STUDY-PROTOCOL.md` target and replaces a
+regular protocol file atomically so an interrupted write cannot leave a partial
+protocol.
+
+## Validate Existing Vault State
+
+Use the bundled read-only validator after setup or sync, before repairing an
+interrupted workflow, or whenever the note and session records may disagree:
+
+```text
+scripts/validate_study_vault.py <VAULT_PATH>
+```
+
+The validator never edits the vault. It checks the `state.json` schema and
+active-session boundary, required session frontmatter, canonical H2 group
+ordering, duplicate headings, final `## Session log`, logged note paths,
+balanced learner/study-check markers, duplicate study-check IDs, pending gaps
+inside reviewed notes, and answered checks that lack review feedback. An
+unconsumed quiz-progress block is a warning because it may represent a valid
+interrupted quiz; integrity violations are errors. It exits `0` when no errors
+exist and `1` when errors require attention. Resolve errors deliberately in the
+normal recovery flow rather than adding an automatic `--fix` mode.
+
 ## Session Lifecycle and Recovery
 
 `_study/state.json` is the handoff point between agent sessions. A reviewed
 session is still the active session until the user explicitly starts a new
 session, clears state, or runs an undo flow. Do not set `active_session` to
 `null` just because a scope or session reached `status: reviewed`.
+
+Session frontmatter `status` records the latest completed workflow stage, not
+whole-session coverage. For a multi-scope session, `## Unit progress` is the
+source of truth for which scopes were quizzed, written, and reviewed.
 
 At the start of every study-loop action:
 
@@ -624,11 +653,12 @@ the end of the file:
 1. frontmatter
 2. `## Study content`
 3. `## Unit progress`
-4. `## Assessment — <scope>` blocks, in section order
-5. `## Notes written — <scope>` blocks, in section order
-6. `## Review — <date>` blocks, oldest first
-7. `## Mastery evidence` (optional)
-8. `## Session log` (always last)
+4. `## Quiz progress — <scope>` blocks, in section order
+5. `## Assessment — <scope>` blocks, in section order
+6. `## Notes written — <scope>` blocks, in section order
+7. `## Review — <date>` blocks, oldest first
+8. `## Mastery evidence` (optional)
+9. `## Session log` (always last)
 
 When a heading already exists, append under it instead of creating a duplicate
 heading. Do not reorder an existing session file without user approval.

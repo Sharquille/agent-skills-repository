@@ -79,6 +79,10 @@ Session frontmatter `status` must be one of:
 - `notes-written`
 - `reviewed`
 
+The session status records the latest completed workflow stage, not
+whole-session coverage. For a multi-scope session, `## Unit progress` is the
+source of truth for which scopes were quizzed, written, and reviewed.
+
 ## Timestamp and Link Discipline
 
 Before writing any timestamped frontmatter or session-log entry, get the real
@@ -134,6 +138,31 @@ example `~/.claude/skills/obsidian-study-loop/scripts/`, or
 The helper compares the source template to this `STUDY-PROTOCOL.md` and prints a
 diff. It updates only this protocol file when run with `--apply`; it does not
 touch `Notes/`, `_study/state.json`, or `_study/sessions/`.
+
+The helper always uses its bundled canonical template and permits only a notes
+directory inside the resolved vault. Relative `--notes-dir` values resolve from
+the vault root. It refuses a symlinked `STUDY-PROTOCOL.md` target and replaces a
+regular protocol file atomically.
+
+## Validating This Vault
+
+Use the skill's bundled read-only validator after setup or sync, before
+repairing an interrupted workflow, or whenever the note and session records may
+disagree:
+
+```text
+<skill-dir>/scripts/validate_study_vault.py <VAULT_PATH>
+```
+
+The validator never edits the vault. It checks the `state.json` schema and
+active-session boundary, required session frontmatter, canonical H2 group
+ordering, duplicate headings, final `## Session log`, logged note paths,
+balanced learner/study-check markers, duplicate study-check IDs, pending gaps
+inside reviewed notes, and answered checks that lack review feedback. An
+unconsumed quiz-progress block is a warning because it may represent a valid
+interrupted quiz; integrity violations are errors. It exits `0` when no errors
+exist and `1` when errors require attention. Resolve errors through the normal
+recovery workflow rather than expecting an automatic fix.
 
 ## Session Lifecycle and Recovery
 
@@ -516,11 +545,12 @@ the end of the file:
 1. frontmatter
 2. `## Study content`
 3. `## Unit progress`
-4. `## Assessment — <scope>` blocks, in section order
-5. `## Notes written — <scope>` blocks, in section order
-6. `## Review — <date>` blocks, oldest first
-7. `## Mastery evidence` (optional)
-8. `## Session log` (always last)
+4. `## Quiz progress — <scope>` blocks, in section order
+5. `## Assessment — <scope>` blocks, in section order
+6. `## Notes written — <scope>` blocks, in section order
+7. `## Review — <date>` blocks, oldest first
+8. `## Mastery evidence` (optional)
+9. `## Session log` (always last)
 
 When a heading already exists, append under it instead of creating a duplicate
 heading. Do not reorder an existing session file without user approval.
@@ -1029,8 +1059,8 @@ unless the user chooses it or has already asked for that help.
 ## Phase 6 - User Research
 
 The user researches `gap` objectives offline and fills in the content under the
-placeholder in the notes file. The user may leave or delete the
-`<!-- gap:... -->` marker.
+placeholder in the notes file. Keep the `<!-- gap:... -->` marker and matching
+learner-edit boundaries so later review and recovery can locate the evidence.
 
 Do not do this research for the user unless explicitly asked. The learning value
 comes from the user filling the gap.
@@ -1317,9 +1347,10 @@ unambiguous:
    gives feedback.
 4. Assess writes per-objective `solid`, `partial`, or `gap` results and sets
    `status: quizzed`.
-5. Write Notes creates one topic note, writes complete sections for `solid` and
-   `partial`, writes exact gap stubs for `gap`, sets `status: notes-written`,
-   and shows the available `support-helper` menu when follow-up work exists.
+5. Write Notes creates the scope-appropriate per-section or topic note(s),
+   writes complete sections for `solid` and `partial`, writes exact gap stubs
+   for `gap`, sets `status: notes-written`, and shows the available
+   `support-helper` menu when follow-up work exists.
 6. User Research happens offline unless the user chooses a helper path from the
    `support-helper` menu.
 7. Review reopens the written notes, checks the former gap sections, appends the
@@ -1353,3 +1384,6 @@ unambiguous:
     scoring, answer collection, automatic grading code, mastery ledger writes,
     pass/fail state, telemetry, or network calls. Chat remains the only
     exam-standard mastery path.
+18. The read-only validator reports no integrity errors after setup, sync, or a
+    completed recovery pass; any warning is understood and intentionally left
+    open.
