@@ -25,6 +25,8 @@ Treat the current directory as a teaching workspace. The state of their learning
 - `./assets/*`: Reusable **components** shared across lessons. See [Assets](#assets).
 - `NOTES.md`: A scratchpad for you to jot down user preferences, or working notes.
 
+When creating any numbered file (in `./lessons/` or `./learning-records/`), scan the directory first and use the next number after the highest existing one. Never overwrite an existing file in this workspace without the user's explicit confirmation.
+
 ## Philosophy
 
 To learn at a deep level, the user needs three things:
@@ -52,13 +54,15 @@ Fluency can give the user an illusory sense of mastery, but storage strength is 
 
 ## Lessons
 
-A lesson is the main thing you produce — the unit in which knowledge and skills reach the user. Each lesson is one self-contained HTML file, saved to `./lessons/` and titled `0001-<dash-case-name>.html` where the number increments each time.
+A lesson is the main thing you produce — the unit in which knowledge and skills reach the user. Each lesson is one self-contained HTML file, saved to `./lessons/` and titled `0001-<dash-case-name>.html` where the number increments each time. Use the format in [LESSON-FORMAT.md](./LESSON-FORMAT.md).
+
+Self-contained means local: a lesson may link components from `./assets/`, but must never load external CDN scripts, stylesheets, fonts, or any other network resource.
 
 A lesson should be **beautiful** — clean, readable typography and layout — since the user will return to these later to review. Think Tufte.
 
 The lesson should be short, and completable very quickly. Learners' working memory is very small, and we need to stay within it. But each lesson should give the user a single tangible win that they can build on. It should be directly tied to the mission, and should be in the user's zone of proximal development.
 
-If possible, open the lesson file for the user by running a CLI command.
+If possible, open the lesson file for the user with the platform's file opener — `open <path>` on macOS, `xdg-open <path>` on Linux — passing only the lesson's path inside this workspace. Don't use any other command for this.
 
 Each lesson should link via HTML anchors to other lessons and reference documents.
 
@@ -123,7 +127,7 @@ When the user asks a question that appears to require wisdom, your default postu
 
 A community is a place (online or offline) where the user can test their skills in the real world. This might be a forum, a subreddit, a real-world class (budget permitting) or a local interest group.
 
-You should attempt to find high-reputation communities the user can join. If the user expresses a preference that they don't want to join a community, respect it.
+You should attempt to find high-reputation communities the user can join. Before suggesting one, check `RESOURCES.md` for a recorded opt-out, and verify the community is still active and well-moderated. If the user expresses a preference that they don't want to join a community, respect it and record the opt-out in `RESOURCES.md`.
 
 ## Reference Documents
 
