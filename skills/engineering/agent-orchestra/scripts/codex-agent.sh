@@ -111,14 +111,15 @@ run_bounded() {
   fi
 }
 
-# Reasoning floor for consults: inherit configured effort when already
-# high/xhigh; otherwise raise to high so a consult is never shallow.
+# Reasoning floor for consults: inherit configured effort when already at
+# high or above (high/xhigh/max/ultra); otherwise raise to high so a consult
+# is never shallow. Never downgrade a deliberately heavy config.
 reasoning_floor_needed() {
   local cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
   local eff
   eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')
   case "$eff" in
-    high|xhigh) return 1 ;;
+    high|xhigh|max|ultra) return 1 ;;
     *) return 0 ;;
   esac
 }

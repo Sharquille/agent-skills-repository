@@ -1,6 +1,6 @@
 ---
 name: agent-orchestra
-description: "Wrapper-only agentic CLI orchestration, conductor-agnostic: whichever agent invokes it (Claude Code by default, OpenCode or Gemini CLI when Claude is unavailable) acts as the intelligence and delegates token-heavy work to non-Claude lanes to preserve usage and rate limits, with an OpenCode fallback ladder for when Codex itself is rate-limited or down. Use when the user asks for an orchestra/orchestrator, wants to save Claude usage or avoid rate limits by offloading work, asks any agent to access Codex, wants gpt-5.5 through Codex for consult/review/implementation, wants OpenCode specialist lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo), runs OpenCode as the conductor or panel because Claude is unavailable, needs a Codex fallback, mentions replacing codex-consult/opencode-consult/consult-orchestrator, wants Codex without any plugin, needs multi-model review, wants to split a task across parallel lanes with a run ledger, wants capability/cost-steered model selection including alternate Codex models, or needs model routing using gpt-5.5, sonnet-5, opus-4.8, fable-5, Kimi, MiniMax, DeepSeek, or MiMo. Do not use for routine one-agent edits, secret-bearing prompts, unmonitored review gates, or unrestricted autonomous writes."
+description: "Wrapper-only agentic CLI orchestration, conductor-agnostic: whichever agent invokes it (Claude Code by default, OpenCode or Gemini CLI when Claude is unavailable) acts as the intelligence and delegates token-heavy work to non-Claude lanes to preserve usage and rate limits, with an OpenCode fallback ladder for when Codex itself is rate-limited or down. Use when the user asks for an orchestra/orchestrator, wants to save Claude usage or avoid rate limits by offloading work, asks any agent to access Codex, wants gpt-5.5 through Codex for consult/review/implementation, wants OpenCode specialist lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo), runs OpenCode as the conductor or panel because Claude is unavailable, needs a Codex fallback, mentions replacing codex-consult/opencode-consult/consult-orchestrator, wants Codex without any plugin, needs multi-model review, wants to split a task across parallel lanes with a run ledger, wants capability/cost-steered model selection including alternate Codex models or tiers (gpt-5.6 Sol/Terra/Luna, gpt-5.4-mini, effort levels up to ultra), or needs model routing using gpt-5.5, sonnet-5, opus-4.8, fable-5, Kimi, MiniMax, DeepSeek, or MiMo. Do not use for routine one-agent edits, secret-bearing prompts, unmonitored review gates, or unrestricted autonomous writes."
 ---
 
 # Agent Orchestra
@@ -15,7 +15,8 @@ way when Claude is unavailable.
 
 The point is Claude-usage economics: Claude subscriptions rate-limit fast when
 Claude reads whole repos, writes bulk code, or chews through long diffs.
-Delegating that work to Codex (`gpt-5.5` — the primary engineering lane) and
+Delegating that work to Codex (its config-default flagship tier — the
+`gpt-5.6-sol` class — is the primary engineering lane) and
 OpenCode lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo v2.5 Pro)
 moves the token burn onto Codex/OpenRouter quota instead, while Claude — the
 conductor — spends its limited budget on what actually needs it: scoping,
@@ -159,12 +160,22 @@ a working branch or isolated worktree. The wrapper never uses
 
 The wrapper pins no model: with no `--model`, Codex uses its config default
 (the flagship engineering lane), and `--model M` steers any model the Codex
-CLI can reach. The conductor steers by capability and cost, not novelty: a
-cheaper code-tuned tier (a gpt-5.3-code class model) fits mechanical,
-tightly-specified subtasks — especially inside a fan-out — while the flagship
-stays the default for hard debugging, architecture, and anything merged with
-light review. Never route work to a model you have not onboarded (see
-"Onboarding a New Model" in `references/model-routing.md`).
+CLI can reach. The conductor steers by capability and cost, not novelty:
+`gpt-5.6-luna` or `gpt-5.4-mini` fit mechanical, tightly-specified subtasks —
+especially inside a fan-out — `gpt-5.6-terra` covers everyday engineering at
+half the flagship price, and the flagship (`gpt-5.6-sol`) keeps hard
+debugging, architecture, and anything merged with light review. See "Codex
+Model Tiers" in `references/model-routing.md` for the verified table, and
+never route work to a model you have not onboarded ("Onboarding a New Model",
+same file).
+
+Effort is config-steered (`model_reasoning_effort`: low, medium, high, xhigh,
+max, ultra). The consult wrapper floors effort to high and never downgrades a
+heavier config. Treat `ultra` with care: it is not longer thinking but a
+provider-side parallel-subagent mode that consumes usage limits much faster —
+prefer this skill's own fan-out (conductor-verified, cost-visible), and
+reserve `ultra` for a single hard flagship task, never inside an
+already-parallel fan-out.
 
 ### OpenCode Specialist Lanes From Any Agent
 

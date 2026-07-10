@@ -10,7 +10,9 @@ user's effective cost and limits, not provider list price.
 
 | Model | Burns Claude quota? | Cost | Intelligence | Taste | Access path | Default use |
 |---|---|---:|---:|---:|---|---|
-| `gpt-5.5` | No | 9 | 8 | 5 | Codex CLI (`codex-agent.sh`) | **Primary engineering lane**: bulk implementation, migrations, data analysis, hard debugging, repo investigation, independent engineering review |
+| Codex flagship (config default: `gpt-5.6-sol`; was `gpt-5.5`) | No | 9 | 9 (prov.) | 5 (prov.) | Codex CLI (`codex-agent.sh`) | **Primary engineering lane**: bulk implementation, migrations, data analysis, hard debugging, repo investigation, independent engineering review |
+| `gpt-5.6-terra` | No | 9 | 8 (prov.) | 5 (prov.) | Codex CLI `--model` | Everyday engineering when the flagship is overkill; ~5.5-competitive at half the price |
+| `gpt-5.6-luna` / `gpt-5.4-mini` | No | 10 | 7 (prov.) | 4 (prov.) | Codex CLI `--model` | Cheap Codex tier: fan-out mechanical subtasks, linting, quick edits, high-volume batch |
 | `minimax/minimax-m3` | No | 8 | 7 | 6 | OpenCode `--lane reasoning` (high reasoning) | Deep reasoning, architecture critique, plan pressure-testing, primary Codex consult-fallback for hard thinking |
 | `deepseek/deepseek-v4-flash` | No | 9 | 6 | 5 | OpenCode `--lane context` | Cheap, fast, very-long-context (~1M): big-log/diff/repo sweeps, bulk summarization, high-volume fallback work |
 | `moonshotai/kimi-k2.7-code` | No | 8 | 7 | 5 | OpenCode `--lane code` | Technical accuracy checks, code/config correctness, security framing, default implement-fallback coder |
@@ -126,14 +128,34 @@ reach. When more than one Codex model is available:
 - The config-default flagship (whatever `~/.codex/config.toml` pins — a
   `gpt-5.6` sol/terra/luna tier or `gpt-5.5`; `--models` shows it) keeps hard
   debugging, architecture, and anything merged with light review.
-- Steer a cheaper code-tuned tier (a `gpt-5.3-code`-class model) for
-  mechanical, tightly-specified subtasks — boilerplate, codemods, test
-  scaffolding — especially inside a parallel fan-out where volume matters
-  more than depth.
+- Steer `gpt-5.6-luna` or `gpt-5.4-mini` for mechanical, tightly-specified
+  subtasks — boilerplate, codemods, test scaffolding, linting — especially
+  inside a parallel fan-out where volume matters more than depth. Steer
+  `gpt-5.6-terra` for everyday engineering that does not need the flagship.
 - Capability first, cost second (Decision Rule 3 unchanged). If the cheap
   tier misses the bar, redo on the flagship without asking.
 - Discovery: `orchestra-doctor.sh --models` prints the Codex config default
   and the OpenCode model catalog.
+
+### Codex Model Tiers (verified 2026-07-10, GPT-5.6 GA)
+
+| Model ID | API price in/out per 1M | Role |
+|---|---|---|
+| `gpt-5.6-sol` | $5 / $30 | Flagship: complex agentic work, multi-hour coding, cybersecurity; strongest benchmarks, fewer tokens than prior frontier |
+| `gpt-5.6-terra` | $2.50 / $15 | Everyday workhorse; matches or comes within 2–3 points of Sol on most benchmarks, ~GPT-5.5-competitive at half the cost |
+| `gpt-5.6-luna` | $1 / $6 | High-volume tier (~85% of Sol quality at a fifth the price): subagents, linting, quick edits, batch work |
+| `gpt-5.5` | — | Previous-generation frontier; still solid for complex coding and research workflows |
+| `gpt-5.4` / `gpt-5.4-mini` | — | Prior professional tier / fast subagent tier |
+| `gpt-5.3-codex-spark` | — | Text-only preview optimized for near-instant iteration |
+
+Effort tokens (`model_reasoning_effort`): `low`, `medium`, `high`, `xhigh`,
+`max`, `ultra` (the app shows these as Light / Medium / High / Extra High /
+Ultra; `max`/`ultra` may need enabling in settings). `ultra` is not longer
+thinking — it spawns provider-side parallel subagents and burns usage limits
+much faster; pair it with a `rollout_token_budget`, reserve it for one hard
+Sol/Terra task, and never stack it inside this skill's own fan-out (the
+multiplication is invisible until the bill). The orchestra's fan-out is
+usually the better tool: same parallelism, conductor-verified, cost-visible.
 
 ## Onboarding a New Model
 
