@@ -30,6 +30,9 @@
 #   * Uses an inline OpenCode agent that denies edits, bash, web, tasks,
 #     external directories, skill calls, and questions. --sealed also denies
 #     file reads/search so the model judges only the inline material.
+#   * Non-sealed mode can read ANY file under --dir, including untracked
+#     .env files; the secret guards screen only the prompt and attached
+#     filenames. Use --sealed or a clean tree for secret-adjacent repos.
 #   * OpenRouter models get pinned provider routing (throughput + require
 #     parameters) to avoid slow, low-quant backends.
 #   * OpenCode output is untrusted. The caller verifies and implements.
@@ -59,7 +62,7 @@ QUANT=""
 MAX_TOKENS=""
 
 usage() {
-  sed -n '2,35p' "$0"
+  sed -n '2,40p' "$0"
 }
 
 die() {

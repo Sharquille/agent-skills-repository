@@ -180,9 +180,19 @@ Lane defaults (override with `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
   Chosen for speed and volume, not depth; no reasoning-effort default.
 - `prose` → `openrouter/xiaomi/mimo-v2.5-pro`
 
-Use `--sealed` when all context is inline. Run OpenCode lanes sequentially —
-they share one local SQLite state and concurrent runs can fail with
-"database is locked".
+Sealed vs non-sealed is a containment choice, not just an ergonomic one. Use
+`--sealed` when all context is inline (attach a long brief with `--file`
+instead of pasting it). Without `--sealed`, the consultant can read every file
+under `--dir` itself — the cheapest way to audit many files, but that includes
+untracked files like `.env`; the secret guards only screen the prompt text and
+attached filenames, so never point a non-sealed consult at a tree holding
+secrets. Run OpenCode lanes sequentially — they share one local SQLite state
+and concurrent runs can fail with "database is locked".
+
+Capture wrapper output by redirecting stdout to a file and reading it after
+exit (`wrapper ... > out.md 2> err.log`; progress lines go to stderr). Never
+pipe a backgrounded wrapper through `tail`/`head` — the pipe can stall the
+call at zero bytes. The wrappers' own timeouts already bound a stalled run.
 
 ### If Codex Cannot Continue
 
