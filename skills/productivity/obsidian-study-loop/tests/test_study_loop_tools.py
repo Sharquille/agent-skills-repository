@@ -37,6 +37,7 @@ class VaultFixture(unittest.TestCase):
         self.vault = Path(self.temporary.name) / "Vault"
         (self.vault / ".obsidian").mkdir(parents=True)
         (self.vault / "_study" / "sessions").mkdir(parents=True)
+        (self.vault / "_study" / "visuals").mkdir(parents=True)
         (self.vault / "Notes").mkdir()
 
     def tearDown(self) -> None:
@@ -131,6 +132,43 @@ status: reviewed
             encoding="utf-8",
         )
         return note
+
+    def write_valid_visual(self, name: str = "2026-07-09-1.1-topic.html") -> Path:
+        artifact = self.vault / "_study" / "visuals" / name
+        artifact.write_text(
+            """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'none'; img-src data:; font-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="study-source" content="Notes/Topic.md">
+  <meta name="study-scope" content="1.1 Topic">
+  <meta name="study-generated" content="2026-07-09T12:30:00-0400">
+  <meta name="study-visual-version" content="1">
+  <title>1.1 Topic visual review</title>
+  <style>
+    a:focus-visible { outline: 3px solid currentColor; }
+    .flow { transition: transform 120ms ease; }
+    @media (prefers-reduced-motion: reduce) {
+      .flow { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <header><p>Visual review artifact - not an assessment</p></header>
+  <main id="main">
+    <h1>1.1 Topic</h1>
+    <a href="#flow">Jump to flow</a>
+    <svg id="flow" class="flow" aria-label="Topic relationship flow"></svg>
+  </main>
+</body>
+</html>
+""",
+            encoding="utf-8",
+        )
+        return artifact
 
 
 class SyncTests(VaultFixture):
@@ -236,6 +274,55 @@ class ValidatorTests(VaultFixture):
         self.make_valid_vault()
         issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
         self.assertEqual(issues, [])
+
+    def test_valid_visual_artifact_has_no_findings(self) -> None:
+        self.make_valid_vault()
+        self.write_valid_visual()
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_visual_artifact_rejects_remote_resource(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                '<svg id="flow" class="flow" aria-label="Topic relationship flow"></svg>',
+                '<img src="https://example.invalid/diagram.png" alt="Diagram">',
+            ),
+            encoding="utf-8",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("non-local src reference" in message for message in messages))
+
+    def test_visual_artifact_requires_disclaimer_and_metadata(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8")
+            .replace("Visual review artifact - not an assessment", "Study page")
+            .replace('<meta name="study-scope" content="1.1 Topic">\n', ""),
+            encoding="utf-8",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("missing visible label" in message for message in messages))
+        self.assertIn("missing study-scope metadata", messages)
+
+    def test_visual_artifact_rejects_persistence_and_forms(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8")
+            .replace("script-src 'none'", "script-src 'unsafe-inline'")
+            .replace(
+                "</main>",
+                '<form><input name="answer"></form><script>localStorage.setItem("x", "y")</script></main>',
+            ),
+            encoding="utf-8",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn("forbidden element: form", messages)
+        self.assertIn("forbidden element: input", messages)
+        self.assertTrue(any("persistent storage API" in message for message in messages))
 
     def test_state_path_traversal_is_rejected(self) -> None:
         self.write_protocol()
@@ -347,6 +434,18 @@ class ProtocolAlignmentTests(unittest.TestCase):
         for path in (SKILL_PATH, TEMPLATE_PATH):
             text = path.read_text(encoding="utf-8")
             self.assertIn("validate_study_vault.py", text, path)
+
+    def test_visual_contract_is_shared(self) -> None:
+        required = [
+            "study-visual-version",
+            "Content Security Policy",
+            "prefers-reduced-motion",
+            "Visual review artifact - not an assessment",
+        ]
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            for item in required:
+                self.assertIn(item, text, path)
 
 
 if __name__ == "__main__":

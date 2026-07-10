@@ -9,6 +9,7 @@ import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 
 
@@ -27,6 +28,37 @@ LEARNER_EDIT_START = re.compile(
 LEARNER_EDIT_END = re.compile(
     r"<!-- learner-edit:end\s+id=([^\s>]+)\s*-->", flags=re.MULTILINE
 )
+VISUAL_LABEL = "Visual review artifact - not an assessment"
+FORBIDDEN_VISUAL_ELEMENTS = {
+    "base",
+    "embed",
+    "form",
+    "iframe",
+    "input",
+    "object",
+    "select",
+    "textarea",
+}
+URL_ATTRIBUTES = {"action", "cite", "formaction", "href", "poster", "src", "srcset"}
+FORBIDDEN_SCRIPT_PATTERNS = {
+    "network API": re.compile(
+        r"\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b",
+        flags=re.IGNORECASE,
+    ),
+    "persistent storage API": re.compile(
+        r"\b(?:localStorage|sessionStorage|indexedDB|caches|document\.cookie)\b",
+        flags=re.IGNORECASE,
+    ),
+    "device or clipboard API": re.compile(
+        r"\b(?:geolocation|mediaDevices|clipboard\.write)\b",
+        flags=re.IGNORECASE,
+    ),
+    "dynamic code execution": re.compile(
+        r"\b(?:eval\s*\(|new\s+Function\s*\(|Function\s*\()",
+        flags=re.IGNORECASE,
+    ),
+    "dynamic import": re.compile(r"\bimport\s*\(", flags=re.IGNORECASE),
+}
 
 
 class ValidationError(RuntimeError):
@@ -38,6 +70,62 @@ class Issue:
     severity: str
     path: Path
     message: str
+
+
+class VisualArtifactParser(HTMLParser):
+    """Collect the small static surface needed for visual-artifact validation."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.elements: list[tuple[str, dict[str, str | None]]] = []
+        self.visible_text: list[str] = []
+        self.script_text: list[str] = []
+        self.style_text: list[str] = []
+        self.ids: set[str] = set()
+        self.fragments: list[str] = []
+        self._script_depth = 0
+        self._style_depth = 0
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        normalized_tag = tag.lower()
+        normalized_attrs = {name.lower(): value for name, value in attrs}
+        self.elements.append((normalized_tag, normalized_attrs))
+        element_id = normalized_attrs.get("id")
+        if element_id:
+            self.ids.add(element_id)
+        href = normalized_attrs.get("href")
+        if href and href.startswith("#") and len(href) > 1:
+            self.fragments.append(href[1:])
+        if normalized_tag == "script":
+            self._script_depth += 1
+        elif normalized_tag == "style":
+            self._style_depth += 1
+
+    def handle_startendtag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        self.handle_starttag(tag, attrs)
+        if tag.lower() == "script":
+            self._script_depth -= 1
+        elif tag.lower() == "style":
+            self._style_depth -= 1
+
+    def handle_endtag(self, tag: str) -> None:
+        normalized_tag = tag.lower()
+        if normalized_tag == "script" and self._script_depth:
+            self._script_depth -= 1
+        elif normalized_tag == "style" and self._style_depth:
+            self._style_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._script_depth:
+            self.script_text.append(data)
+        elif self._style_depth:
+            self.style_text.append(data)
+        elif data.strip():
+            self.visible_text.append(data.strip())
 
 
 def parse_args() -> argparse.Namespace:
@@ -320,6 +408,156 @@ def validate_note(
         issues.append(Issue("ERROR", path, "reviewed note still says RESEARCH NEEDED"))
 
 
+def visual_meta(
+    elements: list[tuple[str, dict[str, str | None]]], name: str
+) -> str | None:
+    for tag, attrs in elements:
+        if tag != "meta":
+            continue
+        if (attrs.get("name") or "").lower() == name.lower():
+            return attrs.get("content")
+    return None
+
+
+def visual_csp(
+    elements: list[tuple[str, dict[str, str | None]]]
+) -> str | None:
+    for tag, attrs in elements:
+        if tag != "meta":
+            continue
+        if (attrs.get("http-equiv") or "").lower() == "content-security-policy":
+            return attrs.get("content")
+    return None
+
+
+def allowed_local_url(value: str) -> bool:
+    stripped = value.strip()
+    return (
+        not stripped
+        or stripped == "#"
+        or stripped.startswith("#")
+        or stripped.lower().startswith("data:image/")
+    )
+
+
+def validate_visual_artifact(path: Path, vault: Path, issues: list[Issue]) -> None:
+    visuals_root = vault / "_study" / "visuals"
+    if path.is_symlink():
+        try:
+            if not path.resolve().is_relative_to(visuals_root):
+                issues.append(
+                    Issue("ERROR", path, "visual artifact symlink resolves outside _study/visuals")
+                )
+                return
+        except (OSError, RuntimeError) as exc:
+            issues.append(Issue("ERROR", path, f"visual artifact symlink is unsafe: {exc}"))
+            return
+
+    text = read_utf8(path, issues)
+    if text is None:
+        return
+    parser = VisualArtifactParser()
+    try:
+        parser.feed(text)
+        parser.close()
+    except Exception as exc:  # HTMLParser surfaces malformed entities as ValueError.
+        issues.append(Issue("ERROR", path, f"cannot parse HTML: {exc}"))
+        return
+
+    elements = parser.elements
+    visible_text = " ".join(parser.visible_text)
+    tags = [tag for tag, _ in elements]
+    if VISUAL_LABEL not in visible_text:
+        issues.append(Issue("ERROR", path, f"missing visible label: {VISUAL_LABEL}"))
+
+    html_attrs = next((attrs for tag, attrs in elements if tag == "html"), {})
+    if not html_attrs.get("lang"):
+        issues.append(Issue("ERROR", path, "html element is missing lang"))
+    if "main" not in tags:
+        issues.append(Issue("ERROR", path, "missing main landmark"))
+    if tags.count("h1") != 1:
+        issues.append(Issue("ERROR", path, "must contain exactly one h1"))
+
+    charset_present = any(
+        tag == "meta" and bool(attrs.get("charset")) for tag, attrs in elements
+    )
+    if not charset_present:
+        issues.append(Issue("ERROR", path, "missing meta charset"))
+    if not visual_meta(elements, "viewport"):
+        issues.append(Issue("ERROR", path, "missing viewport metadata"))
+    if (visual_meta(elements, "referrer") or "").lower() != "no-referrer":
+        issues.append(Issue("ERROR", path, "referrer policy must be no-referrer"))
+    for field in ("study-source", "study-scope", "study-generated", "study-visual-version"):
+        if not visual_meta(elements, field):
+            issues.append(Issue("ERROR", path, f"missing {field} metadata"))
+
+    csp = visual_csp(elements)
+    required_csp = (
+        "default-src 'none'",
+        "connect-src 'none'",
+        "form-action 'none'",
+        "base-uri 'none'",
+    )
+    if csp is None:
+        issues.append(Issue("ERROR", path, "missing Content-Security-Policy metadata"))
+    else:
+        csp_normalized = " ".join(csp.split()).lower()
+        for directive in required_csp:
+            if directive not in csp_normalized:
+                issues.append(Issue("ERROR", path, f"CSP is missing {directive}"))
+        if "*" in csp:
+            issues.append(Issue("ERROR", path, "CSP must not contain a wildcard source"))
+
+    for tag, attrs in elements:
+        if tag in FORBIDDEN_VISUAL_ELEMENTS:
+            issues.append(Issue("ERROR", path, f"forbidden element: {tag}"))
+        if tag == "script" and attrs.get("src"):
+            issues.append(Issue("ERROR", path, "external script source is forbidden"))
+        if tag == "script" and (attrs.get("type") or "").lower() == "module":
+            issues.append(Issue("ERROR", path, "module scripts are not file-URL portable"))
+        for name, value in attrs.items():
+            if name.startswith("on"):
+                issues.append(Issue("ERROR", path, f"inline event handler is forbidden: {name}"))
+            if name in URL_ATTRIBUTES and value is not None:
+                values = value.split(",") if name == "srcset" else [value]
+                if any(not allowed_local_url(item.strip().split()[0]) for item in values if item.strip()):
+                    issues.append(Issue("ERROR", path, f"non-local {name} reference: {value}"))
+        if tag == "svg":
+            has_name = bool(attrs.get("aria-label") or attrs.get("aria-labelledby"))
+            decorative = (attrs.get("aria-hidden") or "").lower() == "true"
+            if not has_name and not decorative:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        "svg must have an accessible name or aria-hidden=true",
+                    )
+                )
+
+    for fragment in parser.fragments:
+        if fragment not in parser.ids:
+            issues.append(Issue("ERROR", path, f"fragment target does not exist: #{fragment}"))
+
+    scripts = "\n".join(parser.script_text)
+    for label, pattern in FORBIDDEN_SCRIPT_PATTERNS.items():
+        if pattern.search(scripts):
+            issues.append(Issue("ERROR", path, f"forbidden {label} in inline script"))
+
+    styles = "\n".join(parser.style_text)
+    if re.search(r"@import\b", styles, flags=re.IGNORECASE):
+        issues.append(Issue("ERROR", path, "CSS @import is forbidden"))
+    for match in re.finditer(r"url\(([^)]+)\)", styles, flags=re.IGNORECASE):
+        target = match.group(1).strip(" \t\r\n\"'")
+        if not allowed_local_url(target):
+            issues.append(Issue("ERROR", path, f"non-local CSS url reference: {target}"))
+    if ("animation" in styles or "transition" in styles) and not re.search(
+        r"prefers-reduced-motion\s*:\s*reduce", styles, flags=re.IGNORECASE
+    ):
+        issues.append(Issue("ERROR", path, "motion is present without a reduced-motion override"))
+    if any(tag in {"a", "button", "details", "summary"} for tag in tags) and ":focus-visible" not in styles:
+        issues.append(Issue("ERROR", path, "interactive content lacks a focus-visible style"))
+
+
 def validate_state(vault: Path, issues: list[Issue]) -> None:
     path = vault / "_study" / "state.json"
     if not path.exists():
@@ -419,6 +657,13 @@ def validate_vault(vault: Path, notes_dir: Path) -> list[Issue]:
             issues.append(
                 Issue("ERROR", vault, f"duplicate study-check id {marker_id}: {locations}")
             )
+
+    visuals_dir = vault / "_study" / "visuals"
+    if visuals_dir.exists() and not visuals_dir.is_dir():
+        issues.append(Issue("ERROR", visuals_dir, "visuals path is not a directory"))
+    elif visuals_dir.is_dir():
+        for artifact in sorted(visuals_dir.glob("*.html")):
+            validate_visual_artifact(artifact, vault, issues)
     return issues
 
 

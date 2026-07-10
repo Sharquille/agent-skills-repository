@@ -217,8 +217,9 @@ The validator never edits the vault. It checks the `state.json` schema and
 active-session boundary, required session frontmatter, canonical H2 group
 ordering, duplicate headings, final `## Session log`, logged note paths,
 balanced learner/study-check markers, duplicate study-check IDs, pending gaps
-inside reviewed notes, and answered checks that lack review feedback. An
-unconsumed quiz-progress block is a warning because it may represent a valid
+inside reviewed notes, answered checks that lack review feedback, and every
+HTML file under `_study/visuals/` against the offline visual-artifact contract.
+An unconsumed quiz-progress block is a warning because it may represent a valid
 interrupted quiz; integrity violations are errors. It exits `0` when no errors
 exist and `1` when errors require attention. Resolve errors deliberately in the
 normal recovery flow rather than adding an automatic `--fix` mode.
@@ -816,6 +817,49 @@ current-scope HTML directly into this vault.
    artifact must not collect, score, store, or export answers.
 7. Log generation under `## Session log`, for example:
    "Generated visual review artifact for 2.3 -> `_study/visuals/...html`."
+
+### Artifact contract and quality gate
+
+When available, read `references/visual-review-standard.md` before generating
+or overhauling visual artifacts. The following core contract is authoritative
+even when that reference is unavailable:
+
+- Use one logical `<h1>`, a `<main>` landmark, `<html lang>`, UTF-8 charset,
+  viewport metadata, and a visible focus treatment for interactive elements.
+- Give informative inline SVGs an accessible name with `aria-label` or
+  `aria-labelledby`; mark decorative SVGs `aria-hidden="true"`.
+- Reflow without losing information at 320 CSS pixels. A complex table or code
+  sample may use a deliberately scrollable wrapper.
+- If motion is present, include a `prefers-reduced-motion: reduce` override.
+  Prefer native `<details>`/`<summary>` over custom JavaScript disclosures.
+- Include `study-source`, `study-scope`, `study-generated`, and
+  `study-visual-version` metadata. Source values are vault-local identifiers,
+  never remote URLs. Use visual contract version `1`.
+- Add `referrer=no-referrer` and a Content Security Policy that denies all
+  default and network access. At minimum it must contain
+  `default-src 'none'`, `connect-src 'none'`, `form-action 'none'`, and
+  `base-uri 'none'`. Permit inline styles or classic inline scripts only when
+  the page actually needs them; never permit a host or wildcard source.
+- Do not use forms, inputs, textareas, selects, iframes, objects, embeds,
+  external or relative resource links, inline event-handler attributes,
+  module scripts, network APIs, browser storage, cookies, device APIs, dynamic
+  imports, `eval`, or function constructors. Fragment links and inline
+  `data:image/` resources are the only URL-bearing exceptions.
+- Treat print styling as recommended, not a release gate. Treat browser console
+  output as diagnostic because extensions can add unrelated messages.
+
+Before logging or presenting a new or changed artifact, run:
+
+```text
+scripts/validate_study_vault.py <VAULT_PATH>
+```
+
+Any visual-artifact error blocks release. Fix the file and rerun the validator;
+do not add an automatic fixer or weaken the contract to pass an artifact. Then
+open the local file in a browser and visually inspect it at a wide and narrow
+viewport. Confirm readable hierarchy, no clipped content, visible keyboard
+focus, and no attempted network access. This browser pass is human-facing QA,
+not mastery evidence.
 
 ### Mastery boundary
 
