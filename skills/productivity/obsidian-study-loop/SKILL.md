@@ -935,14 +935,29 @@ For each assessed in-scope objective, write one `##` section:
 
 > [!IMPORTANT]
 > **RESEARCH NEEDED** — you couldn't recall this in the quiz on <date>.
-> Research and fill this in yourself, then run a review. Replace the `Write
-> here.` sentence below, but keep the boundary comments.
+> **Prompt:** <one or two self-contained sentences posing the exact question to
+> research — what to identify, compare, sequence, or explain. State the task in
+> full so this stub stands alone without the quiz, and never supply the answer.>
+>
+> Research and fill this in yourself below, then run a review. Replace the
+> `Write here.` sentence, but keep the boundary comments.
 
 <!-- gap:<objective-slug> -->
 <!-- learner-edit:start id=gap-<objective-slug> -->
 Write here.
 <!-- learner-edit:end id=gap-<objective-slug> -->
 ```
+
+The `**Prompt:**` line is mandatory and makes the stub self-contained: a learner
+reading only this section must know exactly what to research without seeing the
+quiz. Derive it from the specific quiz question that was missed, or the
+section's learning outcome, and restate it as one or two declarative or
+question-shaped sentences ("Which…?", "What…?") that preserve the original
+cognitive demand — if the quiz asked the learner to identify vectors, the prompt
+asks them to identify vectors, not merely define a term. Never embed the answer
+or the exact term being tested (do not write "explain how macro-enabled Office
+documents spread malware" when that document type is the answer). An
+objective-name heading alone is not a prompt.
 
 The learner-edit boundaries are user-owned space. During review, preserve the
 user's original wording long enough to score it, then make required corrections
