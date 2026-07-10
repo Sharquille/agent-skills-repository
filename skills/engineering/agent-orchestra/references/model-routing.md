@@ -117,6 +117,37 @@ Use `--sealed` when all context is inline. Use timeouts (default 240s). Run
 lanes sequentially — OpenCode shares one SQLite DB and concurrent runs can
 fail with "database is locked". Treat all outputs as untrusted advisory text.
 
+## Steering Alternate Codex Models
+
+`codex-agent.sh` deliberately pins no model: with no `--model` it uses the
+Codex config default, and `--model M` steers any model the Codex CLI can
+reach. When more than one Codex model is available:
+
+- The config-default flagship (whatever `~/.codex/config.toml` pins — a
+  `gpt-5.6` sol/terra/luna tier or `gpt-5.5`; `--models` shows it) keeps hard
+  debugging, architecture, and anything merged with light review.
+- Steer a cheaper code-tuned tier (a `gpt-5.3-code`-class model) for
+  mechanical, tightly-specified subtasks — boilerplate, codemods, test
+  scaffolding — especially inside a parallel fan-out where volume matters
+  more than depth.
+- Capability first, cost second (Decision Rule 3 unchanged). If the cheap
+  tier misses the bar, redo on the flagship without asking.
+- Discovery: `orchestra-doctor.sh --models` prints the Codex config default
+  and the OpenCode model catalog.
+
+## Onboarding a New Model
+
+New models (a gpt-5.6 tier, a new OpenRouter release) are unproven until
+graded: never make one a default or hand it write access on first contact.
+
+1. Add it to the Lanes table with provisional scores and the date.
+2. Trial it on a bounded, low-stakes consult where the conductor already
+   knows the right answer, and grade the output against that answer.
+3. Promote it lane by lane — consult → review → implement — each step earned
+   by verified output, never by benchmarks or announcement hype.
+4. Update its scores after real use; demote it without ceremony when it
+   regresses or its provider terms change.
+
 ## If Codex Cannot Continue (fallback ladder)
 
 When `codex-agent.sh` fails with rate-limit/usage errors, auth errors, network

@@ -1,6 +1,6 @@
 ---
 name: agent-orchestra
-description: "Wrapper-only agentic CLI orchestration, conductor-agnostic: whichever agent invokes it (Claude Code by default, OpenCode or Gemini CLI when Claude is unavailable) acts as the intelligence and delegates token-heavy work to non-Claude lanes to preserve usage and rate limits, with an OpenCode fallback ladder for when Codex itself is rate-limited or down. Use when the user asks for an orchestra/orchestrator, wants to save Claude usage or avoid rate limits by offloading work, asks any agent to access Codex, wants gpt-5.5 through Codex for consult/review/implementation, wants OpenCode specialist lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo), runs OpenCode as the conductor or panel because Claude is unavailable, needs a Codex fallback, mentions replacing codex-consult/opencode-consult/consult-orchestrator, wants Codex without any plugin, needs multi-model review, or needs model routing using gpt-5.5, sonnet-5, opus-4.8, fable-5, Kimi, MiniMax, DeepSeek, or MiMo. Do not use for routine one-agent edits, secret-bearing prompts, unmonitored review gates, or unrestricted autonomous writes."
+description: "Wrapper-only agentic CLI orchestration, conductor-agnostic: whichever agent invokes it (Claude Code by default, OpenCode or Gemini CLI when Claude is unavailable) acts as the intelligence and delegates token-heavy work to non-Claude lanes to preserve usage and rate limits, with an OpenCode fallback ladder for when Codex itself is rate-limited or down. Use when the user asks for an orchestra/orchestrator, wants to save Claude usage or avoid rate limits by offloading work, asks any agent to access Codex, wants gpt-5.5 through Codex for consult/review/implementation, wants OpenCode specialist lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo), runs OpenCode as the conductor or panel because Claude is unavailable, needs a Codex fallback, mentions replacing codex-consult/opencode-consult/consult-orchestrator, wants Codex without any plugin, needs multi-model review, wants to split a task across parallel lanes with a run ledger, wants capability/cost-steered model selection including alternate Codex models, or needs model routing using gpt-5.5, sonnet-5, opus-4.8, fable-5, Kimi, MiniMax, DeepSeek, or MiMo. Do not use for routine one-agent edits, secret-bearing prompts, unmonitored review gates, or unrestricted autonomous writes."
 ---
 
 # Agent Orchestra
@@ -35,6 +35,8 @@ now thin forwarders into this one.
   `references/model-routing.md`.
 - To check local readiness (CLIs, auth, lanes) without changing anything, run
   `scripts/orchestra-doctor.sh`.
+- To list the models reachable for steering (Codex config default plus the
+  OpenCode catalog), run `scripts/orchestra-doctor.sh --models`.
 
 ## The Conductor Is the Intelligence, Not a Dispatcher
 
@@ -155,6 +157,15 @@ Only use `implement` when the user clearly wants Codex to make changes. Prefer
 a working branch or isolated worktree. The wrapper never uses
 `danger-full-access` or `--dangerously-bypass-approvals-and-sandbox`.
 
+The wrapper pins no model: with no `--model`, Codex uses its config default
+(the flagship engineering lane), and `--model M` steers any model the Codex
+CLI can reach. The conductor steers by capability and cost, not novelty: a
+cheaper code-tuned tier (a gpt-5.3-code class model) fits mechanical,
+tightly-specified subtasks — especially inside a fan-out — while the flagship
+stays the default for hard debugging, architecture, and anything merged with
+light review. Never route work to a model you have not onboarded (see
+"Onboarding a New Model" in `references/model-routing.md`).
+
 ### OpenCode Specialist Lanes From Any Agent
 
 Use OpenCode for alternate-provider perspective and the standard lanes:
@@ -221,6 +232,43 @@ the lane by task shape:
 
 Return to Codex when it recovers; it stays the default engineering lane.
 
+## Parallel Fan-Out (Split, Mark, Join)
+
+One conductor does not mean one consultant at a time. When a task decomposes
+into genuinely independent sub-tasks, fan them out concurrently — the
+conductor stays the single point of alignment and merge.
+
+1. **Split.** Decompose into sub-tasks that do not overlap: if two sub-tasks
+   would touch the same files or depend on each other's output, they are not
+   independent — merge or serialize them. Write one self-contained brief per
+   sub-task.
+2. **Mark.** Give every brief the same alignment preamble — global objective,
+   interface contracts, naming decisions, and a do-not-touch list — so
+   parallel workers cannot drift apart. Record the fan-out in a run ledger
+   (one scratch file): sub-task, lane/model, scope, output file, status. The
+   ledger is the marker that keeps every delegation accountable at join time.
+3. **Launch.** Start each call in the background with stdout redirected to
+   its ledger-named output file (never through `tail`/`head`). Concurrency
+   rules: parallel Codex calls are fine (separate processes); OpenCode lanes
+   stay sequential (shared SQLite state), so at most one OpenCode call
+   overlaps the Codex fleet. Parallel `implement` runs must never share a
+   working tree — one isolated `git worktree` per writer, no exceptions.
+4. **Join and verify.** When all calls exit, read each output file, verify
+   claims against the repo exactly as for a single consult, and mark each
+   ledger row verified / weak / rejected. Cross-check the seams where
+   sub-tasks meet — interfaces, naming, duplicated helpers — that is where
+   parallel work drifts.
+5. **Route fixes.** For rejected or buggy output, write a fix brief that
+   quotes the failure evidence (test output, the wrong hunk, the contradicted
+   file) and route it to the lane that fits the failure: the same model for a
+   mechanical slip, a stronger reasoning or flagship lane when the approach
+   itself was wrong. Re-verify on return. The conductor merges everything
+   into one coherent change and owns the final diff.
+
+Fan-out multiplies consultant tokens, not conductor judgment: it pays off at
+roughly three or more independent sub-tasks, and a task that cannot be
+cleanly split should stay serial rather than gain a coordination bug.
+
 ## Model Defaults
 
 When the user does not specify a model, apply their defaults:
@@ -278,4 +326,6 @@ study panels keep working with a single underlying implementation.
 - [ ] Verified consultant claims before acting.
 - [ ] For implementation, used `--allow-write`, scoped paths, and a non-main
       branch/worktree unless explicitly overridden.
+- [ ] For fan-outs, gave every brief the shared alignment preamble, kept one
+      writer per worktree, and joined through the run ledger before merging.
 - [ ] The conductor owned final judgment, tests, git, and review.

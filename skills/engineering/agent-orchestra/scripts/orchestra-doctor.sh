@@ -2,6 +2,9 @@
 # Read-only readiness check for Agent Orchestra integrations.
 # Checks the two direct integration paths (Codex CLI, OpenCode CLI), their
 # auth, the canonical wrappers, and the standard delegation lanes.
+# Pass --models to list the models reachable for steering instead: the Codex
+# config default (override per call with codex-agent.sh --model M) and the
+# full OpenCode catalog (usable via consult-opencode.sh --model provider/model).
 
 set -u
 
@@ -30,6 +33,34 @@ have() {
 version_of() {
   "$@" 2>/dev/null | head -n 1
 }
+
+# --models: model discovery for conductor steering (read-only, then exit).
+if [ "${1:-}" = "--models" ]; then
+  codex_cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
+  printf 'Codex (steer per call: codex-agent.sh <mode> --model M):\n'
+  if have codex; then
+    if [ -f "$codex_cfg" ]; then
+      model_lines="$(grep -E '^[[:space:]]*model(_reasoning_effort)?[[:space:]]*=' "$codex_cfg" 2>/dev/null | sed 's/^[[:space:]]*/  /')"
+      if [ -n "$model_lines" ]; then
+        printf '%s\n' "$model_lines"
+      else
+        printf '  (no model pinned in config.toml; Codex uses its built-in default)\n'
+      fi
+    else
+      printf '  (no config.toml at %s)\n' "$codex_cfg"
+    fi
+  else
+    printf '  codex CLI not on PATH\n'
+  fi
+  printf '\nOpenCode catalog (steer via --model provider/model; lane defaults via ORCHESTRA_LANE_*):\n'
+  if have opencode; then
+    opencode models 2>/dev/null || printf '  (could not list models; run: opencode auth login)\n'
+  else
+    printf '  opencode CLI not on PATH\n'
+  fi
+  printf '\nOnboard unfamiliar models before routing work to them (references/model-routing.md).\n'
+  exit 0
+fi
 
 printf 'Agent Orchestra readiness check\n'
 printf 'Skill: %s\n\n' "$SKILL_DIR"
