@@ -1,6 +1,6 @@
 ---
 name: codex-consult
-description: "Deprecated compatibility front door for read-only Codex consults. Prefer agent-orchestra for all new wrapper-first Codex CLI, gpt-5.5, implementation, review, or multi-model routing work. Use this only when a legacy prompt explicitly says codex-consult or an existing workflow needs the bundled `scripts/consult-codex.sh` read-only wrapper."
+description: "Deprecated compatibility front door for read-only Codex consults. Prefer agent-orchestra for all new wrapper-first Codex CLI, flagship-lane (gpt-5.6-sol; formerly gpt-5.5), implementation, review, or multi-model routing work. Use this only when a legacy prompt explicitly says codex-consult or an existing workflow needs the bundled `scripts/consult-codex.sh` read-only wrapper."
 ---
 
 # Codex Consult Compatibility
@@ -11,7 +11,7 @@ wrapper-first Codex CLI caller, implementation guardrails, and OpenCode routing.
 For new work:
 
 ```text
-Use $agent-orchestra to route Codex consult, review, implementation, gpt-5.5 work, or multi-model review.
+Use $agent-orchestra to route Codex consult, review, implementation, flagship (gpt-5.6-sol) work, or multi-model review.
 ```
 
 The bundled script keeps its old interface but is now a forwarder into the

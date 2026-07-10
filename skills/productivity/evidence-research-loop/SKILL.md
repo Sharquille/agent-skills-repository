@@ -1,6 +1,6 @@
 ---
 name: evidence-research-loop
-description: "Answer a specific factual or technical question through a disk-backed, citation-audited research pipeline: decompose question → find primary sources → extract evidence → identify conflicts → synthesize → citation audit. Built on agent-orchestra: the conductor thinks (decomposition, adjudication, synthesis) while heavy source reading is delegated to Codex gpt-5.5 and OpenCode lanes to preserve Claude usage. Use when the user wants an evidence-first answer, primary-source research, quote-level citations, adjudication of conflicting sources, a defensible research memo, or says 'research this properly / with sources / with citations'. Do not trigger for full academic literature reviews (use literature-review), study-gap query planning (use study-research-queries), or quick lookups a single authoritative source settles."
+description: "Answer a specific factual or technical question through a disk-backed, citation-audited research pipeline: decompose question → find primary sources → extract evidence → identify conflicts → synthesize → citation audit. Built on agent-orchestra: the conductor thinks (decomposition, adjudication, synthesis) while heavy source reading is delegated to the Codex flagship (gpt-5.6-sol) and OpenCode lanes to preserve Claude usage. Use when the user wants an evidence-first answer, primary-source research, quote-level citations, adjudication of conflicting sources, a defensible research memo, or says 'research this properly / with sources / with citations'. Do not trigger for full academic literature reviews (use literature-review), study-gap query planning (use study-research-queries), or quick lookups a single authoritative source settles."
 # --- provenance ---
 category: productivity
 source: self-authored on top of agent-orchestra
@@ -20,7 +20,7 @@ This skill is an application of `agent-orchestra`, and inherits its authority
 model wholesale: the conductor (whichever agent invoked this — Claude Code by
 default) does the thinking — decomposition, brief-writing, adjudication,
 synthesis, final judgment — while input-heavy source reading is delegated to
-Codex (`gpt-5.5`) and the OpenCode lanes so conductor quota is spent on
+Codex (the flagship lane, `gpt-5.6-sol`) and the OpenCode lanes so conductor quota is spent on
 judgment, not reading.
 
 One hard constraint shapes the whole pipeline: **consult lanes have no web

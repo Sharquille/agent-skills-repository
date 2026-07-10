@@ -1,6 +1,6 @@
 ---
 name: consult-orchestrator
-description: "Deprecated compatibility alias for agent-orchestra. Prefer agent-orchestra for wrapper-first Codex CLI/gpt-5.5 routing, guarded Codex implementation, OpenCode specialist lanes, model selection, and multi-model review. Use this only when a legacy prompt explicitly says consult-orchestrator or an existing project/study workflow expects the old name."
+description: "Deprecated compatibility alias for agent-orchestra. Prefer agent-orchestra for wrapper-first Codex CLI flagship routing (gpt-5.6-sol; formerly gpt-5.5), guarded Codex implementation, OpenCode specialist lanes, model selection, and multi-model review. Use this only when a legacy prompt explicitly says consult-orchestrator or an existing project/study workflow expects the old name."
 ---
 
 # Consult Orchestrator Compatibility

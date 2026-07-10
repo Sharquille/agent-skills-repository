@@ -43,8 +43,9 @@ See [deploy-agent-skills](skills/engineering/deploy-agent-skills/SKILL.md) for t
 
 Use [agent-orchestra](skills/engineering/agent-orchestra/) as the canonical
 Claude Code/Codex/OpenCode routing skill. It is wrapper-only — no plugins:
-`scripts/codex-agent.sh` covers Codex consult/review/implementation (gpt-5.5,
-the primary engineering lane), `scripts/consult-opencode.sh` covers the
+`scripts/codex-agent.sh` covers Codex consult/review/implementation (the
+config-default flagship — `gpt-5.6-sol` under current policy — the primary
+engineering lane), `scripts/consult-opencode.sh` covers the
 OpenCode specialist lanes (`--lane code` Kimi K2.7 Code, `--lane reasoning`
 MiniMax M3 at high reasoning effort, `--lane context` DeepSeek V4 Flash for
 cheap ~1M-context sweeps, `--lane prose` MiMo v2.5 Pro), and
