@@ -444,6 +444,16 @@ For "work on task N.N":
    `… project <project.json>` guard the log and state shape before a transition.
    **Kill-switch** on unexpected egress or live-malware beaconing.
 
+**Stuck-user support ladder.** When the user reports being stuck on a task
+step, escalate support one level at a time instead of dumping the full
+solution: restate the step's goal and expected end state; direct attention to
+the relevant brief section, ledger row, or diagnostic to run; reveal the next
+subgoal or a simpler analogous case; work exactly one step together and record
+it in the steps ledger, then hand execution back. Scaffold, not configure —
+but never withhold either: if the user explicitly asks for the full fix, give
+it with reasoning and record it as conductor-assisted in the steps ledger so
+the evidence trail stays honest.
+
 The conductor records every checkpoint; domain skills never checkpoint. Before
 advancing `project.json` `phase`, validate the move with
 `scripts/state_check.sh phase --project <dir> --to <next-phase>` (backward moves

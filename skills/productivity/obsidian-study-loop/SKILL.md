@@ -732,26 +732,36 @@ Trigger examples:
    `## Study content`, but keep the chat experience conversational and
    one-question-at-a-time.
 10. Do not reveal an answer until the user has responded to that question.
-11. After each answer, tell the user what was right, what was wrong or missing,
+11. Honor mid-quiz learner controls without corrupting the evidence. If the
+   user asks for a hint, step down a short ladder one level per request:
+   restate what the question is really asking, then direct attention to the
+   relevant feature of the scenario, then recall the needed principle or a
+   simpler analogous case. Never reveal the answer as a hint. If the user says
+   "show me" or "skip", give the correct answer with reasoning and score only
+   what the user produced before the reveal. Record `hint` or `revealed` in
+   that question's progress line; a hint-assisted correct answer caps at
+   `partial` for that evidence item and does not count as the independent
+   applied item that `high` tutor confidence requires.
+12. After each answer, tell the user what was right, what was wrong or missing,
    and the correct answer before moving on.
-12. Keep enough notes during the quiz to assess each objective later.
-13. When key terms are provided, include term-definition recall and at least one
+13. Keep enough notes during the quiz to assess each objective later.
+14. When key terms are provided, include term-definition recall and at least one
    question requiring the user to distinguish similar terms. Also include at
    least one pure free-recall prompt per section — describe a scenario and ask
    the user to produce the term or mechanism with no candidate list in sight.
    Recognition among presented options is weaker evidence than production.
-14. When certification objectives are provided, include questions that map the
+15. When certification objectives are provided, include questions that map the
    user's understanding back to those exam objectives.
-15. When lab or simulator expectations are provided, include practical or
+16. When lab or simulator expectations are provided, include practical or
    scenario questions about what the user would do in that environment.
-16. For applied questions, state a concrete subject or asset, situation or
+17. For applied questions, state a concrete subject or asset, situation or
     failure path, and relevant facts. Ask the user to explain why the answer or
     decision fits that context, not merely name a term.
-17. When practical, ask for learner confidence before giving feedback. Score
+18. When practical, ask for learner confidence before giving feedback. Score
     each answer with the universal 8-point rubric; the scores feed the required
     `## Assessment — <scope>` block in Phase 4 (the separate `## Mastery
     evidence` ledger stays optional).
-18. Record the resolved scope for assessment and notes. Examples: `full-session`,
+19. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
 ## Optional Visual Review Artifact
