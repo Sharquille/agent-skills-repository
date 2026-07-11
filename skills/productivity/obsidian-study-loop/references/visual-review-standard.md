@@ -25,11 +25,14 @@ Ground the design in the subject:
   terminal chrome, or arbitrary numbered steps unless the source material
   genuinely contains metrics, commands, or sequence.
 
-## Default field-notes system
+## Default tactile study surface (v2)
 
-The default experience is an editorial field-notes interface inspired by WP
-Notes. It is defined by flow and information architecture, not copied brand
-chrome.
+The default experience is the tactile study surface: a precise, keyboard-
+friendly technical reading interface defined by flow and information
+architecture, not decoration. Build it from the bundled template in
+`tactile-study-surface/` (chrome, compiled behaviors, assembler, worked
+example — see its `SPEC.md`), so every artifact shares byte-identical chrome
+and only the per-scope content module changes.
 
 ### Narrative flow
 
@@ -47,16 +50,20 @@ scope controls the page, never the template.
 
 ### Visual grammar
 
-- Editorial paper surface, thin dividers, coral emphasis, restrained tinted
-  selections, compact monospace utility labels, and an Inter-compatible local
-  system font stack.
-- A compact identity/scope rail may become a horizontal index on narrow screens.
-- One thesis and one signature visual dominate. Supporting content uses
-  comparison strips, indexed sequences, term clusters, and quiet note blocks.
-- Prefer spacing, rules, and typographic contrast over a grid of rounded cards.
-  Rich elements must communicate relationships or state.
-- Design mobile-first at 320 CSS pixels, then expand into an editorial two-column
-  composition when the material benefits from margin notes or an index rail.
+- Tactile technical surface: oklch tokens, system font stacks only, 1px
+  borders with hard asymmetric shadows, small radii, a subtle graph-paper
+  texture, compact monospace utility labels, and one per-scope accent hue
+  with coral reserved for traps and tells.
+- Stable frame from the template: sticky command bar (scope code, keyboard
+  hints, theme toggle), scrollspy index rail that becomes a wrapped
+  horizontal index on narrow screens, one strong thesis, numbered section
+  panels, retrieval deck last, traceability footer.
+- One thesis and one signature visual dominate. Supporting content uses the
+  template primitives — cards with tags and chips, flows, duo splits, vs
+  pairs, tables in scroll wrappers, and contrast callouts.
+- Light is the reading default; dark follows `prefers-color-scheme` or the
+  in-memory toggle. Design mobile-first at 320 CSS pixels; the frame
+  collapses to a single column below 900 pixels.
 
 ### Mind-map routing
 
@@ -68,11 +75,14 @@ detail on selection, but must not collect answers or imply scoring.
 
 ### TypeScript authoring boundary
 
-Non-trivial interactions are authored in TypeScript with explicit view, node,
-and content types. Compile to minimal classic inline JavaScript before release.
-The released artifact remains one offline HTML file: no TypeScript runtime,
-JSX, Tailwind runtime, package import, module script, source map, or external
-dependency. Static pages should remain script-free.
+Non-trivial interactions are authored in TypeScript with explicit types; the
+template's `behaviors.ts` is the source of truth. Compile with the TypeScript
+7 native compiler (`npx -y -p typescript@7 tsc behaviors.ts --strict --target
+es2019 --lib dom,es2019 --noEmitOnError`) to minimal classic inline
+JavaScript before release. The released artifact remains one offline HTML
+file: no TypeScript runtime, JSX, Tailwind runtime, package import, module
+script, source map, or external dependency. Static pages should remain
+script-free.
 
 ### Content-preservation gate
 
@@ -139,7 +149,11 @@ A strong page usually contains:
 
 Retrieval cues use language such as `Trace the path`, `Explain the boundary`,
 or `Compare these controls`. They do not use `submit`, `score`, `correct`,
-`incorrect`, `pass`, `fail`, `mastered`, or answer-key framing.
+`incorrect`, `pass`, `fail`, `mastered`, or answer-key framing. The deck's
+reveal controls and got-it/again self-marks are permitted precisely because
+they are ephemeral: in-memory only, reset on reload, never collected, stored,
+exported, scored, or written to mastery evidence — adding persistence to them
+breaches this contract.
 
 ## Forbidden surface
 

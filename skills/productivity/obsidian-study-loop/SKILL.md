@@ -800,26 +800,27 @@ SVG are allowed when they support the visual explanation. Do not add remote
 scripts, stylesheets, fonts, images, telemetry, accounts, persistence, or
 network calls.
 
-### Approved field-notes experience
+### Approved tactile study surface (v2)
 
-Use the WP Notes-inspired field-notes system as the default visual language.
-This is a structural and typographic system, not a skin:
+Use the tactile study surface as the default visual language, built from the
+bundled template in `references/tactile-study-surface/` (read its `SPEC.md`
+before generating). This is a structural and typographic system, not a skin:
 
 - Build a deliberate study narrative: **orient -> map or classify -> contrast
   -> respond or apply -> retrieve**. Omit a stage only when the scope does not
   support it; never invent content to fill the sequence.
-- Use an editorial reading surface with coral emphasis, thin rules, compact
-  utility labels, restrained filled states, and an Inter-compatible local
-  system stack. Typography and whitespace must establish hierarchy before
-  cards or decoration do.
-- Keep a stable page frame: compact identity/scope rail, one strong thesis,
-  indexed section navigation, a dominant concept-native visual, supporting
-  comparisons, and retrieval disclosures at the end.
-- Use rich UI elements only when they carry study meaning: indexed navigation,
-  selected branches, term chips, comparison strips, process rails, native
-  disclosures, and traceability. Do not add dashboard metrics, ornamental
-  cards, generic hero chrome, or controls that do not change an explanatory
-  view.
+- Keep the stable page frame the template provides: sticky command bar with
+  scope code and keyboard hints, scrollspy index rail, one strong thesis,
+  numbered section panels, and the retrieval deck last. oklch tokens, system
+  font stacks only, hard asymmetric shadows, one per-scope accent hue, light
+  default with dark via `prefers-color-scheme` plus an in-memory toggle.
+- Assemble with `tactile-study-surface/assemble.py` and a per-scope content
+  module so every artifact carries byte-identical chrome; express content
+  through the template's primitives (cards, flows, duos, vs pairs, tables,
+  contrast callouts) rather than inventing new chrome.
+- Use rich UI elements only when they carry study meaning. Do not add
+  dashboard metrics, ornamental cards, generic hero chrome, or controls that
+  do not change an explanatory view.
 - Add a mind map only when the source contains real hierarchy, branching,
   ownership, taxonomy, or one-to-many relationships. Keep pairwise contrasts
   as comparison layouts and ordered material as a flow or timeline. Never
@@ -828,10 +829,13 @@ This is a structural and typographic system, not a skin:
   visual migration. Preserve every factual claim, distinction, example,
   limitation, scope boundary, and retrieval reference. Presentation may move;
   subject matter may not drift, disappear, or expand.
-- Author non-trivial interaction logic in TypeScript. Compile it to a small
-  classic inline JavaScript block before release; TypeScript, JSX, Tailwind,
-  package runtimes, and build dependencies must not ship in the offline HTML.
-  Static artifacts need no script.
+- Author non-trivial interaction logic in TypeScript (the template's
+  `behaviors.ts` is the source of truth) and compile it with the TypeScript 7
+  native compiler (`npx -y -p typescript@7 tsc --strict`) to a small classic
+  inline JavaScript block before release; TypeScript, JSX, Tailwind, package
+  runtimes, and build dependencies must not ship in the offline HTML. The
+  deck's self-marks stay ephemeral: in-memory only, reset on reload, never
+  stored, exported, scored, or written to mastery evidence.
 
 Before migrating an existing artifact, inventory its headings, factual blocks,
 comparisons, examples, and retrieval cues. After migration, compare the same
