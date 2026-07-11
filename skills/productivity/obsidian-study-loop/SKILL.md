@@ -1040,6 +1040,26 @@ Relevance is agent judgment over the session file — topic, objectives, study
 content, and existing note headings — not string matching. Do not add a
 matching script.
 
+### Running the dive
+
+- Run the helper skill for real: invoke `teach-complex-concepts` or
+  `evidence-research-loop` and follow its loaded workflow. Never imitate the
+  helper from memory — a dive that paraphrases the pedagogy degrades into
+  bare Q&A with feedback, which is quizzing, not teaching.
+- Register separation: inside a teaching dive, the Phase 3 quiz rules
+  (one-question-at-a-time scoring, answer withholding, hint caps) do not
+  govern the conversation — the teaching skill's workflow does, end to end.
+  The mastery boundary below already excludes mid-dive answers from
+  evidence, so there is no evidence-protection reason to withhold teaching:
+  set the learning target, anchor it in a concrete scenario, build the
+  smallest useful model, give worked examples, and name precisely what the
+  learner's answers got right or wrong. Diagnostic questions serve the
+  teaching; they are not the teaching.
+- Use the session as the learner profile: the session file already states
+  the course, certification goal, in-scope objectives, and prior assessment
+  evidence. Do not re-ask what it answers; calibrate the lesson from it and
+  ask at most one genuinely missing diagnostic question.
+
 ### Evidence collision check
 
 Before starting a dive, sweep the in-scope evidence surfaces it could

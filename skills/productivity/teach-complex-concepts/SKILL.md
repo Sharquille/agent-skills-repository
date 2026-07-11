@@ -50,12 +50,17 @@ active, run as a **teaching dive** under that protocol instead of standalone:
    loop's Mid-Session Deep Dives rules (`in-scope` / `adjacent` / `unrelated`)
    and run its evidence collision check before teaching.
 3. Tutor exactly as this skill specifies — the adaptive loop, hint ladder, and
-   conservative mastery judgments are unchanged — then persist per the study
-   loop: write the dive entry under `## Deep dive — <scope>` in the session
-   file, land durable content as `### Deep dive — <topic> (<date>)` in the
-   section note, and append the session-log line. The study loop owns the
-   section order and validator; this skill writes within that structure
-   without calling back into the loop.
+   conservative mastery judgments are unchanged, and the study loop's quiz
+   rules (answer withholding, per-question scoring) never govern the dive
+   conversation; this skill's workflow does, end to end. Use the session file
+   as the learner profile (course, certification goal, in-scope objectives,
+   prior assessments) instead of re-asking what it already answers. Then
+   persist per the study loop: write the dive entry under
+   `## Deep dive — <scope>` in the session file, land durable content as
+   `### Deep dive — <topic> (<date>)` in the section note, and append the
+   session-log line. The study loop owns the section order and validator;
+   this skill writes within that structure without calling back into the
+   loop.
 4. Keep the mastery boundary: mid-dive answers and this skill's mastery labels
    never enter the study loop's assessments, rubric evidence, or confidence
    calculations. Close by offering the canonical follow-ups (scoped re-quiz or

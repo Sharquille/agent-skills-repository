@@ -164,6 +164,11 @@ When the material just isn't landing, you don't have to leave the session:
   working in a dated folder under `_study/research/` in your vault. Its
   final write-up becomes a source you can cite when filling a gap stub.
 
+A teaching dive is real tutoring, not more quizzing: expect a clear goal,
+concrete scenarios, worked examples, and explanations that build on your
+answers — the quiz's answer-withholding rules don't apply here, because dive
+answers never count toward your grades anyway.
+
 The topic is checked against your active session first — in-scope dives are
 announced and integrated; unrelated ones run standalone so your session stays
 clean. What the dive produces is saved: an entry in your session file, and
