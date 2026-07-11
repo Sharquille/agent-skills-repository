@@ -1,6 +1,6 @@
 ---
 name: teach-complex-concepts
-description: Teach difficult concepts through interactive, adaptive, problem-centered tutoring. Use when a learner asks to understand, learn, master, review, practice, or repair misconceptions about a complex topic; when dense material should become a guided lesson; or when creating a concept map, diagnostic, practice sequence, or teach-back session. Works across math, science, programming, technology, and other conceptual domains. Do not trigger for simple factual lookups, requests that only need a finished answer, formal curriculum documents where a document-production skill is primary, or a disk-backed Obsidian study-vault session with scoped quizzes and saved progress (use obsidian-study-loop), or an explicitly invoked /teach workspace session that authors persistent HTML lessons, MISSION.md, and learning records (use teach).
+description: Teach difficult concepts through interactive, adaptive, problem-centered tutoring. Use when a learner asks to understand, learn, master, review, practice, or repair misconceptions about a complex topic; when dense material should become a guided lesson; or when creating a concept map, diagnostic, practice sequence, or teach-back session. Works across math, science, programming, technology, and other conceptual domains. When an obsidian-study-loop vault session is active and the topic is relevant to it, do trigger — but run session-integrated as a teaching dive under that skill's Mid-Session Deep Dives rules (persistence and mastery boundary) instead of standalone. Do not trigger for simple factual lookups, requests that only need a finished answer, formal curriculum documents where a document-production skill is primary, or an explicitly invoked /teach workspace session that authors persistent HTML lessons, MISSION.md, and learning records (use teach).
 # --- provenance ---
 category: productivity
 source: self-authored (this repository)
@@ -36,12 +36,34 @@ and direct instruction. Read
 [lesson-patterns.md](references/lesson-patterns.md) when choosing activities,
 hints, misconception repairs, or mastery checks.
 
-**Scope boundary.** This skill runs live, conversational tutoring of a concept.
-For a disk-backed study workflow over an Obsidian vault — session files, scoped
-quizzes, gap notes, and progress saved across sessions — use `obsidian-study-loop`
-instead; it owns vault state and note writing. The two compose: borrow this
-skill's diagnostic and hint patterns inside a study-loop session, but let the
-study loop persist the artifacts.
+**Study-session integration.** This skill runs live, conversational tutoring
+of a concept. When invoked while an `obsidian-study-loop` vault session is
+active, run as a **teaching dive** under that protocol instead of standalone:
+
+1. Resolve the vault: the working directory (or an explicitly given
+   `VAULT_PATH`) counts when it contains `STUDY-PROTOCOL.md`,
+   `_study/state.json`, or an `.obsidian/` directory — never assume an
+   arbitrary directory is a vault. Read `_study/state.json` for the active
+   session; with no active session, apply the study loop's lifecycle recovery
+   rules (inspect the latest session file and ask) before tutoring standalone.
+2. Relevance-check the requested topic against the session per the study
+   loop's Mid-Session Deep Dives rules (`in-scope` / `adjacent` / `unrelated`)
+   and run its evidence collision check before teaching.
+3. Tutor exactly as this skill specifies — the adaptive loop, hint ladder, and
+   conservative mastery judgments are unchanged — then persist per the study
+   loop: write the dive entry under `## Deep dive — <scope>` in the session
+   file, land durable content as `### Deep dive — <topic> (<date>)` in the
+   section note, and append the session-log line. The study loop owns the
+   section order and validator; this skill writes within that structure
+   without calling back into the loop.
+4. Keep the mastery boundary: mid-dive answers and this skill's mastery labels
+   never enter the study loop's assessments, rubric evidence, or confidence
+   calculations. Close by offering the canonical follow-ups (scoped re-quiz or
+   embedded study-check) and record the disposition in the dive entry.
+
+Outside a study-vault session the two skills stay separate: this skill owns
+the conversation, persists nothing, and ends with the usable learning state
+described below.
 
 ## Choose the session mode
 

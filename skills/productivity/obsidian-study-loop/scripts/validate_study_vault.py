@@ -218,12 +218,14 @@ def heading_group(title: str) -> int | None:
         return 4
     if title.startswith("Notes written — "):
         return 5
-    if title.startswith("Review — "):
+    if title.startswith("Deep dive — "):
         return 6
-    if title == "Mastery evidence":
+    if title.startswith("Review — "):
         return 7
-    if title == "Session log":
+    if title == "Mastery evidence":
         return 8
+    if title == "Session log":
+        return 9
     return None
 
 

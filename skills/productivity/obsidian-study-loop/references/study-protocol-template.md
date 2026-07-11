@@ -12,6 +12,8 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - `NOTES_DIR`: `<NOTES_DIR>`
 - Session logs live in `_study/sessions/`.
 - Generated visual-review artifacts live in `_study/visuals/`.
+- Session-integrated research-dive workspaces live in `_study/research/`
+  (created on first dive).
 - Active session state lives in `_study/state.json`.
 - `state.json` must always be valid JSON and must contain exactly one active
   session pointer or `null`:
@@ -45,6 +47,16 @@ When available, use these helper skills while following this protocol:
 - `study-research-queries` when the user asks for help researching a gap. It
   should produce search queries and a source plan, not fill the gap note unless
   the user explicitly asks for that.
+- `teach-complex-concepts` for a **teaching dive** when covered material has
+  not clicked and the learner needs adaptive tutoring rather than another
+  notes pass. Session-integrated per Mid-Session Deep Dives below:
+  relevance-check the topic, persist under the deep-dive rules, and keep the
+  mastery boundary.
+- `evidence-research-loop` for a **research dive** when a question needs
+  citation-audited, primary-source research. Session-integrated per
+  Mid-Session Deep Dives below: the workspace roots at
+  `_study/research/<YYYY-MM-DD>-<question-slug>/`, and the synthesis becomes
+  citable provenance for gap fills — never mastery evidence.
 - `literature-review` only for formal, citation-backed research. Routine
   certification notes should stay lighter.
 - `study-consult-panel` (optional) for a read-only, advisory second opinion on a
@@ -63,12 +75,15 @@ Helper skills do not change the safety rules: do not invent facts or citations,
 and do not add API keys.
 
 The agent is the tutor and never outsources the teaching, quizzing, or grading
-to an external LLM API. The single exception is `study-consult-panel`: an
-explicit, opt-in, read-only **advisory** consult through the already-configured
-`opencode-consult` wrapper, including bounded MiMo learner-answer grammar
-cleanup. It adds no API keys, never becomes the tutor, and its output is
-untrusted until the agent verifies it against the source. If that wrapper or its
-provider is unavailable, proceed from the agent's own draft.
+to an external LLM API. Two explicit, opt-in exceptions exist, and neither ever
+becomes the tutor or grader: `study-consult-panel`, a read-only **advisory**
+consult through the already-configured `opencode-consult` wrapper, including
+bounded MiMo learner-answer grammar cleanup; and a session-integrated
+**research dive**, where `evidence-research-loop` delegates source reading
+through the same wrapper family under `agent-orchestra` governance. Neither
+adds API keys, and both outputs are untrusted until the agent verifies them
+against the source. If a wrapper or its provider is unavailable, proceed from
+the agent's own draft.
 
 ## Status Values
 
@@ -164,6 +179,21 @@ An unconsumed quiz-progress block is a warning because it may represent a valid
 interrupted quiz; integrity violations are errors. It exits `0` when no errors
 exist and `1` when errors require attention. Resolve errors through the normal
 recovery workflow rather than expecting an automatic fix.
+
+## Plain-Language Manual
+
+The `obsidian-study-loop` skill bundles a plain-language companion manual
+(`references/manpage.md`) and a read-only `scripts/study_man.py` script that
+prints it whole, by topic, or as a topic list (`--list`). Topics cover the
+quickstart, trigger phrases, the phase loop, disk layout, deep dives, scoring,
+and a categorized helper-skill breakdown. This protocol stays authoritative —
+if the manual and the protocol disagree, follow the protocol.
+
+The first time a study action is handled in a conversation, mention once that
+the manual exists ("ask for the study manual, or a topic like 'quiz' or 'deep
+dives'"). When the user asks how something works, run the script and show the
+relevant section instead of paraphrasing from memory. Do not paste the whole
+manual unprompted, and do not repeat the mention every turn.
 
 ## Session Lifecycle and Recovery
 
@@ -465,6 +495,10 @@ When creating the session:
      are on or before today. Offer to prepend 1-2 retrieval questions for
      those objectives to the next quiz; if the re-check score drops, demote
      the objective's mastery and reopen a gap stub.
+   - Research-dive workspaces under `_study/research/`: report each as
+     resumable (no `audit.md` yet — offer to resume at the first incomplete
+     stage, naming the originating session and question), needs repair
+     (`audit.md` has unresolved failures), or deliverable (audit clean).
 2. Create a slug from the topic:
    - Lowercase the topic.
    - Replace spaces and punctuation with hyphens.
@@ -549,9 +583,10 @@ the end of the file:
 4. `## Quiz progress — <scope>` blocks, in section order
 5. `## Assessment — <scope>` blocks, in section order
 6. `## Notes written — <scope>` blocks, in section order
-7. `## Review — <date>` blocks, oldest first
-8. `## Mastery evidence` (optional)
-9. `## Session log` (always last)
+7. `## Deep dive — <scope>` blocks, in section order
+8. `## Review — <date>` blocks, oldest first
+9. `## Mastery evidence` (optional)
+10. `## Session log` (always last)
 
 When a heading already exists, append under it instead of creating a duplicate
 heading. Do not reorder an existing session file without user approval.
@@ -632,26 +667,38 @@ When the user asks to be quizzed:
    `## Study content`, but keep the chat experience conversational and
    one-question-at-a-time.
 10. Do not reveal an answer until the user has responded to that question.
-11. After each answer, tell the user what was right, what was wrong or missing,
+11. Honor mid-quiz learner controls without corrupting the evidence. If the
+   user asks for a hint, step down a short ladder one level per request:
+   restate what the question is really asking, then direct attention to the
+   relevant feature of the scenario, then recall the needed principle or a
+   simpler analogous case. Never reveal the answer as a hint. If the user says
+   "show me" or "skip", give the correct answer with reasoning and score only
+   what the user produced before the reveal. Record `hint` or `revealed` in
+   that question's progress line; a hint-assisted correct answer caps at
+   `partial` for that evidence item and does not count as the independent
+   applied item that `high` tutor confidence requires. If a mid-quiz deep dive
+   reveals planned material, record it per Mid-Session Deep Dives:
+   `- <ISO datetime> - Q<n> <objective> - deferred: revealed by deep dive`.
+12. After each answer, tell the user what was right, what was wrong or missing,
    and the correct answer before moving on.
-12. Keep enough notes during the quiz to assess each objective later.
-13. When key terms are provided, include term-definition recall and at least one
+13. Keep enough notes during the quiz to assess each objective later.
+14. When key terms are provided, include term-definition recall and at least one
    question requiring the user to distinguish similar terms. Also include at
    least one pure free-recall prompt per section — describe a scenario and ask
    the user to produce the term or mechanism with no candidate list in sight.
    Recognition among presented options is weaker evidence than production.
-14. When certification objectives are provided, include questions that map the
+15. When certification objectives are provided, include questions that map the
    user's understanding back to those exam objectives.
-15. When lab or simulator expectations are provided, include practical or
+16. When lab or simulator expectations are provided, include practical or
    scenario questions about what the user would do in that environment.
-16. For applied questions, state a concrete subject or asset, situation or
+17. For applied questions, state a concrete subject or asset, situation or
     failure path, and relevant facts. Ask the user to explain why the answer or
     decision fits that context, not merely name a term.
-17. When practical, ask for learner confidence before giving feedback. Score
+18. When practical, ask for learner confidence before giving feedback. Score
     each answer with the universal 8-point rubric; the scores feed the required
     `## Assessment — <scope>` block in Phase 4 (the separate `## Mastery
     evidence` ledger stays optional).
-18. Record the resolved scope for assessment and notes. Examples: `full-session`,
+19. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
 ## Optional Visual Review Artifact
@@ -811,6 +858,123 @@ chat quiz -> assessment -> notes/gaps -> review -> mastery evidence
 Legacy files from the old HTML quiz flow may still exist in `_study/quizzes/`,
 but new study-loop work should treat them as archival and should not generate,
 read, score, or rely on HTML quiz results.
+
+## Mid-Session Deep Dives
+
+Chat quiz, assessment, notes, and review remain the canonical mastery path. A
+**deep dive** is a mid-session learning activity run by a helper skill under
+this protocol's persistence and mastery rules:
+
+- **Teaching dive** — `teach-complex-concepts` runs its adaptive tutoring loop
+  when covered material has not clicked and the learner needs more than
+  another notes pass.
+- **Research dive** — `evidence-research-loop` runs its citation-audited
+  pipeline when a question needs primary sources rather than tutoring.
+
+Trigger examples: "teach me X", "I don't get X", "go deeper on X", "walk me
+through X properly", "research X with sources". The helper skills also detect
+the reverse direction themselves: invoked directly while a study session is
+active, they resolve the vault, check relevance, and run session-integrated
+under these rules.
+
+### Relevance resolution
+
+Resolve the dive topic against the active session before writing anything:
+
+1. Read `_study/state.json` and the active session's topic, objectives,
+   `## Study content`, and unit progress. If no session is active, apply the
+   Session Lifecycle and Recovery rules (inspect the latest session file and
+   ask) before treating the dive as standalone.
+2. Classify the topic:
+   - `in-scope`: maps to an in-scope objective or section. Proceed, announcing
+     the mapping in one line ("Deep dive on key stretching → 3.1
+     Cryptography").
+   - `adjacent`: same course or certification, but a different or future
+     section. Confirm with one line before integrating. Scope Boundary Rules
+     apply unchanged: a dive never unlocks quizzing or full notes for a future
+     section.
+   - `unrelated`: say so, then run the helper standalone with no vault writes,
+     or offer a new session.
+3. If the topic is ambiguous between two scopes, ask one clarifying question.
+
+Relevance is agent judgment over the session file — topic, objectives, study
+content, and existing note headings — not string matching. Do not add a
+matching script.
+
+### Evidence collision check
+
+Before starting a dive, sweep the in-scope evidence surfaces it could
+contaminate:
+
+- An unconsumed `## Quiz progress — <scope>` block covering the dive topic:
+  finish or explicitly pause the quiz first. If the learner insists on diving,
+  append a progress line for each affected planned objective —
+  `- <ISO datetime> - Q<n> <objective> - deferred: revealed by deep dive` —
+  and score only what the learner produced before the dive.
+- Unanswered in-scope `study-check` blocks the dive would teach: offer the
+  learner a quick pre-dive attempt (clean evidence). If declined, the check
+  stays pending and its later answer is graded like a hint-assisted item
+  (capped at `partial`).
+- Pending in-scope gap stubs need no restriction — a dive is legitimate gap
+  research. Note the stub in the dive entry; the learner still writes the fill
+  in their own words and review scores it normally.
+
+### Persistence
+
+- Session file: record every dive under a `## Deep dive — <scope>` block (one
+  block per scope, dated entries appended, placed per the canonical section
+  order):
+
+```markdown
+## Deep dive — <scope>
+
+- <ISO datetime> — <helper skill> — <topic>
+  - Trigger: <why the learner needed it>
+  - Outcome: <what now clicks / what stays fragile — tutor observation only>
+  - Persisted: `<notes-dir>/<note>.md` `### Deep dive — <topic> (<date>)` or
+    `_study/research/<YYYY-MM-DD>-<question-slug>/`
+  - Mastery: unchanged — re-quiz <offered|accepted|declined>, study-check
+    <embedded|none>
+```
+
+  A second same-scope entry that revisits the same topic states whether it
+  supersedes or complements the earlier entry.
+- Notes: durable teaching content lands in the same section note under the
+  relevant objective as `### Deep dive — <topic> (<date>)`. When the note does
+  not exist yet, follow the Phase 5 pre-draft rules first (vault search,
+  peer-note `course`/`domain` formats, append-vs-new question when a note
+  already covers the scope). When the objective's section is a gap
+  placeholder, put the dive subsection after the `<!-- learner-edit:end -->`
+  marker — never inside the learner-edit region, and never replacing the
+  stub. Dive subsections are preserved verbatim by later consolidation unless
+  the learner explicitly approves a merge.
+- Research dives root their workspace at
+  `_study/research/<YYYY-MM-DD>-<question-slug>/` (create the directory if
+  missing). Every `evidence-research-loop` stage file and gate applies
+  unchanged, including capture status and the citation audit. The synthesis
+  is citable provenance for the learner's own gap fill — cite
+  `_study/research/<slug>/synthesis.md` plus the named primary sources, which
+  satisfies the Phase 7 provenance gate. If the user explicitly asks the
+  agent to fill a gap from the research, label the fill
+  `agent-filled on user request` in the dive entry and session log; the
+  objective's mastery stays unchanged until the learner demonstrates it.
+- Append a session-log line for every dive.
+
+### Mastery boundary
+
+- A dive never changes `## Assessment`, `## Unit progress`,
+  `## Mastery evidence`, session frontmatter status, or note status.
+- The teaching skill's internal mastery labels (emerging, developing, secure,
+  transfer-ready) are tutor observations for the dive entry only. They are not
+  8-point-rubric evidence and are not inputs to tutor-confidence or
+  calibration calculations.
+- Mid-dive learner answers are hint-saturated and never enter the rubric.
+- Close every dive by offering the canonical follow-ups and recording the
+  disposition in the dive entry: a short scoped re-quiz (normal Phase 3/4 with
+  a new dated assessment block) or an embedded `study-check` for later review.
+  A same-session post-dive re-quiz must use fresh question surfaces, and its
+  evidence alone cannot raise tutor confidence to `high`; pair it with a later
+  independent check, such as the objective's next-review date.
 
 ## Phase 4 - Assess
 
@@ -1127,6 +1291,10 @@ Use this shape, omitting unavailable bullets when availability is known:
 Available support-helpers:
 - Research plan: `study-research-queries` can turn each gap into source types,
   search queries, and a capture checklist.
+- Teaching dive: `teach-complex-concepts` can tutor a shaky concept adaptively;
+  persisted as a deep dive without changing mastery.
+- Research dive: `evidence-research-loop` can produce a citation-audited answer
+  whose synthesis becomes citable provenance for a gap fill.
 - Deep source review: `literature-review` can support formal, citation-backed
   research when a gap needs stronger sources.
 - Advisory check: `study-consult-panel` can provide an optional read-only second
@@ -1418,7 +1586,10 @@ copy affect the score.
   clear or close state.
 - Record every state change in the session file.
 - The agent reading this protocol is the tutor. Do not call Anthropic, OpenAI,
-  Gemini, or other LLM APIs directly.
+  Gemini, or other LLM APIs directly; the only permitted external-model paths
+  are the advisory `study-consult-panel` consult and an explicit
+  session-integrated research dive through `evidence-research-loop`, and
+  neither ever becomes the tutor or grader.
 - Learner grammar cleanup never changes the original answer or learner-owned
   research text. MiMo output is advisory-only and must remain separate from
   graded evidence.
@@ -1472,6 +1643,12 @@ unambiguous:
     scoring, answer collection, automatic grading code, mastery ledger writes,
     pass/fail state, telemetry, or network calls. Chat remains the only
     exam-standard mastery path.
-18. The read-only validator reports no integrity errors after setup, sync, or a
+18. A deep dive, when run, was relevance-checked against the active session,
+    passed the evidence collision check, was recorded under
+    `## Deep dive — <scope>` with a session log entry, persisted its durable
+    content per the deep-dive rules, and changed no assessment, unit progress,
+    mastery evidence, or status fields. Any post-dive mastery update came from
+    a fresh scoped re-quiz or a reviewed study-check.
+19. The read-only validator reports no integrity errors after setup, sync, or a
     completed recovery pass; any warning is understood and intentionally left
     open.

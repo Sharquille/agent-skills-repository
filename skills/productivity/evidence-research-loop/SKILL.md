@@ -1,6 +1,6 @@
 ---
 name: evidence-research-loop
-description: "Answer a specific factual or technical question through a disk-backed, citation-audited research pipeline: decompose question → find primary sources → extract evidence → identify conflicts → synthesize → citation audit. Built on agent-orchestra: the conductor thinks (decomposition, adjudication, synthesis) while heavy source reading is delegated to the Codex flagship (gpt-5.6-sol) and OpenCode lanes to preserve Claude usage. Use when the user wants an evidence-first answer, primary-source research, quote-level citations, adjudication of conflicting sources, a defensible research memo, or says 'research this properly / with sources / with citations'. Do not trigger for full academic literature reviews (use literature-review), study-gap query planning (use study-research-queries), or quick lookups a single authoritative source settles."
+description: "Answer a specific factual or technical question through a disk-backed, citation-audited research pipeline: decompose question → find primary sources → extract evidence → identify conflicts → synthesize → citation audit. Built on agent-orchestra: the conductor thinks (decomposition, adjudication, synthesis) while heavy source reading is delegated to the Codex flagship (gpt-5.6-sol) and OpenCode lanes to preserve Claude usage. Use when the user wants an evidence-first answer, primary-source research, quote-level citations, adjudication of conflicting sources, a defensible research memo, or says 'research this properly / with sources / with citations'. When an obsidian-study-loop vault session is active and the question is relevant to it, run session-integrated as a research dive: workspace under _study/research/, synthesis as citable gap-fill provenance, never mastery evidence. Do not trigger for full academic literature reviews (use literature-review), study-gap query planning (use study-research-queries), or quick lookups a single authoritative source settles."
 # --- provenance ---
 category: productivity
 source: self-authored on top of agent-orchestra
@@ -43,7 +43,11 @@ saved material.
 
 Disk-backed so the loop is resumable and auditable. Default root:
 `./research/<question-slug>/` under the current working directory (ask before
-writing anywhere else).
+writing anywhere else). Session-integrated exception: when an
+`obsidian-study-loop` study session is active and the question is relevant to
+it (see Study-Session Integration below), root at
+`_study/research/<YYYY-MM-DD>-<question-slug>/` under the resolved vault
+without asking — that location is protocol-approved.
 
 ```
 research/<slug>/
@@ -199,6 +203,32 @@ re-audit what changed. Deliver only at zero unresolved failures.
 Run OpenCode lanes sequentially. Keep the panel minimal: a small question may
 need only stages 1→2→3→5→6 with no lane calls at all — do not invoke lanes to
 look thorough.
+
+## Study-Session Integration (research dive)
+
+When invoked while an `obsidian-study-loop` vault session is active, run as a
+**research dive** under that protocol:
+
+1. Resolve the vault (the working directory or an explicit `VAULT_PATH`
+   containing `STUDY-PROTOCOL.md`, `_study/state.json`, or `.obsidian/` —
+   never assume an arbitrary directory is a vault), read the active session,
+   and relevance-check the question per the study loop's Mid-Session Deep
+   Dives rules. Unrelated questions run standalone under the default root.
+2. Root the workspace at `_study/research/<YYYY-MM-DD>-<question-slug>/`
+   (create it if missing). Every stage file, capture-status rule, lane-routing
+   rule, and audit gate in this skill applies unchanged — only the root moves.
+3. Persist per the study loop: a dive entry under `## Deep dive — <scope>` in
+   the session file and a session-log line.
+4. The synthesis is source material, never mastery evidence. It becomes the
+   learner's citable provenance for their own gap fill
+   (`_study/research/<slug>/synthesis.md` plus named primary sources). If the
+   user explicitly asks the agent to fill a gap from it, label the fill
+   `agent-filled on user request`; the objective's mastery stays unchanged
+   until the learner demonstrates it through the study loop's canonical path.
+5. An interrupted research dive is resumable: the study loop's session-start
+   sweep reports workspaces with no `audit.md` (resume at the first incomplete
+   stage), unresolved audit failures (repair before delivery), or a clean
+   audit (deliverable).
 
 ## Egress and Safety
 
