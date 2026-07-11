@@ -166,6 +166,7 @@ A scaffolded study vault has this shape. Keep writes inside these locations:
 ```text
 <VAULT_PATH>/
   STUDY-PROTOCOL.md                    # installed protocol (sync-managed)
+  STUDY-MANUAL.md                      # installed manual copy (refreshed on sync)
   CLAUDE.md / AGENTS.md / GEMINI.md    # pointer blocks only
   Notes/                               # study notes; this skill writes here
   Maps/                                # study-map output; never written here
@@ -212,6 +213,10 @@ scripts/sync_study_protocol.py <VAULT_PATH> --apply
 
 The helper updates only `STUDY-PROTOCOL.md`. It must not touch `Notes/`,
 `_study/state.json`, or `_study/sessions/`.
+
+The manual copy is agent-managed, not script-managed: after an `--apply`,
+refresh the vault's `STUDY-MANUAL.md` by re-copying `references/manpage.md`
+with the banner comment from the setup steps (create the file if missing).
 
 The helper always uses its bundled canonical template and permits only a notes
 directory inside the resolved vault. Relative `--notes-dir` values resolve from
@@ -261,6 +266,18 @@ once that the manual exists ("ask for the study manual, or a topic like
 script and show the relevant section instead of paraphrasing from memory. Do
 not paste the whole manual unprompted, and do not repeat the mention every
 turn.
+
+Presentation: the script's stdout is source text for the agent, not the
+deliverable. A raw tool-output dump renders as terminal text and is not
+acceptable presentation for a manual request. After running the script,
+re-render the requested section in the chat reply as normal formatted
+markdown so headings, tables, and emphasis display properly. For a
+full-manual request, do not replay every topic: show the topic list plus the
+one or two most relevant sections, then offer the rest by name. Outside chat
+there are two human-native views: `study_man.py --pretty` renders a styled
+terminal view (automatic on an interactive terminal; `--raw` forces plain
+markdown), and the vault-installed `STUDY-MANUAL.md` copy renders fully in
+Obsidian — point non-technical readers there.
 
 ## Session Lifecycle and Recovery
 
@@ -527,6 +544,7 @@ When the user asks to install or set up the study loop:
 ```text
 <VAULT_PATH>/
   STUDY-PROTOCOL.md
+  STUDY-MANUAL.md
   CLAUDE.md
   AGENTS.md
   GEMINI.md
@@ -578,7 +596,15 @@ recovering.
 
 7. Copy `references/study-protocol-template.md` to `STUDY-PROTOCOL.md`, replacing
    `<VAULT_PATH>` and `<NOTES_DIR>` with the confirmed paths.
-8. If the reference file is unavailable, write a `STUDY-PROTOCOL.md` that
+8. Copy `references/manpage.md` to `STUDY-MANUAL.md` at the vault root, adding
+   this banner as the first line so later refreshes cannot destroy hand edits
+   nobody should be making there:
+
+```markdown
+<!-- Installed copy of the obsidian-study-loop manual. Refreshed on protocol sync; do not hand-edit. -->
+```
+
+9. If the reference file is unavailable, write a `STUDY-PROTOCOL.md` that
    contains the phase workflow below.
 
 ## Phase 1 - Setup a Session

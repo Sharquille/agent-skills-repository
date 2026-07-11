@@ -6,6 +6,9 @@ Usage:
   study_man.py --list     list topics (id + title)
   study_man.py <topic>    print matching section(s); topic matches a section
                           id, an alias, or a keyword in either
+  study_man.py --pretty   force the styled terminal view (ANSI); --raw forces
+                          plain markdown. Default: styled on an interactive
+                          terminal, plain markdown when piped.
 
 Read-only: parses references/manpage.md next to this skill and prints to
 stdout. No network, no vault access, no writes.
@@ -14,6 +17,7 @@ stdout. No network, no vault access, no writes.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -60,6 +64,102 @@ def load_sections(path: Path) -> list[dict]:
     return sections
 
 
+PALETTE = {
+    "reset": "\033[0m",
+    "bold": "\033[1m",
+    "dim": "\033[2m",
+    "heading": "\033[1;36m",
+    "rule": "\033[36m",
+    "code": "\033[33m",
+}
+
+BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+CODE_RE = re.compile(r"`([^`]+)`")
+
+
+def strip_inline(text: str) -> str:
+    return CODE_RE.sub(r"\1", BOLD_RE.sub(r"\1", text))
+
+
+def style_inline(text: str) -> str:
+    text = BOLD_RE.sub(
+        lambda m: PALETTE["bold"] + m.group(1) + PALETTE["reset"], text
+    )
+    return CODE_RE.sub(
+        lambda m: PALETTE["code"] + m.group(1) + PALETTE["reset"], text
+    )
+
+
+def format_table(rows: list[str]) -> list[str]:
+    parsed = []
+    for row in rows:
+        cells = [cell.strip() for cell in row.strip().strip("|").split("|")]
+        if cells and all(set(cell) <= set("-: ") for cell in cells):
+            continue
+        parsed.append([strip_inline(cell) for cell in cells])
+    if not parsed:
+        return []
+    ncol = max(len(row) for row in parsed)
+    for row in parsed:
+        row.extend([""] * (ncol - len(row)))
+    widths = [max(len(row[i]) for row in parsed) for i in range(ncol)]
+    out = []
+    for index, row in enumerate(parsed):
+        line = "  " + "   ".join(
+            row[i].ljust(widths[i]) for i in range(ncol)
+        ).rstrip()
+        if index == 0:
+            out.append(PALETTE["bold"] + line + PALETTE["reset"])
+            out.append("  " + "   ".join("─" * widths[i] for i in range(ncol)))
+        else:
+            out.append(line)
+    return out
+
+
+def render_pretty(body: str) -> str:
+    out: list[str] = []
+    table: list[str] = []
+    in_fence = False
+
+    def flush_table() -> None:
+        if table:
+            out.extend(format_table(table))
+            table.clear()
+
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            flush_table()
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            out.append("    " + PALETTE["dim"] + line + PALETTE["reset"])
+            continue
+        if stripped.startswith("|"):
+            table.append(line)
+            continue
+        flush_table()
+        if line.startswith("## "):
+            title = strip_inline(line[3:])
+            out.append("")
+            out.append(PALETTE["heading"] + title.upper() + PALETTE["reset"])
+            out.append(PALETTE["rule"] + "─" * min(len(title), 62) + PALETTE["reset"])
+        elif line.startswith("### "):
+            out.append(PALETTE["bold"] + strip_inline(line[4:]) + PALETTE["reset"])
+        else:
+            out.append(style_inline(line))
+    flush_table()
+    return "\n".join(out)
+
+
+def use_pretty(args: argparse.Namespace) -> bool:
+    if args.raw:
+        return False
+    if args.pretty:
+        return True
+    return sys.stdout.isatty() and os.environ.get("TERM", "dumb") != "dumb"
+
+
 def match_score(section: dict, query: str) -> int:
     q = query.lower().strip()
     if not q:
@@ -74,11 +174,19 @@ def match_score(section: dict, query: str) -> int:
     return 1 if q in haystack else 0
 
 
-def print_list(sections: list[dict]) -> None:
+def print_list(sections: list[dict], pretty: bool) -> None:
     width = max(len(s["id"]) for s in sections)
     print("Topics (study_man.py <topic>):\n")
     for section in sections:
-        print(f"  {section['id']:<{width}}  {section['title']}")
+        topic_id = section["id"].ljust(width)
+        if pretty:
+            topic_id = PALETTE["bold"] + topic_id + PALETTE["reset"]
+        print(f"  {topic_id}  {section['title']}")
+
+
+def emit(sections: list[dict], pretty: bool) -> None:
+    body = "\n\n".join(section["body"] for section in sections)
+    print(render_pretty(body) if pretty else body)
 
 
 def main(argv: list[str]) -> int:
@@ -89,16 +197,25 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--list", action="store_true", help="list topic ids and titles"
     )
+    parser.add_argument(
+        "--pretty", action="store_true",
+        help="force the styled terminal view (default on interactive terminals)",
+    )
+    parser.add_argument(
+        "--raw", action="store_true",
+        help="force plain markdown output (default when piped)",
+    )
     args = parser.parse_args(argv)
+    pretty = use_pretty(args)
 
     sections = load_sections(MANPAGE)
 
     if args.list:
-        print_list(sections)
+        print_list(sections, pretty)
         return 0
 
     if not args.topic:
-        print("\n\n".join(section["body"] for section in sections))
+        emit(sections, pretty)
         return 0
 
     query = " ".join(args.topic)
@@ -106,10 +223,9 @@ def main(argv: list[str]) -> int:
     best = max(score for score, _ in scored)
     if best == 0:
         sys.stderr.write(f"no topic matches {query!r}\n\n")
-        print_list(sections)
+        print_list(sections, pretty)
         return 1
-    hits = [s for score, s in scored if score == best]
-    print("\n\n".join(section["body"] for section in hits))
+    emit([s for score, s in scored if score == best], pretty)
     return 0
 
 

@@ -8,7 +8,7 @@ protocol, the protocol wins. Print any topic with
 <!-- man:section id=what aliases="about,overview,intro,what is this" -->
 ## What this is
 
-A disk-backed study system that lives inside your Obsidian vault. The agent is
+A study system saved as ordinary files inside your Obsidian vault. The agent is
 your tutor: it sets up study sessions, quizzes you one question at a time,
 grades honestly, writes structured notes with deliberate gaps for you to
 research, and reviews what you filled in. Everything is saved as plain
@@ -62,7 +62,8 @@ any time you want this guide.
 ## The loop
 
 1. **Setup** — you name the topic and paste per-section study content. A
-   dated session file is created; state points at it.
+   dated session file is created and the system remembers it as the active
+   one.
 2. **Study break** — nothing happens. You study offline; disk remembers.
 3. **Quiz** — conversational, one question at a time, scoped to what you name.
    Progress is saved to disk after every scored answer, so an interrupted quiz
@@ -115,34 +116,36 @@ dimensions that apply — a perfect definition isn't punished for having no
 - `solid` = 7–8 · `partial` = 4–6 · `gap` = 0–3
 - `solid` objectives get a **next review** date (7 days out, 21 if tutor
   confidence is high) and may reappear as warm-up questions later. If the
-  re-check drops, mastery is demoted — no coasting on stale wins.
+  re-check scores lower, the rating is downgraded — past wins don't carry
+  forward automatically.
 - Two confidence signals stay separate: **yours** (before feedback) and the
   **tutor's** (from accumulated evidence). Comparing them yields calibration:
   well-calibrated, overconfident, or underconfident.
-- Evidence-quality rules are strict on purpose: recognition < production,
-  hint-assisted caps at partial, and a `solid` built only on recall stays
-  flagged `recall-only` until you've shown you can apply it.
+- Evidence-quality rules are strict on purpose: recognizing an answer counts
+  for less than producing it from memory, hint-assisted answers cap at
+  `partial`, and a `solid` built only on recall stays flagged `recall-only`
+  until you've shown you can apply it.
 <!-- man:section-end id=scoring -->
 
 <!-- man:section id=notes aliases="gaps,gap stubs,study-checks,review,research needed,fill in" -->
 ## Notes, gaps, and review
 
-Notes land in your vault (one note per course section by default) with proper
-frontmatter and tags. Three kinds of content:
+Notes land in your vault (one note per course section by default) with a
+proper metadata header (frontmatter) and tags. Three kinds of content:
 
 - **Full sections** for `solid`/`partial` objectives — explanation, key terms,
   exam focus, worked examples.
 - **Gap stubs** for what you missed: a callout stating exactly what to
   research (never the answer), plus a marked region where you write. Replace
-  the `Write here.` line; keep the hidden comment markers — they're how
-  review finds your work.
+  the `Write here.` line; keep the hidden markers (invisible labels in the
+  file) — they're how review finds your work.
 - **Study-checks**: practice exercises embedded in notes, answered offline
   between sessions. Check a box, fill the response lines, pick your
   confidence.
 
 Then say **"review my additions"**. Your gap fills are checked for accuracy
-and provenance (name where you learned it — course material, vendor doc,
-RFC/NIST — or it can't earn `solid`), study-checks are scored on the same
+and for a named source — say where you learned it (course material, vendor
+doc, RFC/NIST) or it can't earn `solid` — and study-checks are scored on the same
 8-point rubric, corrections are explained, and the session file records it
 all. Your original words are never rewritten; corrections live in feedback
 callouts next to them.
@@ -156,10 +159,10 @@ When the material just isn't landing, you don't have to leave the session:
 - **"teach me X" / "I don't get X"** → a **teaching dive**: adaptive tutoring
   (`teach-complex-concepts`) — small steps, you do the thinking, hints on a
   ladder, misconceptions repaired.
-- **"research X with sources"** → a **research dive**: a citation-audited
-  research pipeline (`evidence-research-loop`) whose workspace lives at
-  `_study/research/<date>-<question>/` in your vault. Its synthesis becomes a
-  source you can cite when filling a gap stub.
+- **"research X with sources"** → a **research dive**: a research process
+  (`evidence-research-loop`) that checks every quote against its source,
+  working in a dated folder under `_study/research/` in your vault. Its
+  final write-up becomes a source you can cite when filling a gap stub.
 
 The topic is checked against your active session first — in-scope dives are
 announced and integrated; unrelated ones run standalone so your session stays
@@ -176,8 +179,8 @@ re-quiz or an embedded practice check — the honest paths to updating mastery.
 ## Visual review artifacts
 
 After a scope has been quizzed or written, ask for a visual review ("make me
-a visual review for 3.1"). You get a self-contained offline HTML page —
-concept maps, comparison tables, flows, retrieval prompts — written to
+a visual review for 3.1"). You get a single web page that works completely
+offline — concept maps, comparison tables, flows, retrieval prompts — written to
 `_study/visuals/`. It's a study aid, labeled as such: no scoring, no answer
 collection, no network, and it never touches your assessments.
 <!-- man:section-end id=visuals -->
@@ -188,6 +191,7 @@ collection, no network, and it never touches your assessments.
 ```text
 <vault>/
   STUDY-PROTOCOL.md      # the installed workflow (authoritative)
+  STUDY-MANUAL.md        # this manual — open it in Obsidian any time
   Notes/                 # your study notes — the durable output
   Maps/                  # study-map navigation pages (optional)
   _study/
@@ -200,8 +204,8 @@ collection, no network, and it never touches your assessments.
 ```
 
 The session file is the audit trail: every quiz answer, grade, note write,
-dive, and review lands there with a timestamp. If chat context evaporates,
-disk state is enough to resume.
+dive, and review lands there with a timestamp. If the chat loses its memory,
+the saved files are enough to pick up where you left off.
 <!-- man:section-end id=layout -->
 
 <!-- man:section id=helpers aliases="tools,skills,toolbox,categories,helper skills" -->
@@ -220,16 +224,17 @@ disk state is enough to resume.
   when a topic truly needs it.
 
 **Note quality**
-- `portable-markdown` — formatting authority: portable GFM, standard alerts,
-  hidden HTML markers.
+- `portable-markdown` — keeps notes in standard Markdown that renders
+  everywhere: callout boxes, clean tables, invisible markers.
 - `humanizer` — prose pass so notes read like notes, not chatbot output.
 - `knowledge-capture-obsidian` — vault hygiene: frontmatter, tags, wikilinks,
   index links.
 
 **Second opinions (opt-in, advisory only)**
-- `study-consult-panel` — read-only prose + technical-accuracy review of
-  drafted notes; can also add grammar-cleaned copies of your answers without
-  touching the originals. Never becomes the tutor.
+- `study-consult-panel` — reads drafted notes and checks wording and
+  technical accuracy without changing anything; can also add grammar-cleaned
+  copies of your answers without touching the originals. Never becomes the
+  tutor.
 
 **Navigation**
 - `study-map` — tiered map pages (course → chapter → concept) in `Maps/`,
@@ -245,13 +250,16 @@ disk state is enough to resume.
 
 All read-only except where noted; all local, no network.
 
-- `scripts/study_man.py [topic|--list]` — this manual, whole or by topic.
+- `scripts/study_man.py [topic|--list] [--pretty]` — this manual, whole or by
+  topic; `--pretty` gives a styled view in a terminal (on automatically when
+  you run it by hand).
 - `scripts/validate_study_vault.py <vault>` — integrity check: session
   structure, markers, statuses, visual-artifact contract. Run after anything
   odd; errors mean something needs deliberate repair.
 - `scripts/sync_study_protocol.py <vault> [--apply]` — compares your
-  installed `STUDY-PROTOCOL.md` to the skill's current template. Dry-run by
-  default; `--apply` rewrites the protocol file (only that file).
+  installed `STUDY-PROTOCOL.md` to the skill's current template. Preview-only
+  by default (a dry run); `--apply` rewrites the protocol file (only that
+  file), and the agent then refreshes `STUDY-MANUAL.md` to match.
 <!-- man:section-end id=scripts -->
 
 <!-- man:section id=safety aliases="rules,protections,trust,evidence" -->
@@ -267,7 +275,7 @@ All read-only except where noted; all local, no network.
 - The agent is the tutor. No API keys, no external quiz services; the only
   external-model calls are the opt-in advisory consult and research-dive
   source reading, both verified before use.
-- Every state change is logged in the session file with a real timestamp.
+- Every action is recorded in the session file with a real date and time.
 <!-- man:section-end id=safety -->
 
 <!-- man:section id=recovery aliases="stuck,resume,interrupted,undo,broken,help" -->
@@ -287,6 +295,6 @@ All read-only except where noted; all local, no network.
 - **Something looks structurally wrong?** Run the validator; it names the
   problem without touching anything.
 - **Installed into the wrong folder / false-start session?** Use
-  `undo-obsidian-study-loop` — it inventories and dry-runs before removing
-  anything.
+  `undo-obsidian-study-loop` — it lists what it would remove and previews
+  the change before touching anything.
 <!-- man:section-end id=recovery -->

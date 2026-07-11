@@ -14,6 +14,8 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - Generated visual-review artifacts live in `_study/visuals/`.
 - Session-integrated research-dive workspaces live in `_study/research/`
   (created on first dive).
+- `STUDY-MANUAL.md` at the vault root is the installed plain-language manual
+  (agent-refreshed on protocol sync; do not hand-edit).
 - Active session state lives in `_study/state.json`.
 - `state.json` must always be valid JSON and must contain exactly one active
   session pointer or `null`:
@@ -154,6 +156,11 @@ The helper compares the source template to this `STUDY-PROTOCOL.md` and prints a
 diff. It updates only this protocol file when run with `--apply`; it does not
 touch `Notes/`, `_study/state.json`, or `_study/sessions/`.
 
+The vault's `STUDY-MANUAL.md` is agent-managed, not script-managed: after an
+`--apply`, the agent refreshes it by re-copying the skill's
+`references/manpage.md` with the banner comment (creating the file if
+missing).
+
 The helper always uses its bundled canonical template and permits only a notes
 directory inside the resolved vault. Relative `--notes-dir` values resolve from
 the vault root. It refuses a symlinked `STUDY-PROTOCOL.md` target and replaces a
@@ -194,6 +201,18 @@ the manual exists ("ask for the study manual, or a topic like 'quiz' or 'deep
 dives'"). When the user asks how something works, run the script and show the
 relevant section instead of paraphrasing from memory. Do not paste the whole
 manual unprompted, and do not repeat the mention every turn.
+
+Presentation: the script's stdout is source text for the agent, not the
+deliverable. A raw tool-output dump renders as terminal text and is not
+acceptable presentation for a manual request. After running the script,
+re-render the requested section in the chat reply as normal formatted
+markdown so headings, tables, and emphasis display properly. For a
+full-manual request, do not replay every topic: show the topic list plus the
+one or two most relevant sections, then offer the rest by name. Outside chat
+there are two human-native views: `study_man.py --pretty` renders a styled
+terminal view (automatic on an interactive terminal; `--raw` forces plain
+markdown), and the vault-installed `STUDY-MANUAL.md` copy renders fully in
+Obsidian — point non-technical readers there.
 
 ## Session Lifecycle and Recovery
 
