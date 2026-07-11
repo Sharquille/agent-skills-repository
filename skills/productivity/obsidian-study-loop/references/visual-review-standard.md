@@ -25,6 +25,62 @@ Ground the design in the subject:
   terminal chrome, or arbitrary numbered steps unless the source material
   genuinely contains metrics, commands, or sequence.
 
+## Default field-notes system
+
+The default experience is an editorial field-notes interface inspired by WP
+Notes. It is defined by flow and information architecture, not copied brand
+chrome.
+
+### Narrative flow
+
+Arrange supported content in this order:
+
+1. **Orient** - scope, thesis, and the question that organizes the page.
+2. **Map or classify** - the dominant relationship, taxonomy, boundary, or
+   decision structure.
+3. **Contrast** - close pairs, matrices, exceptions, and tell lines.
+4. **Respond or apply** - process, remediation, ownership, or a worked decision.
+5. **Retrieve** - native disclosures that withhold the reference until opened.
+
+Do not manufacture a stage when the note has no supporting content. The source
+scope controls the page, never the template.
+
+### Visual grammar
+
+- Editorial paper surface, thin dividers, coral emphasis, restrained tinted
+  selections, compact monospace utility labels, and an Inter-compatible local
+  system font stack.
+- A compact identity/scope rail may become a horizontal index on narrow screens.
+- One thesis and one signature visual dominate. Supporting content uses
+  comparison strips, indexed sequences, term clusters, and quiet note blocks.
+- Prefer spacing, rules, and typographic contrast over a grid of rounded cards.
+  Rich elements must communicate relationships or state.
+- Design mobile-first at 320 CSS pixels, then expand into an editorial two-column
+  composition when the material benefits from margin notes or an index rail.
+
+### Mind-map routing
+
+Use a mind map for real hierarchy, branching, taxonomy, ownership, or
+one-to-many relationships. Use a comparison for two-sided distinctions, a
+matrix for repeated exact mappings, and a flow or timeline for ordered stages.
+Every node and edge must be traceable to the source note. A mind map may reveal
+detail on selection, but must not collect answers or imply scoring.
+
+### TypeScript authoring boundary
+
+Non-trivial interactions are authored in TypeScript with explicit view, node,
+and content types. Compile to minimal classic inline JavaScript before release.
+The released artifact remains one offline HTML file: no TypeScript runtime,
+JSX, Tailwind runtime, package import, module script, source map, or external
+dependency. Static pages should remain script-free.
+
+### Content-preservation gate
+
+Before an in-place redesign, inventory headings, factual paragraphs, examples,
+comparisons, limitations, scope boundaries, and retrieval references. After the
+redesign, compare the inventory. Missing, rewritten, broadened, or silently
+collapsed subject matter blocks release even when the page looks better.
+
 ## Required document posture
 
 Every file includes:
@@ -104,13 +160,15 @@ exceptions. Prefer inline SVG over encoded raster assets.
 ## Release review
 
 1. Verify the artifact's scope exists in an assessment or notes-written record.
-2. Run `scripts/validate_study_vault.py <VAULT_PATH>` and resolve every visual
+2. For an in-place redesign, complete the content-preservation inventory and
+   confirm that all source matter remains represented.
+3. Run `scripts/validate_study_vault.py <VAULT_PATH>` and resolve every visual
    error.
-3. Open the local file in a browser at wide and narrow widths.
-4. Check reading order, clipping, deliberate overflow, SVG names, focus states,
+4. Open the local file in a browser at wide and narrow widths.
+5. Check reading order, clipping, deliberate overflow, SVG names, focus states,
    reduced motion, and print preview when provided.
-5. Confirm the page attempts no network access.
-6. Log the generated or regenerated artifact in the matching session's final
+6. Confirm the page attempts no network access.
+7. Log the generated or regenerated artifact in the matching session's final
    `## Session log`.
 
 Browser QA catches visual regressions; the validator catches deterministic

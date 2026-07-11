@@ -800,6 +800,43 @@ SVG are allowed when they support the visual explanation. Do not add remote
 scripts, stylesheets, fonts, images, telemetry, accounts, persistence, or
 network calls.
 
+### Approved field-notes experience
+
+Use the WP Notes-inspired field-notes system as the default visual language.
+This is a structural and typographic system, not a skin:
+
+- Build a deliberate study narrative: **orient -> map or classify -> contrast
+  -> respond or apply -> retrieve**. Omit a stage only when the scope does not
+  support it; never invent content to fill the sequence.
+- Use an editorial reading surface with coral emphasis, thin rules, compact
+  utility labels, restrained filled states, and an Inter-compatible local
+  system stack. Typography and whitespace must establish hierarchy before
+  cards or decoration do.
+- Keep a stable page frame: compact identity/scope rail, one strong thesis,
+  indexed section navigation, a dominant concept-native visual, supporting
+  comparisons, and retrieval disclosures at the end.
+- Use rich UI elements only when they carry study meaning: indexed navigation,
+  selected branches, term chips, comparison strips, process rails, native
+  disclosures, and traceability. Do not add dashboard metrics, ornamental
+  cards, generic hero chrome, or controls that do not change an explanatory
+  view.
+- Add a mind map only when the source contains real hierarchy, branching,
+  ownership, taxonomy, or one-to-many relationships. Keep pairwise contrasts
+  as comparison layouts and ordered material as a flow or timeline. Never
+  force every scope into a mind map.
+- Treat the source note and assessment as immutable content authority during a
+  visual migration. Preserve every factual claim, distinction, example,
+  limitation, scope boundary, and retrieval reference. Presentation may move;
+  subject matter may not drift, disappear, or expand.
+- Author non-trivial interaction logic in TypeScript. Compile it to a small
+  classic inline JavaScript block before release; TypeScript, JSX, Tailwind,
+  package runtimes, and build dependencies must not ship in the offline HTML.
+  Static artifacts need no script.
+
+Before migrating an existing artifact, inventory its headings, factual blocks,
+comparisons, examples, and retrieval cues. After migration, compare the same
+inventory and fail the migration if any source content is missing or altered.
+
 This is a local-first, agent-agnostic vault artifact. Do not route it through a
 Claude Artifact, cloud-hosted page, or Claude-specific workflow; write the
 current-scope HTML directly into this vault.
@@ -817,6 +854,8 @@ current-scope HTML directly into this vault.
    artifact must not collect, score, store, or export answers.
 7. Log generation under `## Session log`, for example:
    "Generated visual review artifact for 2.3 -> `_study/visuals/...html`."
+8. For a redesign or in-place migration, log the visual-system change without
+   implying new mastery evidence or a new assessment.
 
 ### Artifact contract and quality gate
 
