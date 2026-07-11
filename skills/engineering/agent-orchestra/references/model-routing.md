@@ -127,14 +127,14 @@ Codex config default, and `--model M` steers any model the Codex CLI can
 reach. When more than one Codex model is available:
 
 **User policy (2026-07-10, Plus subscription): the Codex lane is
-`gpt-5.6-sol` only, default effort `medium`, escalating per call to `high` or
-`xhigh` only for genuinely hard tasks — never max or ultra, which devour
-subscription usage limits (`codex-agent.sh --effort` refuses them and clamps
-a max/ultra config to xhigh). Basis: OpenAI staff guidance that Sol effort is
-not 1:1 with older generations — Sol medium already beats 5.5 xhigh, and
-higher Sol tiers burn limits much faster. Terra and Luna are not routed to:
-the conductor supplies the steering intelligence, so the orchestra wants one
-strong executor rather than a spread of cheaper Codex tiers.**
+`gpt-5.6-sol` only, at effort `high` — `xhigh` per call for the hardest
+tasks — never max or ultra, which devour subscription usage limits
+(`codex-agent.sh --effort` refuses them and clamps a max/ultra config to
+xhigh). OpenAI staff suggested Sol medium suffices; field use the same day
+rejected it — medium's output quality was unacceptable, so high is the
+floor. Terra and Luna are not routed to: the conductor supplies the steering
+intelligence, so the orchestra wants one strong executor rather than a
+spread of cheaper Codex tiers.**
 
 - Under this policy the flagship takes every Codex task — hard debugging,
   architecture, bulk implementation alike.
@@ -158,11 +158,11 @@ strong executor rather than a spread of cheaper Codex tiers.**
 
 Effort tokens (`model_reasoning_effort`): `low`, `medium`, `high`, `xhigh`,
 `max`, `ultra` (the app shows these as Light / Medium / High / Extra High /
-Ultra; `max`/`ultra` may need enabling in settings). Sol's tiers are not 1:1
-with older generations: per OpenAI staff (2026-07-10), Sol `medium` already
-beats 5.5 `xhigh`, so default to medium and escalate per call
-(`codex-agent.sh --effort high|xhigh`) only when the task earns it. `ultra`
-is not longer thinking — it spawns provider-side parallel subagents and burns
+Ultra; `max`/`ultra` may need enabling in settings). OpenAI staff claim Sol
+`medium` beats 5.5 `xhigh` (2026-07-10), but field use the same day found
+medium's output quality unacceptable — the working default is `high`, with
+`codex-agent.sh --effort xhigh` per call for the hardest tasks. `ultra` is
+not longer thinking — it spawns provider-side parallel subagents and burns
 usage limits much faster. User policy: never max or ultra on this account
 (Plus subscription); `--effort` refuses them and a max/ultra config is
 clamped to xhigh. Never stack heavy effort inside this skill's own fan-out

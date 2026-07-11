@@ -160,23 +160,22 @@ a working branch or isolated worktree. The wrapper never uses
 
 The wrapper pins no model: with no `--model`, Codex uses its config default,
 and `--model M` can steer any model the Codex CLI reaches. **User policy
-(Plus subscription): the Codex lane is `gpt-5.6-sol` only, default effort
-`medium`, escalating to `high`/`xhigh` per call only for genuinely hard
-tasks, never `max` or `ultra`.** Sol's effort tiers are not 1:1 with older
-generations — OpenAI staff guidance (2026-07-10) is that Sol `medium` already
-beats 5.5 `xhigh`, while higher Sol tiers burn usage limits much faster. The
-conductor supplies all steering intelligence — decomposition, tight briefs,
-verification — so the orchestra wants one strong executor, not a spread of
-cheaper Codex tiers; Terra and Luna exist (see "Codex Model Tiers" in
-`references/model-routing.md`) but are not routed to. Cheap-volume work goes
-to the OpenCode lanes instead, which bill OpenRouter rather than the Codex
-subscription. Never route work to a model you have not onboarded
+(Plus subscription): the Codex lane is `gpt-5.6-sol` only, at effort `high`
+— `xhigh` per call for the hardest tasks — never `max` or `ultra`.** OpenAI
+staff suggested Sol `medium` suffices (2026-07-10); field use the same day
+found medium's output quality unacceptable, so the default stands at high.
+The conductor supplies all steering intelligence — decomposition, tight
+briefs, verification — so the orchestra wants one strong executor, not a
+spread of cheaper Codex tiers; Terra and Luna exist (see "Codex Model Tiers"
+in `references/model-routing.md`) but are not routed to. Cheap-volume work
+goes to the OpenCode lanes instead, which bill OpenRouter rather than the
+Codex subscription. Never route work to a model you have not onboarded
 ("Onboarding a New Model", same file).
 
 Effort is steered per call with `--effort low|medium|high|xhigh` (wins over
 config; `max`/`ultra` are refused outright). Without `--effort`, the wrapper
-enforces the policy from config: consults floor a `low` config up to
-`medium`, and every mode clamps a `max`/`ultra` config down to `xhigh` —
+enforces the policy from config: consults floor a `low`/`medium` config up to
+`high`, and every mode clamps a `max`/`ultra` config down to `xhigh` —
 `ultra` is not longer thinking but a provider-side parallel-subagent mode
 that devours subscription usage limits. This skill's own fan-out gives the
 same parallelism, conductor-verified and cost-visible.

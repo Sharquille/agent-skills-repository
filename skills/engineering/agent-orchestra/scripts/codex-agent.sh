@@ -32,7 +32,7 @@ Usage:
   codex-agent.sh implement --allow-write [--cd DIR] [--model MODEL] [--effort E] [--scope PATH]... [--allow-main] [--timeout N] -- "<task>"
 
 Defaults:
-  consult    read-only codex exec, MCP off, effort floored to medium, 900s timeout
+  consult    read-only codex exec, MCP off, effort floored to high, 900s timeout
   review     codex review --uncommitted, 1800s timeout
   implement  workspace-write codex exec guarded by --allow-write, 3600s timeout
 
@@ -41,7 +41,8 @@ Model: intentionally not pinned; with no --model, Codex uses ~/.codex/config.tom
 (e.g. gpt-5.6-sol), so nothing here goes stale. Override per call with --model.
 Effort: --effort low|medium|high|xhigh wins over config; max/ultra are refused
 (they devour subscription usage limits) and a max/ultra config is clamped to
-xhigh. Escalate to high/xhigh only for genuinely hard tasks.
+xhigh. Default is high (field-tested; medium output quality was not
+acceptable); use xhigh per call for the hardest tasks.
 
 The wrapper never uses danger-full-access, never bypasses sandbox/approvals,
 and instructs Codex to never commit or push.
@@ -117,13 +118,14 @@ run_bounded() {
   fi
 }
 
-# Effort policy (user: Plus subscription, gpt-5.6-sol lane; recalibrated
-# 2026-07-10 — OpenAI staff: Sol medium already beats 5.5 xhigh, and higher
-# Sol tiers burn usage limits much faster):
+# Effort policy (user: Plus subscription, gpt-5.6-sol lane; field-tested
+# 2026-07-10 — Sol medium output quality was unacceptable despite OpenAI
+# staff guidance, so the default stands at high; xhigh per call for the
+# hardest tasks; max/ultra devour usage limits and stay banned):
 #   * per-call --effort accepts low|medium|high|xhigh and wins over config;
 #     max/ultra are refused outright;
 #   * without --effort, every mode clamps a max/ultra config down to xhigh,
-#     and consults floor a low config up to medium.
+#     and consults floor a low/medium config up to high.
 validate_effort() {
   case "$1" in
     low|medium|high|xhigh) : ;;
@@ -140,8 +142,8 @@ effort_override() {
   eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')
   case "$eff" in
     max|ultra) printf 'xhigh' ;;
-    medium|high|xhigh) : ;;
-    *) [ "$1" = "consult" ] && printf 'medium' ;;
+    high|xhigh) : ;;
+    *) [ "$1" = "consult" ] && printf 'high' ;;
   esac
 }
 
