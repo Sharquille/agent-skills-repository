@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import stat
 import subprocess
 import sys
@@ -172,12 +173,48 @@ status: reviewed
 
 
 class SyncTests(VaultFixture):
+    def test_uninstalled_obsidian_vault_does_not_overwrite_unrelated_manual(self) -> None:
+        manual = self.vault / "STUDY-MANUAL.md"
+        manual.write_text("unrelated personal manual\n", encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, str(SYNC_PATH), str(self.vault), "--apply", "--no-diff"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("uninstalled or partial", result.stderr)
+        self.assertEqual(manual.read_text(encoding="utf-8"), "unrelated personal manual\n")
+        self.assertFalse((self.vault / "STUDY-PROTOCOL.md").exists())
+
+    def test_directory_state_blocks_sync_before_any_document_change(self) -> None:
+        self.write_protocol()
+        state = self.vault / "_study" / "state.json"
+        state.mkdir()
+        manual = self.vault / "STUDY-MANUAL.md"
+        manual.write_text("keep manual\n", encoding="utf-8")
+        protocol_before = (self.vault / "STUDY-PROTOCOL.md").read_text(encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, str(SYNC_PATH), str(self.vault), "--apply", "--no-diff"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not a regular file", result.stderr)
+        self.assertEqual(manual.read_text(encoding="utf-8"), "keep manual\n")
+        self.assertEqual(
+            (self.vault / "STUDY-PROTOCOL.md").read_text(encoding="utf-8"),
+            protocol_before,
+        )
+
     def test_relative_notes_dir_resolves_from_vault(self) -> None:
         resolved = sync.resolve_notes_dir(Path("Notes"), self.vault.resolve())
         self.assertEqual(resolved, (self.vault / "Notes").resolve())
 
     def test_cli_relative_notes_dir_is_independent_of_cwd(self) -> None:
         self.write_state(None)
+        self.write_protocol()
         result = subprocess.run(
             [
                 sys.executable,
@@ -197,6 +234,44 @@ class SyncTests(VaultFixture):
         protocol = (self.vault / "STUDY-PROTOCOL.md").read_text(encoding="utf-8")
         expected_notes = self.vault.resolve() / "Notes"
         self.assertIn(f"- `NOTES_DIR`: `{expected_notes}`", protocol)
+        manual = (self.vault / "STUDY-MANUAL.md").read_text(encoding="utf-8")
+        self.assertTrue(manual.startswith(sync.MANUAL_BANNER))
+
+    def test_apply_refreshes_stale_manual_when_protocol_is_current(self) -> None:
+        self.write_state(None)
+        self.write_protocol()
+        first = subprocess.run(
+            [
+                sys.executable,
+                str(SYNC_PATH),
+                str(self.vault),
+                "--notes-dir",
+                "Notes",
+                "--apply",
+                "--no-diff",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(first.returncode, 0, first.stderr)
+        manual = self.vault / "STUDY-MANUAL.md"
+        manual.write_text("stale manual\n", encoding="utf-8")
+        dry = subprocess.run(
+            [sys.executable, str(SYNC_PATH), str(self.vault), "--no-diff"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(dry.returncode, 2, dry.stderr)
+        applied = subprocess.run(
+            [sys.executable, str(SYNC_PATH), str(self.vault), "--apply", "--no-diff"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertTrue(manual.read_text(encoding="utf-8").startswith(sync.MANUAL_BANNER))
 
     def test_symlinked_protocol_target_is_rejected(self) -> None:
         victim = Path(self.temporary.name) / "victim.md"
@@ -270,6 +345,25 @@ class ValidatorTests(VaultFixture):
             if issue.severity == "ERROR"
         ]
 
+    def replace_quiz_and_assessment(
+        self, quiz_blocks: str, assessment_blocks: str
+    ) -> Path:
+        session = self.vault / "_study" / "sessions" / "2026-07-09-topic.md"
+        text = session.read_text(encoding="utf-8")
+        quiz_start = text.index("## Quiz progress — 1.1")
+        assessment_start = text.index("## Assessment — 1.1")
+        notes_start = text.index("## Notes written — 1.1")
+        session.write_text(
+            text[:quiz_start]
+            + quiz_blocks.rstrip()
+            + "\n\n"
+            + assessment_blocks.rstrip()
+            + "\n\n"
+            + text[notes_start:],
+            encoding="utf-8",
+        )
+        return session
+
     def test_valid_vault_has_no_findings(self) -> None:
         self.make_valid_vault()
         issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
@@ -306,6 +400,76 @@ class ValidatorTests(VaultFixture):
         messages = [issue.message for issue in self.errors()]
         self.assertTrue(any("missing visible label" in message for message in messages))
         self.assertIn("missing study-scope metadata", messages)
+
+    def test_visual_artifact_requires_existing_local_study_source(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_visual()
+        original = artifact.read_text(encoding="utf-8")
+        artifact.write_text(
+            original.replace('<meta name="study-source" content="Notes/Topic.md">\n', ""),
+            encoding="utf-8",
+        )
+        self.assertIn("missing study-source metadata", [i.message for i in self.errors()])
+
+        artifact.write_text(
+            original.replace("Notes/Topic.md", "Notes/Missing.md"), encoding="utf-8"
+        )
+        self.assertTrue(
+            any("study-source is not an existing regular file" in i.message for i in self.errors())
+        )
+
+    def test_visual_artifact_rejects_study_source_resolving_outside_vault(self) -> None:
+        self.make_valid_vault()
+        outside = Path(self.temporary.name) / "outside.md"
+        outside.write_text("outside", encoding="utf-8")
+        (self.vault / "Notes" / "Outside.md").symlink_to(outside)
+        artifact = self.write_valid_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "Notes/Topic.md", "Notes/Outside.md"
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any("study-source resolves outside vault" in i.message for i in self.errors())
+        )
+
+    def test_visual_artifact_rejects_uri_study_source(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "Notes/Topic.md", "https://example.invalid/Topic.md"
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(any("unsafe study-source path" in i.message for i in self.errors()))
+
+    def test_visuals_parent_symlink_outside_vault_is_rejected(self) -> None:
+        self.make_valid_vault()
+        visuals = self.vault / "_study" / "visuals"
+        visuals.rmdir()
+        outside = Path(self.temporary.name) / "outside-visuals"
+        outside.mkdir()
+        visuals.symlink_to(outside, target_is_directory=True)
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn("visuals root resolves outside the vault", messages)
+
+    def test_broken_visuals_symlink_is_rejected(self) -> None:
+        self.make_valid_vault()
+        visuals = self.vault / "_study" / "visuals"
+        visuals.rmdir()
+        visuals.symlink_to(self.vault / "missing-visuals", target_is_directory=True)
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn("visuals root symlink target does not exist", messages)
+
+    def test_visual_artifact_symlink_outside_visuals_is_rejected(self) -> None:
+        self.make_valid_vault()
+        outside = Path(self.temporary.name) / "outside.html"
+        outside.write_text("<!doctype html><title>outside</title>", encoding="utf-8")
+        (self.vault / "_study" / "visuals" / "linked.html").symlink_to(outside)
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn("visual artifact resolves outside _study/visuals", messages)
 
     def test_visual_artifact_rejects_persistence_and_forms(self) -> None:
         self.make_valid_vault()
@@ -404,15 +568,540 @@ Write here.
             )
         )
 
+    def test_distinct_attempts_for_same_scope_do_not_collide(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Topic — status: scored — prompt: Define Topic. — score: 2/2 applicable — assistance: none — learner confidence: High — evidence: Correct definition.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400
+
+## Quiz progress — 1.1 — attempt 2026-07-09-02
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:15:00-0400
+- Q1 [applied] — Topic — status: scored — prompt: Apply Topic. — score: 6/8 — assistance: none — learner confidence: Medium — evidence: Correct fit with a weak limitation.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-02 on 2026-07-09T12:15:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid (recall-only) — evidence question: Q1 — score: 2/2 applicable — assistance: none — evidence: Correct definition. — tutor confidence: medium — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10
+
+## Assessment — 1.1 — attempt 2026-07-09-02
+
+- Topic — mastery: partial — evidence question: Q1 — score: 6/8 — assistance: none — evidence: Correct fit with a weak limitation. — tutor confidence: medium — learner confidence: Medium — calibration: well-calibrated — next action: remediation""",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_asked_question_is_an_interruption_warning(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Define Topic — status: asked — prompt: Define Topic.""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertFalse(any(issue.severity == "ERROR" for issue in issues))
+        self.assertTrue(
+            any("asked-but-unscored question: Q1" in issue.message for issue in issues)
+        )
+
+    def test_malformed_and_duplicate_attempt_ids_are_rejected(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt malformed
+
+- Q1 [recall] — Define Topic — status: planned
+
+## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Q1 [recall] — Define Topic — status: planned
+
+## Quiz progress — 1.2 — attempt 2026-07-09-01
+
+- Q1 [recall] — Define Other — status: planned""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn("malformed quiz attempt id: malformed", messages)
+        self.assertTrue(any("duplicate quiz attempt id 2026-07-09-01" in m for m in messages))
+
+    def test_structured_scored_record_enforces_score_semantics(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Q1 [recall] — Define Topic — status: scored — score: 2/4 — assistance: none — learner confidence: High — evidence: Definition.
+- Q2 [applied] — Apply Topic — status: scored — score: 9/8 — assistance: none — learner confidence: Medium — evidence: Application.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic: partial""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("score below /8 must name" in message for message in messages))
+        self.assertTrue(any("score is outside its denominator" in message for message in messages))
+
+    def test_malformed_record_and_consumed_attempt_mismatch_are_rejected(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Q1 — Define Topic — status: planned
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-02 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic: partial""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("malformed question record" in message for message in messages))
+        self.assertTrue(
+            any("consumed record does not match its attempt" in message for message in messages)
+        )
+
+    def test_non_recall_evidence_accepts_applicable_denominator(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [classification] — Topic — status: scored — prompt: Classify Topic. — score: 3/4 applicable — assistance: none — learner confidence: High — evidence: Correct class with incomplete reasoning.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: partial — evidence question: Q1 — score: 3/4 applicable — assistance: none — evidence: Correct class with incomplete reasoning. — tutor confidence: medium — learner confidence: High — calibration: overconfident — next action: targeted reasoning practice""",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_applicable_denominator_must_match_rubric_dimensions(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [classification] — Classify Topic — status: scored — prompt: Classify Topic. — score: 2/3 applicable — assistance: none — learner confidence: Medium — evidence: Partial classification.""",
+            """## Assessment — 1.1
+
+- Topic: partial""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("score is outside its denominator" in m for m in messages))
+
+    def test_mixed_assistance_can_select_unassisted_primary_evidence(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 2; maximum 2; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [application] — Topic — status: scored — prompt: First application. — score: 7/8 — assistance: hint-3 — learner confidence: High — evidence: Correct after hints.
+- Q2 [application] — Topic — status: scored — prompt: Fresh application. — score: 7/8 — assistance: none — learner confidence: High — evidence: Independent transfer.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid — evidence question: Q2 — score: 7/8 — assistance: none — evidence: Independent transfer. — tutor confidence: medium — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10""",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_assessment_selected_evidence_must_match_quiz_record(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [application] — Topic — status: scored — prompt: Apply Topic. — score: 5/8 — assistance: hint-2 — learner confidence: Medium — evidence: Partial application.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: partial — evidence question: Q1 — score: 4/8 — assistance: none — evidence: Partial application. — tutor confidence: medium — learner confidence: High — calibration: overconfident — next action: remediation""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("score must match Q1: 5/8" in m for m in messages))
+        self.assertTrue(any("assistance must match Q1: hint-2" in m for m in messages))
+        self.assertTrue(any("learner confidence must match Q1: Medium" in m for m in messages))
+
+    def test_recall_only_question_kind_cannot_bypass_mastery_label(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [free-recall] — Topic — status: scored — prompt: Produce the term. — score: 2/2 applicable — assistance: none — learner confidence: High — evidence: Correct term.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid — evidence question: Q1 — score: 2/2 applicable — assistance: none — evidence: Correct term. — tutor confidence: high — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("solid free-recall evidence must be recall-only" in m for m in messages))
+
+    def test_applied_question_kind_cannot_claim_recall_only_mastery(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [classification] — Topic — status: scored — prompt: Classify the case. — score: 4/4 applicable — assistance: none — learner confidence: High — evidence: Correct classification.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid (recall-only) — evidence question: Q1 — score: 4/4 applicable — assistance: none — evidence: Correct classification. — tutor confidence: medium — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("classification evidence cannot be recall-only" in m for m in messages))
+
+    def test_unsupported_question_kind_is_rejected(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [mystery-kind] — Topic — status: planned""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("unsupported question kind: mystery-kind" in m for m in messages))
+
+    def test_hint_or_reveal_caps_numeric_solid_at_partial(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [application] — Topic — status: scored — prompt: Apply Topic. — score: 7/8 — assistance: revealed — learner confidence: High — evidence: Pre-reveal production recorded.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid — evidence question: Q1 — score: 7/8 — assistance: revealed — evidence: Pre-reveal production recorded. — tutor confidence: low — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("mastery solid does not match score 7/8" in m for m in messages))
+
+    def test_assessment_rejects_mastery_and_calibration_mismatch(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [application] — Topic — status: scored — prompt: Apply Topic. — score: 7/8 — assistance: none — learner confidence: Low — evidence: Strong application.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: partial — evidence question: Q1 — score: 7/8 — assistance: none — evidence: Strong application. — tutor confidence: medium — learner confidence: Low — calibration: well-calibrated — next action: remediation""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("mastery partial does not match score 7/8" in m for m in messages))
+        self.assertTrue(any("calibration must be underconfident" in m for m in messages))
+
+    def test_assessment_requires_canonical_fields_and_recall_confidence_cap(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Define Topic — status: scored — prompt: Define Topic. — score: 2/2 applicable — assistance: none — learner confidence: High — evidence: Correct definition.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid (recall-only) — evidence: Correct definition. — evidence question: Q1 — score: 2/2 applicable — assistance: none — tutor confidence: high — learner confidence: High — calibration: well-calibrated — review stage: 6 — next review: not-a-date""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("out of order" in message for message in messages))
+        self.assertTrue(any("recall-only tutor confidence exceeds medium" in m for m in messages))
+        self.assertTrue(any("invalid review stage" in message for message in messages))
+        self.assertTrue(any("invalid next review date" in message for message in messages))
+
+    def test_attempt_and_assessment_must_link_one_to_one(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: completed — updated: 2026-07-09T12:10:00-0400
+- Q1 [application] — Apply Topic — status: scored — prompt: Apply Topic. — score: 7/8 — assistance: none — learner confidence: High — evidence: Strong application.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-02
+
+- Topic — mastery: solid — evidence question: Q1 — score: 7/8 — assistance: none — evidence: Strong application. — tutor confidence: medium — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("must link to exactly one assessment" in m for m in messages))
+        self.assertTrue(any("must link to exactly one quiz attempt" in m for m in messages))
+
+    def test_consumed_attempt_must_be_completed(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [application] — Apply Topic — status: scored — prompt: Apply Topic. — score: 7/8 — assistance: none — learner confidence: High — evidence: Strong application.
+- Consumed by Assessment — 1.1 — attempt 2026-07-09-01 on 2026-07-09T12:10:00-0400""",
+            """## Assessment — 1.1 — attempt 2026-07-09-01
+
+- Topic — mastery: solid — evidence question: Q1 — score: 7/8 — assistance: none — evidence: Strong application. — tutor confidence: medium — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: 2026-07-10""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("active attempt must remain unconsumed" in m for m in messages))
+
+    def test_stray_consumed_prose_does_not_consume_attempt(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: paused — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Define Topic — status: asked — prompt: Define Topic.
+
+Prose mentioning Consumed by Assessment — 1.1 — attempt 2026-07-09-01 is not a record.""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertFalse(any(issue.severity == "ERROR" for issue in issues))
+        self.assertTrue(any("unconsumed Quiz progress" in issue.message for issue in issues))
+
+    def test_scored_record_requires_preserved_prompt(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 1; target 1; maximum 1; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Define Topic — status: scored — score: 2/2 applicable — assistance: none — learner confidence: High — evidence: Correct definition.""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("status scored is missing: prompt" in m for m in messages))
+
+    def test_budget_order_and_question_maximum_are_enforced(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 2; target 1; maximum 1; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Define Topic — status: planned
+- Q2 [application] — Apply Topic — status: planned""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("Budget must satisfy" in message for message in messages))
+        self.assertTrue(any("more question IDs than its maximum Budget" in m for m in messages))
+
+    def test_question_count_must_reach_budget_minimum(self) -> None:
+        self.make_valid_vault()
+        self.replace_quiz_and_assessment(
+            """## Quiz progress — 1.1 — attempt 2026-07-09-01
+
+- Budget: minimum 2; target 2; maximum 3; mode adaptive
+- Attempt status: active — updated: 2026-07-09T12:10:00-0400
+- Q1 [recall] — Topic — status: planned""",
+            """## Assessment — 1.1
+
+- Topic: solid (8)""",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("fewer question IDs than its minimum Budget" in m for m in messages))
+
+    def test_active_session_must_be_regular_file(self) -> None:
+        self.write_protocol()
+        session_dir = self.vault / "_study" / "sessions" / "directory.md"
+        session_dir.mkdir()
+        self.write_state("_study/sessions/directory.md")
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn(
+            "active session is not a regular file: _study/sessions/directory.md",
+            messages,
+        )
+
+    def test_reviewed_answered_gap_accepts_structured_source(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            """---
+title: Topic
+type: learning
+status: reviewed
+---
+
+## Topic
+
+<!-- gap:topic -->
+<!-- learner-edit:start id=gap-topic -->
+<!-- learner-answer:gap-response -->
+Topic is a defined concept.
+<!-- learner-source:gap-topic -->
+- **Source:** Course module 1.1
+<!-- learner-edit:end id=gap-topic -->
+""",
+            encoding="utf-8",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_reviewed_answered_gap_warns_for_missing_or_empty_source(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            """---
+title: Topic
+type: learning
+status: reviewed
+---
+
+## Missing source
+
+<!-- gap:missing -->
+<!-- learner-edit:start id=gap-missing -->
+<!-- learner-answer:gap-response -->
+An answered gap.
+<!-- learner-edit:end id=gap-missing -->
+
+## Empty source
+
+<!-- gap:empty -->
+<!-- learner-edit:start id=gap-empty -->
+<!-- learner-answer:gap-response -->
+Another answered gap.
+<!-- learner-source:gap-empty -->
+- **Source:** Write here.
+<!-- learner-edit:end id=gap-empty -->
+""",
+            encoding="utf-8",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertFalse(any(issue.severity == "ERROR" for issue in issues))
+        messages = [issue.message for issue in issues]
+        self.assertTrue(any("missing learner source marker: gap-missing" in m for m in messages))
+        self.assertTrue(any("no learner source value: gap-empty" in m for m in messages))
+
+    def test_reviewed_gap_with_source_but_no_response_is_pending(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            """---
+title: Topic
+type: learning
+status: reviewed
+---
+
+## Topic
+
+<!-- gap:topic -->
+<!-- learner-edit:start id=gap-topic -->
+<!-- learner-answer:gap-response -->
+Write here.
+<!-- learner-source:gap-topic -->
+- **Source:** Write here.
+<!-- learner-edit:end id=gap-topic -->
+""",
+            encoding="utf-8",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertIn("reviewed note still contains a pending gap", messages)
+
+    def test_draft_gap_without_source_still_warns(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            """---
+title: Topic
+type: learning
+status: draft
+---
+
+## Topic
+
+<!-- gap:topic -->
+<!-- learner-edit:start id=gap-topic -->
+Write here.
+<!-- learner-edit:end id=gap-topic -->
+""",
+            encoding="utf-8",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertFalse(any(issue.severity == "ERROR" for issue in issues))
+        self.assertTrue(any("gap is missing learner source marker" in i.message for i in issues))
+
+    def test_gap_rejects_duplicate_mismatched_and_orphan_sources(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            """---
+title: Topic
+type: learning
+status: draft
+---
+
+## Duplicate
+
+<!-- gap:duplicate -->
+<!-- learner-edit:start id=gap-duplicate -->
+An answer.
+<!-- learner-source:gap-duplicate -->
+- **Source:** Course
+<!-- learner-source:gap-duplicate -->
+- **Source:** Vendor documentation
+<!-- learner-edit:end id=gap-duplicate -->
+
+## Mismatch
+
+<!-- gap:mismatch -->
+<!-- learner-edit:start id=gap-mismatch -->
+An answer.
+<!-- learner-source:gap-other -->
+- **Source:** Course
+<!-- learner-edit:end id=gap-mismatch -->
+
+<!-- learner-source:gap-orphan -->
+- **Source:** Nowhere
+""",
+            encoding="utf-8",
+        )
+        messages = [issue.message for issue in self.errors()]
+        self.assertTrue(any("duplicate source markers: gap-duplicate" in m for m in messages))
+        self.assertTrue(any("does not match gap-mismatch" in m for m in messages))
+        self.assertTrue(any("orphan learner source marker: gap-other" in m for m in messages))
+        self.assertTrue(any("orphan learner source marker: gap-orphan" in m for m in messages))
+
 
 class ProtocolAlignmentTests(unittest.TestCase):
     def test_session_group_order_is_shared(self) -> None:
         expected = [
             "`## Study content`",
             "`## Unit progress`",
-            "`## Quiz progress — <scope>`",
-            "`## Assessment — <scope>`",
+            "`## Quiz progress — <scope> — attempt <attempt-id>`",
+            "`## Assessment — <scope> — attempt <attempt-id>`",
             "`## Notes written — <scope>`",
+            "`## Deep dive — <scope>`",
             "`## Review — <date>`",
             "`## Mastery evidence`",
             "`## Session log`",
@@ -446,6 +1135,70 @@ class ProtocolAlignmentTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             for item in required:
                 self.assertIn(item, text, path)
+
+    def test_shared_contract_blocks_are_byte_identical(self) -> None:
+        marker = re.compile(
+            r"<!-- shared-contract:start id=(?P<id>[a-z0-9-]+) -->\n"
+            r"(?P<body>.*?)"
+            r"<!-- shared-contract:end id=(?P=id) -->",
+            flags=re.DOTALL,
+        )
+
+        def blocks(path: Path) -> dict[str, str]:
+            return {
+                match.group("id"): match.group("body")
+                for match in marker.finditer(path.read_text(encoding="utf-8"))
+            }
+
+        skill_blocks = blocks(SKILL_PATH)
+        template_blocks = blocks(TEMPLATE_PATH)
+        expected = {
+            "mastery-scoring",
+            "quiz-attempt",
+            "retrieval-schedule",
+            "teaching-evidence-boundary",
+            "gap-evidence",
+        }
+        self.assertTrue(expected.issubset(skill_blocks))
+        for block_id in expected:
+            self.assertEqual(skill_blocks[block_id], template_blocks.get(block_id), block_id)
+
+    def test_assessment_evidence_example_and_manual_are_aligned(self) -> None:
+        examples: list[str] = []
+        needle = "```markdown\n## Assessment — <scope> — attempt <attempt-id>"
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            start = text.index(needle)
+            end = text.index("\n```", start) + len("\n```")
+            example = text[start:end]
+            self.assertIn("evidence question: Q1", example, path)
+            self.assertIn("assistance: none", example, path)
+            self.assertIn("assistance: hint-1", example, path)
+            examples.append(example)
+        self.assertEqual(examples[0], examples[1])
+
+        manual = (SKILL_DIR / "references" / "manpage.md").read_text(encoding="utf-8")
+        self.assertIn("**evidence question**", manual)
+        self.assertIn("before the answer was revealed", manual)
+
+    def test_retired_contradictory_phrasing_is_absent(self) -> None:
+        forbidden = [
+            "Score each evidence item out of 8",
+            "make required corrections inside",
+            "edit it to be correct and complete",
+            "npx -y",
+            "per-scope content module",
+        ]
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            for phrase in forbidden:
+                self.assertNotIn(phrase, text, (path, phrase))
+
+    def test_learner_controls_are_documented_in_both_sources(self) -> None:
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            for control in ("`pause`", "`resume`", "`rephrase`", "`shorter`", "`deeper`"):
+                self.assertIn(control, text, (path, control))
 
 
 if __name__ == "__main__":

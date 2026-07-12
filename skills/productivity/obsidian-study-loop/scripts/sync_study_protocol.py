@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Sync an Obsidian study vault protocol from the bundled template.
+"""Sync installed Obsidian study-loop protocol and manual documents.
 
 Dry-run by default: prints a unified diff and exits with code 2 when the vault
-protocol is stale. Use --apply to update STUDY-PROTOCOL.md.
+documents are stale. Use --apply to update both installed copies.
 """
 
 from __future__ import annotations
@@ -21,7 +21,13 @@ from pathlib import PurePosixPath
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPT_DIR.parent
 DEFAULT_TEMPLATE = SKILL_DIR / "references" / "study-protocol-template.md"
+DEFAULT_MANUAL = SKILL_DIR / "references" / "manpage.md"
 PROTOCOL_NAME = "STUDY-PROTOCOL.md"
+MANUAL_NAME = "STUDY-MANUAL.md"
+MANUAL_BANNER = (
+    "<!-- Installed copy of the obsidian-study-loop manual. "
+    "Refreshed on protocol sync; do not hand-edit. -->\n"
+)
 
 
 class SyncError(RuntimeError):
@@ -50,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Write the rendered protocol to STUDY-PROTOCOL.md. Without this, only prints a diff.",
+        help="Refresh installed protocol and manual copies. Without this, only prints diffs.",
     )
     parser.add_argument(
         "--no-diff",
@@ -66,12 +72,23 @@ def resolve_vault(path: str) -> Path:
         raise SyncError(f"Vault path does not exist: {vault}")
     if not vault.is_dir():
         raise SyncError(f"Vault path is not a directory: {vault}")
-    markers = [vault / PROTOCOL_NAME, vault / "_study" / "state.json", vault / ".obsidian"]
-    if not any(marker.exists() for marker in markers):
+    protocol = vault / PROTOCOL_NAME
+    state = vault / "_study" / "state.json"
+    if not protocol.exists() or not state.exists():
         raise SyncError(
-            "Refusing to sync: target does not look like a study vault. "
-            "Expected STUDY-PROTOCOL.md, _study/state.json, or .obsidian/."
+            "Refusing to sync an uninstalled or partial study vault. Expected "
+            "both STUDY-PROTOCOL.md and _study/state.json; run "
+            "install_study_loop.py first to create missing scaffold safely."
         )
+    for required in (protocol, state):
+        if not required.is_file():
+            raise SyncError(f"Required study-vault file is not a regular file: {required}")
+        try:
+            resolved_required = required.resolve()
+        except (OSError, RuntimeError) as exc:
+            raise SyncError(f"Required study-vault file is unsafe: {required}: {exc}") from exc
+        if not resolved_required.is_relative_to(vault):
+            raise SyncError(f"Required study-vault file resolves outside vault: {required}")
     return vault
 
 
@@ -164,7 +181,7 @@ def state_warnings(vault: Path) -> list[str]:
             return [f"{state_file} symlink cannot be resolved safely: {exc}"]
     try:
         state = json.loads(state_file.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         return [f"{state_file} is not valid UTF-8 JSON: {exc}"]
     if not isinstance(state, dict) or set(state) != {"active_session"}:
         return [f"{state_file} must contain exactly the active_session key"]
@@ -185,8 +202,8 @@ def state_warnings(vault: Path) -> list[str]:
             "under _study/sessions/"
         ]
     session = vault.joinpath(*relative.parts)
-    if not session.exists():
-        return [f"{state_file} points to a missing session: {active}"]
+    if not session.exists() or not session.is_file():
+        return [f"{state_file} active_session must point to a regular file: {active}"]
     sessions_dir = vault / "_study" / "sessions"
     try:
         resolved_session = session.resolve()
@@ -213,14 +230,31 @@ def unified_diff(current: str, desired: str, target: Path, template: Path) -> st
     )
 
 
+def rendered_manual() -> str:
+    if not DEFAULT_MANUAL.exists():
+        raise SyncError(f"Manual source not found: {DEFAULT_MANUAL}")
+    text = DEFAULT_MANUAL.read_text(encoding="utf-8")
+    return MANUAL_BANNER + text.lstrip("\n")
+
+
 def main() -> int:
     args = parse_args()
     try:
         vault = resolve_vault(args.vault_path)
         template = DEFAULT_TEMPLATE.resolve()
         target = vault / PROTOCOL_NAME
+        manual_source = DEFAULT_MANUAL.resolve()
+        manual_target = vault / MANUAL_NAME
         ensure_safe_target(target, vault)
+        ensure_safe_target(manual_target, vault)
+        state_issues = state_warnings(vault)
+        if state_issues:
+            raise SyncError(
+                "Refusing to sync while study state needs repair: "
+                + "; ".join(state_issues)
+            )
         current = read_existing_protocol(target)
+        current_manual = read_existing_protocol(manual_target)
         notes_dir = (
             resolve_notes_dir(args.notes_dir, vault)
             if args.notes_dir
@@ -232,37 +266,53 @@ def main() -> int:
                 "The protocol permits only vault-local note directories."
             )
         desired = render_template(template, vault, notes_dir)
+        desired_manual = rendered_manual()
 
-        if current == desired:
+        protocol_stale = current != desired
+        manual_stale = current_manual != desired_manual
+        if not protocol_stale and not manual_stale:
             print(f"{target} is already in sync with {template}")
-            print_state_warnings(vault)
+            print(f"{manual_target} is already in sync with {manual_source}")
             return 0
 
         if not args.no_diff:
-            print(unified_diff(current, desired, target, template), end="")
+            if protocol_stale:
+                print(unified_diff(current, desired, target, template), end="")
+            if manual_stale:
+                print(
+                    unified_diff(
+                        current_manual, desired_manual, manual_target, manual_source
+                    ),
+                    end="",
+                )
 
         if not args.apply:
-            print("\nDRY RUN: protocol is stale. Re-run with --apply to update STUDY-PROTOCOL.md.")
-            print_state_warnings(vault)
+            print(
+                "\nDRY RUN: installed study documents are stale. "
+                "Re-run with --apply to update them."
+            )
             return 2
 
-        atomic_write_text(target, desired)
-        print(f"UPDATED: {target}")
-        print(f"SOURCE:  {template}")
-        print("Protected: Notes/, _study/sessions/, and _study/state.json were not touched.")
-        warnings = state_warnings(vault)
-        for warning in warnings:
-            print(f"WARNING: {warning}", file=sys.stderr)
-        if not warnings:
-            state_file = vault / "_study" / "state.json"
-            if state_file.exists():
-                state = json.loads(state_file.read_text(encoding="utf-8"))
-                if state["active_session"]:
-                    print(
-                        "NOTICE: _study/state.json points at an active session. Agents "
-                        "mid-session should re-read STUDY-PROTOCOL.md before their next "
-                        "study-loop action."
-                    )
+        if protocol_stale:
+            atomic_write_text(target, desired)
+            print(f"UPDATED: {target}")
+            print(f"SOURCE:  {template}")
+        if manual_stale:
+            atomic_write_text(manual_target, desired_manual)
+            print(f"UPDATED: {manual_target}")
+            print(f"SOURCE:  {manual_source}")
+        print(
+            "Protected: Notes/, _study/sessions/, _study/state.json, and pointer "
+            "files were not touched."
+        )
+        state_file = vault / "_study" / "state.json"
+        state = json.loads(state_file.read_text(encoding="utf-8"))
+        if state["active_session"]:
+            print(
+                "NOTICE: _study/state.json points at an active session. Agents "
+                "mid-session should re-read STUDY-PROTOCOL.md before their next "
+                "study-loop action."
+            )
         return 0
     except (SyncError, OSError, UnicodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

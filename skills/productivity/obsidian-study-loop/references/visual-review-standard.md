@@ -32,7 +32,7 @@ friendly technical reading interface defined by flow and information
 architecture, not decoration. Build it from the bundled template in
 `tactile-study-surface/` (chrome, compiled behaviors, assembler, worked
 example — see its `SPEC.md`), so every artifact shares byte-identical chrome
-and only the per-scope content module changes.
+and only the declarative per-scope JSON manifest changes.
 
 ### Narrative flow
 
@@ -57,7 +57,7 @@ scope controls the page, never the template.
 - Stable frame from the template: sticky command bar (scope code, keyboard
   hints, theme toggle), scrollspy index rail that becomes a wrapped
   horizontal index on narrow screens, one strong thesis, numbered section
-  panels, retrieval deck last, traceability footer.
+  panels, an optional retrieval deck last, traceability footer.
 - One thesis and one signature visual dominate. Supporting content uses the
   template primitives — cards with tags and chips, flows, duo splits, vs
   pairs, tables in scroll wrappers, and contrast callouts.
@@ -73,16 +73,15 @@ matrix for repeated exact mappings, and a flow or timeline for ordered stages.
 Every node and edge must be traceable to the source note. A mind map may reveal
 detail on selection, but must not collect answers or imply scoring.
 
-### TypeScript authoring boundary
+### Maintainer interaction boundary
 
-Non-trivial interactions are authored in TypeScript with explicit types; the
-template's `behaviors.ts` is the source of truth. Compile with the TypeScript
-7 native compiler (`npx -y -p typescript@7 tsc behaviors.ts --strict --target
-es2019 --lib dom,es2019 --noEmitOnError`) to minimal classic inline
-JavaScript before release. The released artifact remains one offline HTML
-file: no TypeScript runtime, JSX, Tailwind runtime, package import, module
-script, source map, or external dependency. Static pages should remain
-script-free.
+Normal study-time generation uses the bundled reviewed `behaviors.js` and must
+not invoke package managers, install dependencies, or download a compiler.
+`behaviors.ts` is maintainer source only. Rebuild it only during repository
+maintenance with an already-installed pinned compiler, then inspect and test
+the compiled diff. The released artifact remains one offline HTML file: no
+TypeScript runtime, JSX, Tailwind runtime, package import, module script, source
+map, or external dependency. Static pages should remain script-free.
 
 ### Content-preservation gate
 
@@ -99,7 +98,8 @@ Every file includes:
 - One logical `<h1>` and one `<main>` landmark.
 - `lang`, UTF-8 charset, viewport, and `no-referrer` metadata.
 - Non-empty `study-source`, `study-scope`, `study-generated`, and
-  `study-visual-version` metadata. Contract version is `1`.
+  `study-visual-version` metadata. `study-source` is a vault-local POSIX path
+  to an existing regular file inside the vault. Contract version is `1`.
 - A restrictive Content Security Policy with `default-src 'none'`,
   `connect-src 'none'`, `form-action 'none'`, and `base-uri 'none'`.
 - A visible footer that repeats the scope, local source identifier, generation
@@ -169,7 +169,10 @@ Do not add:
   or links that leave the document.
 
 Fragment links and inline `data:image/` resources are the only URL-bearing
-exceptions. Prefer inline SVG over encoded raster assets.
+exceptions. The JSON tactile assembler deliberately rejects SVG. If a
+concept-native diagram truly needs inline SVG, author it through a separately
+reviewed offline artifact, give it the accessibility treatment below, and run
+the same validator and browser checks; never smuggle SVG through `body_html`.
 
 ## Release review
 

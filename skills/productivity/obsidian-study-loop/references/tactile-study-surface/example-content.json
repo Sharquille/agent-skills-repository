@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "source": "Notes/Example Course - Access Control.md",
+    "scope": "1.2 Access control",
+    "code": "1.2",
+    "scope_name": "Access control",
+    "generated": "2026-07-12T14:30:00-0400",
+    "title": "Access control · Visual review",
+    "accent": "oklch(0.48 0.16 250)",
+    "kicker": "Study note · authorization decisions",
+    "h1": "Match access decisions to the protected context.",
+    "lede": "This example demonstrates the declarative content manifest and the approved tactile primitives without binding the surface to a particular course or certification."
+  },
+  "sections": [
+    {
+      "id": "classify",
+      "nav": "Decision lenses",
+      "title": "Three decision lenses",
+      "lede": "Start with the subject, resource, and policy before choosing a mechanism.",
+      "body_html": "<div class=\"grid-3\"><article class=\"card\"><span class=\"tag\">Subject</span><h3>Who is requesting?</h3><p>Identify the user, service, device, or workload and its verified attributes.</p></article><article class=\"card\"><span class=\"tag\">Resource</span><h3>What is protected?</h3><p>Name the file, API, record, command, or system the subject wants to use.</p></article><article class=\"card\"><span class=\"tag\">Policy</span><h3>Which rule decides?</h3><p>Apply the rule whose conditions match this subject, resource, and requested action.</p></article></div><div class=\"contrast\"><h3>Authentication is not authorization</h3><p>Authentication establishes an identity claim. Authorization decides which actions that identity may perform in this context.</p></div>"
+    },
+    {
+      "id": "compare",
+      "nav": "Close concepts",
+      "title": "Separate two close concepts",
+      "lede": "Use the deciding question to avoid a recognition-only answer.",
+      "body_html": "<div class=\"vs\"><article class=\"card\"><span class=\"tag\">Authentication</span><h3>Who are you?</h3><p>Validates identity evidence.</p></article><span class=\"vs-mark\">VS</span><article class=\"card\"><span class=\"tag warn\">Authorization</span><h3>What may you do?</h3><p>Evaluates permissions after identity is established.</p></article></div>"
+    },
+    {
+      "id": "apply",
+      "nav": "Apply",
+      "title": "Walk the decision in order",
+      "lede": "A repeatable sequence makes the reasoning visible and transferable.",
+      "body_html": "<div class=\"flow cols-3\"><article><h3>Establish identity</h3><p>Validate the subject's evidence.</p></article><article><h3>Evaluate policy</h3><p>Match the requested action and context to the governing rule.</p></article><article><h3>Record the result</h3><p>Allow or deny, then retain the decision trail needed for review.</p></article></div>"
+    }
+  ],
+  "cues": [
+    {
+      "question": "A known user requests a restricted record. Which question remains after authentication?",
+      "reference": "Reference: whether policy authorizes that user to perform the requested action on that record."
+    },
+    {
+      "question": "What three facts anchor an access-control decision?",
+      "reference": "Reference: the subject, the protected resource, and the applicable policy for the requested action and context."
+    }
+  ]
+}

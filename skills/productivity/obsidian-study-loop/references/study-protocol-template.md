@@ -17,7 +17,7 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - Session-integrated research-dive workspaces live in `_study/research/`
   (created on first dive).
 - `STUDY-MANUAL.md` at the vault root is the installed plain-language manual
-  (agent-refreshed on protocol sync; do not hand-edit).
+  (script-refreshed on protocol sync; do not hand-edit).
 - Active session state lives in `_study/state.json`.
 - `state.json` must always be valid JSON and must contain exactly one active
   session pointer or `null`:
@@ -154,14 +154,9 @@ example `~/.claude/skills/obsidian-study-loop/scripts/`, or
 <skill-dir>/scripts/sync_study_protocol.py <VAULT_PATH>
 ```
 
-The helper compares the source template to this `STUDY-PROTOCOL.md` and prints a
-diff. It updates only this protocol file when run with `--apply`; it does not
-touch `Notes/`, `_study/state.json`, or `_study/sessions/`.
-
-The vault's `STUDY-MANUAL.md` is agent-managed, not script-managed: after an
-`--apply`, the agent refreshes it by re-copying the skill's
-`references/manpage.md` with the banner comment (creating the file if
-missing).
+The helper compares the bundled protocol and manual sources to this vault and
+prints their diffs. With `--apply`, it updates `STUDY-PROTOCOL.md` and
+`STUDY-MANUAL.md`; it does not touch notes, pointer files, state, or sessions.
 
 The helper always uses its bundled canonical template and permits only a notes
 directory inside the resolved vault. Relative `--notes-dir` values resolve from
@@ -178,16 +173,14 @@ disagree:
 <skill-dir>/scripts/validate_study_vault.py <VAULT_PATH>
 ```
 
-The validator never edits the vault. It checks the `state.json` schema and
-active-session boundary, required session frontmatter, canonical H2 group
-ordering, duplicate headings, final `## Session log`, logged note paths,
-balanced learner/study-check markers, duplicate study-check IDs, pending gaps
-inside reviewed notes, answered checks that lack review feedback, and every
-HTML file under `_study/visuals/` against the offline visual-artifact contract.
-An unconsumed quiz-progress block is a warning because it may represent a valid
-interrupted quiz; integrity violations are errors. It exits `0` when no errors
-exist and `1` when errors require attention. Resolve errors through the normal
-recovery workflow rather than expecting an automatic fix.
+The validator never edits the vault. It checks state and session boundaries,
+canonical H2 ordering, unique quiz attempts, planned/asked/scored/deferred
+question records, attempt-to-assessment consumption, applicable score notation,
+learner source markers, note/study-check integrity, and every visual artifact's
+offline security contract. Asked-but-unscored questions and missing provenance
+are warnings because they can represent valid interrupted or low-confidence
+work; structural contradictions are errors. Resolve findings deliberately—do
+not add an automatic fixer.
 
 ## Plain-Language Manual
 
@@ -411,59 +404,80 @@ Rules:
 - Record the cleanup in the session review changelog or session log, including
   the source (`mimo` or `local`) and which fields were skipped as already clean.
 
+<!-- shared-contract:start id=mastery-scoring -->
 ## Mastery Evidence and Confidence
 
 Use all learner-produced evidence, not only the final quiz score. Evidence
-includes quiz answers, answered `study-check` blocks, corrected gap research,
-lab decisions, and later review explanations.
+includes quiz answers, answered `study-check` blocks, learner-authored gap
+research, lab decisions, and later review explanations.
 
-Score each evidence item out of 8 with this topic-neutral rubric:
+For each evidence item, score only the dimensions that genuinely apply:
 
 - Accuracy or correctness: `0-2`
 - Context or application fit: `0-2`
 - Reasoning or explanation: `0-2`
 - Transfer, limitations, alternatives, or distractor rejection: `0-2`
 
-Map scores to mastery: `solid` = 7-8, `partial` = 4-6, `gap` = 0-3.
+Record both earned and applicable points as `<earned>/<possible applicable>`.
+Applicable denominators are `2`, `4`, `6`, or `8`, matching the number of
+rubric dimensions used; full applied evidence remains `/8`. Map the applicable
+proportion to mastery: `solid` = at least 87.5%, `partial` = at least 50% but
+below 87.5%, and `gap` = below 50%. A fully correct definition may therefore
+be `2/2 applicable — solid (recall-only)`; never display it as `2/8`.
 
-For recall or definition items where context, reasoning, and transfer do not
-genuinely apply, score only the dimensions that fit and judge mastery on those. A
-fully correct term-definition answer is `solid` even though it earns no
-application or transfer points. Never let inapplicable dimensions drag a correct
-recall answer down to `partial` or `gap`. Reserve the full four-dimension score
-for application, scenario, and explanation items.
+Each assessment objective selects one scored `evidence question: Q<n>` from
+the linked attempt as its primary mastery evidence. Copy that question's raw
+score, assistance, and learner confidence exactly; prefer the most diagnostic
+unassisted item when one exists. The selected question controls the row's
+numeric mastery and calibration. Other evidence may strengthen or weaken tutor
+confidence and the evidence summary, but it does not replace that row's score.
+Question kinds are a finite taxonomy: recall-only kinds are `recall`,
+`definition`, `term-definition`, `free-recall`, `free-production`,
+`fill-in-the-blank`, and `recognition`; applied-capable kinds are `application`,
+`applied`, `scenario`, `compare-contrast`, `classification`, `discrimination`,
+`transfer`, and `lab`. Reject any other kind. A numerically solid selected item
+of a recall-only kind must be labeled `solid (recall-only)`, and an
+applied-capable kind cannot use that label. With assistance `none`, mastery
+follows the numeric band. Any `hint-*` or `revealed` evidence is capped at
+`partial` even when its raw score is numerically solid. For `revealed`, score
+only what the learner produced before the reveal—often a `gap`—never the shown
+answer, and never record `solid`.
 
 Keep two confidence signals separate:
 
-- **Learner confidence**: Low, Medium, or High, selected before feedback.
+- **Learner confidence**: Low, Medium, or High, selected before feedback; use
+  `unknown` when the learner opts out or it was not collected.
 - **Tutor confidence in mastery**:
   - `high`: at least two independent evidence items support mastery, including
     one applied or transfer item, with no unresolved critical misconception.
-  - `medium`: evidence is limited, mixed, or based on one strong item.
-  - `low`: evidence is weak, contradictory, below 4/8, or absent.
+  - `medium`: evidence is limited, mixed, recall-only, or based on one strong item.
+  - `low`: evidence is weak, contradictory, below the mastery threshold on its
+    applicable denominator, or absent.
 
-Judge calibration after scoring:
+Calibration compares learner confidence with that evidence item's mastery band,
+not with tutor confidence: `gap` maps to Low, `partial` to Medium, and `solid`
+to High. Matching bands are `well-calibrated`; learner confidence above the
+band is `overconfident`; below it is `underconfident`; missing confidence is
+`unknown`. A `solid (recall-only)` answer may be well-calibrated while tutor
+confidence remains capped at `medium`.
 
-- `well-calibrated`: learner confidence matches demonstrated mastery.
-- `overconfident`: learner confidence materially exceeds demonstrated mastery.
-- `underconfident`: demonstrated mastery materially exceeds learner confidence.
-- `unknown`: learner confidence was not supplied.
-
-The `## Assessment — <scope>` block is the canonical record of scores and
-mastery. Maintaining a separate roll-up ledger is optional; use it only when a
-cross-session view helps, and keep it consistent with the assessment — it must
-summarize, never contradict it. Keep the ledger lean:
+The `## Assessment — <scope> — attempt <attempt-id>` block is the canonical
+record of the evidence question, raw score, assistance, mastery, tutor
+confidence, learner confidence, calibration, retrieval stage, and next action.
+A separate roll-up ledger is optional; it must summarize without contradicting
+the assessment. Keep it lean:
 
 ```markdown
 ## Mastery evidence
 
 | Date | Scope | Objective | Evidence | Score | Mastery | Confidence | Notes |
 |---|---|---|---|---:|---|---|---|
-| <date> | <scope> | <objective> | <quiz or study-check-id> | <0-8> | <solid|partial|gap> | tutor <level>, learner <level|unknown>, <calibration> | <brief evidence> |
+| <date> | <scope> | <objective> | <quiz or study-check-id> | <earned>/<applicable> | <solid|partial|gap> | tutor <level>, learner <level|unknown>, <calibration> | <brief evidence> |
 ```
 
 Historical evidence remains in the ledger. New evidence may update the current
 tutor confidence, but must not rewrite what the learner originally answered.
+<!-- shared-contract:end id=mastery-scoring -->
 
 ## Phase 1 - Setup
 
@@ -513,9 +527,12 @@ When creating the session:
    - Unconsumed `## Quiz progress` blocks in session files: an interrupted
      quiz. Offer to resume it before starting anything new.
    - Due re-reviews: `next review` dates in the latest assessment blocks that
-     are on or before today. Offer to prepend 1-2 retrieval questions for
-     those objectives to the next quiz; if the re-check score drops, demote
-     the objective's mastery and reopen a gap stub.
+     are on or before today. Offer to prepend at most 1-2 retrieval questions,
+     prioritizing objectives that are confusable with each other or meaningfully
+     related to the new scope. Record them under their original scopes, never in
+     the new scope's grade. Persist the attempt in its originating session file
+     without changing `active_session`. Do not randomly interleave unrelated
+     material.
    - Research-dive workspaces under `_study/research/`: report each as
      resumable (no `audit.md` yet — offer to resume at the first incomplete
      stage, naming the originating session and question), needs repair
@@ -590,9 +607,14 @@ setup.
 }
 ```
 
-9. Confirm the objectives back to the user in one short list. If a study packet
-   was captured, also confirm the section titles captured, but keep it brief.
-10. Stop. Do not quiz the user yet.
+9. Offer one optional 1-2 minute prior-knowledge prompt tied to the scope,
+   labeled **orientation — not a quiz**. Do not request confidence, score it,
+   or use it as mastery evidence. Declining never blocks the study break. If
+   completed, log only that activation occurred, not the learner's answer.
+10. Confirm the objectives back to the user in one short list. If a study
+    packet was captured, also confirm the section titles, then close with the
+    exact next action: study offline, then return with "quiz me".
+11. Stop. Do not quiz the user yet.
 
 Maintain this section order in the session file for the whole session
 lifecycle, inserting each new block within its group rather than appending at
@@ -601,8 +623,8 @@ the end of the file:
 1. frontmatter
 2. `## Study content`
 3. `## Unit progress`
-4. `## Quiz progress — <scope>` blocks, in section order
-5. `## Assessment — <scope>` blocks, in section order
+4. `## Quiz progress — <scope> — attempt <attempt-id>` blocks, in section order
+5. `## Assessment — <scope> — attempt <attempt-id>` blocks, in section order
 6. `## Notes written — <scope>` blocks, in section order
 7. `## Deep dive — <scope>` blocks, in section order
 8. `## Review — <date>` blocks, oldest first
@@ -652,57 +674,74 @@ When the user asks to be quizzed:
      already assessed and the user asked only for new material), stop: report
      why nothing is quizzable, do not run an empty quiz, do not write an
      assessment, and ask for a different scope or an updated study packet.
-5. Quiz thoroughly, covering every objective in scope. If `## Study content`
-   exists, use the in-scope learning outcomes, key terms, labs, activities, and
-   practice expectations as the quiz blueprint. Use certification exam objective
-   mappings only to align question wording to the exam, not to introduce
-   future-section content. Before the first question, start a disk-backed
-   progress block in the session file so an interrupted quiz can resume:
+<!-- shared-contract:start id=quiz-attempt -->
+5. Build an adaptive question budget before asking anything. The minimum gives
+   every eligible objective one scorable retrieval surface. The target adds an
+   applied or discrimination prompt where it improves evidence. The maximum
+   permits one clarification or fresh transfer prompt when evidence remains
+   ambiguous. Tell the learner the estimated range; stop when evidence is
+   sufficient and never ask filler questions.
+6. Create a unique attempt ID from the local date plus a two-digit sequence,
+   such as `2026-07-12-01`. Never reuse an ID. Persist one mutable record per
+   question before the first prompt:
 
 ```markdown
-## Quiz progress — <scope>
+## Quiz progress — <scope> — attempt <YYYY-MM-DD>-<NN>
 
-- Planned: <objective 1>; <objective 2>; <objective 3>
-- <ISO datetime> - Q1 <objective 1> - score <0-8> - <one-line answer summary>
+- Budget: minimum <n>; target <n>; maximum <n>; mode adaptive
+- Attempt status: active — updated: <ISO datetime>
+- Q1 [recall] — <objective> — status: planned
+- Q2 [application] — <objective> — status: planned
 ```
 
-   Append one line per scored answer as it is scored. When Phase 4 writes the
-   assessment, mark the block consumed by appending
-   `- Consumed by Assessment — <scope> on <ISO datetime>` rather than deleting
-   it. If a quiz starts and an unconsumed `## Quiz progress` block already
-   exists for the same scope, offer to resume from the first unanswered planned
-   objective instead of restarting.
-6. Mix question formats:
-   - Direct recall: "What does X stand for and what does it do?"
-   - Fill-in-the-blank: "In ___ access control, permissions attach to roles, not users."
-   - Conceptual or compare-contrast: "When would you choose X over Y, and why?"
-   - One applied/scenario question per major objective where it makes sense.
-7. Ask exactly one quiz question at a time. Do not list the full quiz or multiple
-   lettered questions in one message. Keep the remaining questions as an
-   internal queue, mirrored by the `## Quiz progress` block on disk — context
-   can evaporate between turns; the block is the recovery point.
-8. If a section has several planned prompts, ask only the next prompt, wait for
-   the user's answer, give brief feedback, record assessment notes, and then ask
-   the next prompt.
-9. Group the hidden question queue by objective or by `### Section` from
-   `## Study content`, but keep the chat experience conversational and
-   one-question-at-a-time.
-10. Do not reveal an answer until the user has responded to that question.
-11. Honor mid-quiz learner controls without corrupting the evidence. If the
-   user asks for a hint, step down a short ladder one level per request:
-   restate what the question is really asking, then direct attention to the
-   relevant feature of the scenario, then recall the needed principle or a
-   simpler analogous case. Never reveal the answer as a hint. If the user says
-   "show me" or "skip", give the correct answer with reasoning and score only
-   what the user produced before the reveal. Record `hint` or `revealed` in
-   that question's progress line; a hint-assisted correct answer caps at
-   `partial` for that evidence item and does not count as the independent
-   applied item that `high` tutor confidence requires. If a mid-quiz deep dive
-   reveals planned material, record it per Mid-Session Deep Dives:
-   `- <ISO datetime> - Q<n> <objective> - deferred: revealed by deep dive`.
-12. After each answer, tell the user what was right, what was wrong or missing,
-   and the correct answer before moving on.
-13. Keep enough notes during the quiz to assess each objective later.
+   Immediately before showing a question, replace its record with `status:
+   asked` and its complete one-line prompt. After the learner responds, replace
+   that same record with exactly one terminal `scored` or `deferred` state:
+
+```markdown
+- Q1 [recall] — <objective> — status: asked — prompt: <complete prompt>
+- Q1 [recall] — <objective> — status: scored — prompt: <complete prompt> — score: 2/2 applicable — assistance: none — learner confidence: High — evidence: <brief evidence>
+- Q2 [application] — <objective> — status: deferred — reason: <reason>
+```
+
+7. If `## Study content` exists, use the in-scope learning outcomes, key terms,
+   labs, activities, and practice expectations as the blueprint. Certification
+   mappings align wording but never introduce future-section material. Mix
+   recall, compare-contrast, free production, and applied scenarios according
+   to what each objective genuinely requires.
+8. Ask exactly one question at a time. Do not display the full plan. The disk
+   records—not chat memory—are the recovery point. On resume, first resolve an
+   `asked` question, then continue with the earliest `planned` record.
+9. Honor learner controls without corrupting evidence:
+   - `pause`: set `Attempt status: paused` with the current timestamp; do not
+     assess unfinished objectives.
+   - `resume`: set the same attempt and ID back to `active`, update its
+     timestamp, and continue.
+   - `rephrase`: change wording only, update the stored prompt, and apply no
+     hint penalty.
+   - `shorter`: move toward the minimum by deferring optional prompts; retain at
+     least one scorable item per objective unless the learner narrows scope.
+   - `deeper`: add a planned discrimination or transfer prompt without
+     expanding scope or exceeding the maximum without consent.
+   - `hint`: step down one level per request—reframe, direct attention to a
+     relevant feature, then recall the principle or a simpler analogue.
+   - `show me` or `skip`: reveal the answer with reasoning and score only what
+     the learner produced first.
+10. Record assistance as `none`, `hint-1`, `hint-2`, `hint-3`, or `revealed`.
+    Hint-assisted correct evidence is capped at `partial` and cannot satisfy the
+    independent applied item required for high tutor confidence. A deep dive
+    that reveals a planned answer changes the record to `deferred` with the
+    reason `revealed by deep dive`.
+11. Collect Low, Medium, or High learner confidence before feedback when
+    practical. Ask once if omitted, honor opt-out, and store `unknown`.
+12. After each answer, say what was right, what was missing, and the correct
+    answer. A clarification probe may precede grading when the response is
+    genuinely ambiguous; it must not teach the answer.
+13. When the attempt is assessed, set its status to `completed`, then append the
+    exact matching record:
+    `- Consumed by Assessment — <scope> — attempt <attempt-id> on <ISO datetime>`.
+    Never delete attempt history.
+<!-- shared-contract:end id=quiz-attempt -->
 14. When key terms are provided, include term-definition recall and at least one
    question requiring the user to distinguish similar terms. Also include at
    least one pure free-recall prompt per section — describe a scenario and ask
@@ -715,10 +754,9 @@ When the user asks to be quizzed:
 17. For applied questions, state a concrete subject or asset, situation or
     failure path, and relevant facts. Ask the user to explain why the answer or
     decision fits that context, not merely name a term.
-18. When practical, ask for learner confidence before giving feedback. Score
-    each answer with the universal 8-point rubric; the scores feed the required
-    `## Assessment — <scope>` block in Phase 4 (the separate `## Mastery
-    evidence` ledger stays optional).
+18. Score each answer on its applicable denominator; the scores feed the
+    attempt-scoped assessment in Phase 4. The separate mastery-evidence ledger
+    remains optional.
 19. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
@@ -752,8 +790,8 @@ scope. Useful formats include:
 - Visual retrieval prompts such as unlabeled diagrams or "explain this flow"
   cues, without scoring or answer collection.
 
-Every visual artifact must be self-contained offline HTML. Inline CSS, JS, and
-SVG are allowed when they support the visual explanation. Do not add remote
+Every visual artifact must be self-contained offline HTML. Inline CSS and JS
+are allowed when they support the visual explanation. Do not add remote
 scripts, stylesheets, fonts, images, telemetry, accounts, persistence, or
 network calls.
 
@@ -767,15 +805,19 @@ not a skin:
 - Build a deliberate study narrative: **orient -> map or classify -> contrast
   -> respond or apply -> retrieve**. Omit a stage only when the scope does not
   support it; never invent content to fill the sequence.
-- Keep the stable page frame the template provides: sticky command bar with
-  scope code and keyboard hints, scrollspy index rail, one strong thesis,
-  numbered section panels, and the retrieval deck last. oklch tokens, system
-  font stacks only, hard asymmetric shadows, one per-scope accent hue, light
-  default with dark via `prefers-color-scheme` plus an in-memory toggle.
-- Assemble with the template's `assemble.py` and a per-scope content module
-  so every artifact carries byte-identical chrome; express content through
-  the template's primitives (cards, flows, duos, vs pairs, tables, contrast
-  callouts) rather than inventing new chrome.
+- Keep the stable page frame the template provides: sticky command bar,
+  scrollspy index rail, one strong thesis, and numbered section panels. When
+  honest retrieval cues exist, append the interactive deck last; otherwise
+  omit it and produce a script-free static page.
+- Assemble with the template's `assemble.py --vault <VAULT_PATH>
+  <content.json> <VAULT_PATH>/_study/visuals/<slug>.html` and a declarative
+  per-scope JSON manifest so every assembled artifact carries byte-identical
+  chrome. The manifest is data, never executable code. Express content only
+  through the assembler's validated primitives.
+- The JSON assembler supports its documented semantic and CSS primitives and
+  deliberately rejects SVG. If the source genuinely requires a concept-native
+  SVG, author a separate offline artifact under the visual review standard;
+  validate and browser-review it instead of placing SVG in `body_html`.
 - Use rich UI elements only when they carry study meaning. Do not add
   dashboard metrics, ornamental cards, generic hero chrome, or controls that
   do not change an explanatory view.
@@ -787,13 +829,12 @@ not a skin:
   visual migration. Preserve every factual claim, distinction, example,
   limitation, scope boundary, and retrieval reference. Presentation may move;
   subject matter may not drift, disappear, or expand.
-- Author non-trivial interaction logic in TypeScript (the template's
-  `behaviors.ts` is the source of truth) and compile it with the TypeScript 7
-  native compiler (`npx -y -p typescript@7 tsc --strict`) to a small classic
-  inline JavaScript block before release; TypeScript, JSX, Tailwind, package
-  runtimes, and build dependencies must not ship in the offline HTML. The
-  deck's self-marks stay ephemeral: in-memory only, reset on reload, never
-  stored, exported, scored, or written to mastery evidence.
+- Normal study-time generation uses the bundled reviewed `behaviors.js`; it
+  must not invoke package managers or download build tools. `behaviors.ts` is
+  maintainer source only and may be rebuilt during repository maintenance with
+  an already-installed pinned compiler, followed by inspection and tests.
+  TypeScript, JSX, runtimes, and build dependencies never ship in the HTML.
+  The deck's self-marks stay ephemeral and never become mastery evidence.
 
 Before migrating an existing artifact, inventory its headings, factual blocks,
 comparisons, examples, and retrieval cues. After migration, compare the same
@@ -827,15 +868,17 @@ even when that reference is unavailable:
 
 - Use one logical `<h1>`, a `<main>` landmark, `<html lang>`, UTF-8 charset,
   viewport metadata, and a visible focus treatment for interactive elements.
-- Give informative inline SVGs an accessible name with `aria-label` or
-  `aria-labelledby`; mark decorative SVGs `aria-hidden="true"`.
+- In a separately authored artifact, give informative inline SVGs an accessible
+  name with `aria-label` or `aria-labelledby`; mark decorative SVGs
+  `aria-hidden="true"`.
 - Reflow without losing information at 320 CSS pixels. A complex table or code
   sample may use a deliberately scrollable wrapper.
 - If motion is present, include a `prefers-reduced-motion: reduce` override.
   Prefer native `<details>`/`<summary>` over custom JavaScript disclosures.
 - Include `study-source`, `study-scope`, `study-generated`, and
-  `study-visual-version` metadata. Source values are vault-local identifiers,
-  never remote URLs. Use visual contract version `1`.
+  `study-visual-version` metadata. `study-source` must be a vault-local POSIX
+  path to an existing regular file inside the vault, never a remote URL. Use
+  visual contract version `1`.
 - Add `referrer=no-referrer` and a Content Security Policy that denies all
   default and network access. At minimum it must contain
   `default-src 'none'`, `connect-src 'none'`, `form-action 'none'`, and
@@ -941,6 +984,16 @@ matching script.
   the course, certification goal, in-scope objectives, and prior assessment
   evidence. Do not re-ask what it answers; calibrate the lesson from it and
   ask at most one genuinely missing diagnostic question.
+<!-- shared-contract:start id=teaching-evidence-boundary -->
+- Use this teaching rhythm when it fits the concept: **orient → focused chunk →
+  worked example → learner retrieval → corrective feedback → self-explanation
+  or teach-back → later fresh transfer check**. Keep chunks small enough for the
+  learner to manipulate, not merely reread.
+- An immediate paraphrase, self-explanation, or teach-back after instruction or
+  feedback is a learning activity, never mastery evidence. A later teach-back
+  may count only when posed as a fresh, answer-withheld question through the
+  normal quiz or study-check path. Score only that later response.
+<!-- shared-contract:end id=teaching-evidence-boundary -->
 - Teaching visuals: when a picture materially reduces abstraction — or the
   learner asks ("draw it", "visualize that") — draw it as a Mermaid fenced
   code block, the **only** embedded diagram format for teaching content;
@@ -965,11 +1018,11 @@ matching script.
 Before starting a dive, sweep the in-scope evidence surfaces it could
 contaminate:
 
-- An unconsumed `## Quiz progress — <scope>` block covering the dive topic:
+- An unconsumed `## Quiz progress — <scope> — attempt <attempt-id>` block
+  covering the dive topic:
   finish or explicitly pause the quiz first. If the learner insists on diving,
-  append a progress line for each affected planned objective —
-  `- <ISO datetime> - Q<n> <objective> - deferred: revealed by deep dive` —
-  and score only what the learner produced before the dive.
+  change each affected question record to `status: deferred — reason: revealed
+  by deep dive` and score only what the learner produced before the dive.
 - Unanswered in-scope `study-check` blocks the dive would teach: offer the
   learner a quick pre-dive attempt (clean evidence). If declined, the check
   stays pending and its later answer is graded like a hint-assisted item
@@ -1032,12 +1085,12 @@ contaminate:
   mastery flow (Phase 5 Write Notes).
 - The teaching skill's internal mastery labels (emerging, developing, secure,
   transfer-ready) are tutor observations for the dive entry only. They are not
-  8-point-rubric evidence and are not inputs to tutor-confidence or
+  applicable-dimension evidence and are not inputs to tutor-confidence or
   calibration calculations.
 - Mid-dive learner answers are hint-saturated and never enter the rubric.
 - Close every dive by offering the canonical follow-ups and recording the
   disposition in the dive entry: a short scoped re-quiz (normal Phase 3/4 with
-  a new dated assessment block) or an embedded `study-check` for later review.
+  a new attempt-scoped assessment block) or an embedded `study-check` for later review.
   A same-session post-dive re-quiz must use fresh question surfaces, and its
   evidence alone cannot raise tutor confidence to `high`; pair it with a later
   independent check, such as the objective's next-review date.
@@ -1050,30 +1103,52 @@ After the quiz is complete:
    - `solid` - The user demonstrated competence.
    - `partial` - The user got the gist but missed key details.
    - `gap` - The user could not recall it or got it materially wrong.
-2. Append a scoped assessment heading in the active session file using
-   this format:
+2. Append the exact attempt-scoped assessment heading using this format:
 
 ```markdown
-## Assessment — <scope>
+## Assessment — <scope> — attempt <attempt-id>
 
-- <objective 1>: solid (<score>) - <brief evidence from quiz> - next review <YYYY-MM-DD>
-- <objective 2>: partial (<score>) - <brief evidence from quiz>
-- <objective 3>: gap (<score>) - <brief evidence from quiz>
+- <objective 1> — mastery: solid — evidence question: Q1 — score: 8/8 — assistance: none — evidence: <brief evidence> — tutor confidence: high — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: <YYYY-MM-DD>
+- <objective 2> — mastery: solid (recall-only) — evidence question: Q2 — score: 2/2 applicable — assistance: none — evidence: <brief evidence> — tutor confidence: medium — learner confidence: High — calibration: well-calibrated — review stage: 1 — next review: <YYYY-MM-DD>
+- <objective 3> — mastery: partial — evidence question: Q3 — score: 7/8 — assistance: hint-1 — evidence: <brief pre-hint production> — tutor confidence: medium — learner confidence: High — calibration: overconfident — next action: unassisted retrieval
 ```
+
+For each objective, choose one scored question from the linked attempt as the
+primary evidence. Prefer the most diagnostic unassisted question when one is
+available, then copy its question ID, raw score, assistance, and learner
+confidence exactly. Other answers inform tutor confidence and the evidence
+summary without changing the selected row's score, calibration, or assistance
+cap. Solid `recall`, `definition`, `term-definition`, `free-recall`,
+`free-production`, `fill-in-the-blank`, and `recognition` questions use
+`solid (recall-only)`; the applied-capable question kinds listed in the mastery
+contract cannot use that label.
 
    Assessment and re-assessment records:
 
-   - An objective whose supporting evidence is entirely recall or definition
-     items is labeled `solid (recall-only)`, and its tutor confidence stays at
-     most `medium` until at least one applied or transfer evidence item is
-     recorded.
-   - Give every `solid` objective a `next review` date: today + 7 days, or
-     today + 21 days when tutor confidence is `high`. `partial` and `gap`
-     objectives are re-tested through the normal loop and need no date.
-   - If an `## Assessment — <scope>` block already exists for this scope, do
-     not edit it. Create a new dated heading
-     `## Assessment — <scope> — <YYYY-MM-DD>` so attempts stay distinguishable;
-     the newest dated block is the current one.
+<!-- shared-contract:start id=retrieval-schedule -->
+- Label evidence supported only by recall or definitions `solid (recall-only)`;
+  tutor confidence stays at most `medium` until an applied or transfer item is
+  recorded.
+- Use successive-relearning stages of approximately 1, 3, 7, 21, and 30 days
+  after the latest successful unassisted retrieval. After stage 5, continue at
+  least monthly and lengthen only after sustained success.
+- A new or remediated `solid` starts at stage 1. Each successful unassisted
+  retrieval advances one stage. Hint-assisted, revealed, `partial`, or `gap`
+  evidence does not advance; after remediation, restart at stage 1.
+- Write each re-review as a new attempt and assessment under the objective's
+  original scope. Never rewrite historical assessments or fold a due warm-up
+  into the new scope's grade. Reopen a gap stub only when new evidence is `gap`.
+- Persist a due-item attempt and assessment in the originating session file,
+  even when another session is active. Leave `_study/state.json` unchanged and
+  add only a link-like session-log entry in the active session. If the origin is
+  missing or ambiguous, defer the item and report the repair need.
+- Example: while `Network Basics` is active, a due `Access Control` check from
+  an older `Security Fundamentals` session is written to that older session;
+  the active pointer stays on `Network Basics`, whose log names the warm-up and
+  originating session.
+- `partial` and `gap` receive a concrete `next action` rather than a review date
+  until remediation produces a successful retrieval.
+<!-- shared-contract:end id=retrieval-schedule -->
 
 3. If the scope is not the full session, do not imply that the entire session
    has been quizzed. Update or append a unit progress table. Keep exactly one
@@ -1103,13 +1178,11 @@ After the quiz is complete:
 If `## Session log` already exists, append the new bullet under the existing
 heading instead of creating a duplicate heading.
 
-Record each objective's score and mastery in the `## Assessment — <scope>` block
-using the universal 8-point rubric (apply the recall exception for definition
-items). Use `unknown` learner confidence when confidence was not collected.
-Calculate tutor confidence from all evidence currently available for that
-objective, not from the newest answer alone. Optionally roll the result into
-`## Mastery evidence`. Finally, mark the scope's `## Quiz progress` block
-consumed (`- Consumed by Assessment — <scope> on <ISO datetime>`).
+Record score, mastery, both confidence signals, calibration, and review stage or
+next action in the attempt-scoped assessment. Calculate tutor confidence from
+all available independent evidence, not the newest answer alone. Optionally
+roll the result into `## Mastery evidence`. Finally, consume the exact attempt
+with `- Consumed by Assessment — <scope> — attempt <attempt-id> on <ISO datetime>`.
 
 ## Phase 5 - Write Notes
 
@@ -1255,12 +1328,16 @@ For `gap` objectives, write only this placeholder:
 > research — what to identify, compare, sequence, or explain. State the task in
 > full so this stub stands alone without the quiz, and never supply the answer.>
 >
-> Research and fill this in yourself below, then run a review. Replace the
-> `Write here.` sentence, but keep the boundary comments.
+> Research and fill this in yourself below, then run a review. Replace both
+> `Write here.` fields, but keep the boundary comments.
 
 <!-- gap:<objective-slug> -->
 <!-- learner-edit:start id=gap-<objective-slug> -->
+<!-- learner-answer:gap-response -->
 Write here.
+
+<!-- learner-source:gap-<objective-slug> -->
+- **Source:** Write here.
 <!-- learner-edit:end id=gap-<objective-slug> -->
 ```
 
@@ -1276,10 +1353,16 @@ documents spread malware" when that document type is the answer). An
 objective-name heading alone is not a prompt.
 
 The `<!-- gap:<objective-slug> -->` HTML comment is a machine marker. Do not
-remove it during note writing. The learner-edit boundaries are user-owned space.
-During review, preserve the user's original wording long enough to score it,
-then make required corrections inside the same boundaries and record them in
-the changelog. Never place tutor feedback inside the learner-edit region.
+remove it during note writing.
+
+<!-- shared-contract:start id=gap-evidence -->
+The learner-edit boundaries are user-owned evidence. Score the original region
+and never rewrite it. Approval leaves it unchanged. Corrections, a reviewed
+synthesis, model answers, source verification, and tutor feedback belong in a
+review callout immediately after the boundary. Grammar cleanup remains a
+separately marked copy. A missing or unverified source stays visible and caps
+tutor confidence; it does not authorize rewriting the learner's words.
+<!-- shared-contract:end id=gap-evidence -->
 
 After drafting full sections, run a note quality pass:
 
@@ -1501,7 +1584,8 @@ When the user asks for review:
 8. For each researched gap section, check the user's content for accuracy and
    completeness against the objective:
    - If correct and complete, leave it unchanged and mark it approved.
-   - If wrong or incomplete, edit it to be correct and complete.
+   - If wrong or incomplete, preserve it and put the correction or reviewed
+     synthesis in a feedback callout immediately after the learner boundary.
    - If uncertain about a technical detail, do not guess. Add a
      `> [!WARNING]` callout explaining what needs verification.
    - Provenance gate: approved gap content must either name a source the user
@@ -1512,11 +1596,11 @@ When the user asks for review:
    - Replace the stale pending `[!IMPORTANT]` research callout after review. Keep
      the alert tag alone on its line and put the status on the next line:
      - `solid` or approved without edits → `[!TIP]`, body **Research reviewed — <date>**
-     - corrected or still `partial` → `[!TIP]`, body **Research reviewed — corrections applied on <date>**
+     - corrected or still `partial` → `[!TIP]`, body **Research reviewed — corrections provided on <date>**
      - unresolved `gap` → `[!WARNING]`, body **More research needed — <date>**
-   - Keep the `gap`, `learner-edit:start`, and `learner-edit:end` markers so the
-     reviewed region remains traceable. Do not leave `RESEARCH NEEDED` above a
-     section that has already been approved or corrected.
+   - Keep the `gap`, `learner-edit:start`, `learner-answer`, `learner-source`,
+     and `learner-edit:end` markers so the original region remains traceable.
+     Do not leave `RESEARCH NEEDED` above reviewed work.
    - Check frontmatter, tags, `[[wikilinks]]`, and related/mind-map metadata for
      consistency with the rest of the vault.
    - Apply a light humanizing edit so the note reads like durable study
@@ -1526,7 +1610,8 @@ When the user asks for review:
    - Context or application fit: `0-2`
    - Reasoning or explanation: `0-2`
    - Transfer, limitations, alternatives, or distractor rejection: `0-2`
-   - `solid`: 7-8, `partial`: 4-6, `gap`: 0-3
+   - Record `<earned>/<applicable>` and apply the mastery proportions from the
+     canonical scoring contract. Full applied checks remain `/8`.
 10. After scoring, explain every false positive, false negative, and weak
     rationale. Preserve the user's original choices and answer text. Never
     replace the learner's text on `learner-answer` lines: corrections and model
@@ -1541,7 +1626,7 @@ When the user asks for review:
 
 ```markdown
 > [!TIP]
-> **Review — <date> · Score <score>/8 (<solid|partial|gap>)**
+> **Review — <date> · Score <earned>/<applicable> (<solid|partial|gap>)**
 > **What worked:** <specific evidence>
 > **Correction:** <what was wrong or incomplete>
 > **Why:** <reasoning or transfer explanation>
@@ -1559,7 +1644,7 @@ copy affect the score.
 
 - <objective>: EDITED — <what changed>. Reason: <why>.
 - <objective>: APPROVED — no changes.
-- <study-check-id>: <score>/8 — <solid|partial|gap>; tutor confidence <level>;
+- <study-check-id>: <earned>/<applicable> — <solid|partial|gap>; tutor confidence <level>;
   learner confidence <level>; calibration <result>. <reasoning feedback>
 ```
 
@@ -1668,28 +1753,30 @@ unambiguous:
 1. Setup creates a dated session log, frontmatter, audit entry, and `state.json`
    pointer.
 2. Study break requires no action.
-3. Quiz loads `state.json`, asks one objective section at a time, waits, then
-   gives feedback.
-4. Assess writes per-objective `solid`, `partial`, or `gap` results and sets
-   `status: quizzed`.
+3. Quiz loads `state.json`, creates a unique attempt and adaptive budget,
+   persists each question before showing it, honors learner controls, and gives
+   feedback one answer at a time.
+4. Assess consumes the exact attempt, writes applicable-denominator scores,
+   confidence/calibration, and the next review stage or remediation action,
+   then sets `status: quizzed`.
 5. Write Notes creates the scope-appropriate per-section or topic note(s),
    writes complete sections for `solid` and `partial`, writes exact gap stubs
    for `gap`, sets `status: notes-written`, and shows the available
    `support-helper` menu when follow-up work exists.
 6. User Research happens offline unless the user chooses a helper path from the
    `support-helper` menu.
-7. Review reopens the written notes, checks the former gap sections, appends the
-   required changelog, sets `status: reviewed`, and keeps `_study/state.json`
-   pointed at the reviewed session.
+7. Review reopens the written notes, scores the original learner regions,
+   verifies their source fields, adds corrections beside rather than over them,
+   appends the changelog, sets `status: reviewed`, and keeps state active.
 8. Any timestamp written to frontmatter or the session log came from the system
    date command, not from a guessed or placeholder value.
 9. Every `[[wikilink]]` in newly written notes resolves to an existing note, or
    the user explicitly asked for future concept-page links.
 10. Every applied example uses the topic-appropriate context chain and explains
     why the answer fits.
-11. Every answered learner-produced example is scored in the `## Assessment`
-    block or review changelog (optionally rolled into `## Mastery evidence`) and
-    contributes to mastery and confidence.
+11. Every answer eligible as evidence is scored in its attempt assessment or
+    review changelog; orientation and immediate post-feedback teach-backs are
+    explicitly excluded.
 12. Answered `study-check` blocks are scored during review without changing the
     user's checkbox selections before grading.
 13. Note frontmatter follows the field contract: one spelling of `course` and
@@ -1698,23 +1785,21 @@ unambiguous:
 14. After review, the note and session file agree: feedback in a note has a
     matching `## Review` changelog, an updated `## Unit progress` Review
     column, and a session log entry.
-15. Learner text on `learner-answer` lines was never replaced; corrections
-    live in feedback callouts.
+15. Learner text inside every learner-edit boundary and on learner-answer lines
+    was never replaced; corrections live in feedback callouts.
 16. Grammar-cleaned learner copies, when present, were added separately with a
     `learner-answer-cleaned` marker, only where the text materially differs
     from the original, and did not affect mastery scoring.
-17. A visual review artifact, when generated, is post-assessment, scope-locked,
-    self-contained offline HTML, visibly labeled as not an assessment, written
-    to `_study/visuals/`, and logged in the session file. It contains no quiz
-    scoring, answer collection, automatic grading code, mastery ledger writes,
-    pass/fail state, telemetry, or network calls. Chat remains the only
-    exam-standard mastery path.
+17. A visual review artifact, when generated, comes from a validated declarative
+    JSON manifest, is post-assessment, scope-locked, self-contained offline
+    HTML, and is logged. Generation invoked no package manager or executable
+    content module; the artifact contains no answer collection or grading.
 18. A deep dive, when run, was relevance-checked against the active session,
     passed the evidence collision check, was recorded under
     `## Deep dive — <scope>` with a session log entry, persisted its durable
     content per the deep-dive rules, and changed no assessment, unit progress,
-    mastery evidence, or status fields. Any post-dive mastery update came from
-    a fresh scoped re-quiz or a reviewed study-check.
+    mastery evidence, or status fields. Immediate teach-back stayed learning-
+    only; any mastery update came from a fresh attempt or reviewed study-check.
 19. The read-only validator reports no integrity errors after setup, sync, or a
     completed recovery pass; any warning is understood and intentionally left
     open.

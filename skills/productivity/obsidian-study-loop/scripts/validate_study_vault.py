@@ -9,6 +9,7 @@ import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from datetime import date
 from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 
@@ -28,6 +29,75 @@ LEARNER_EDIT_START = re.compile(
 LEARNER_EDIT_END = re.compile(
     r"<!-- learner-edit:end\s+id=([^\s>]+)\s*-->", flags=re.MULTILINE
 )
+LEARNER_SOURCE = re.compile(
+    r"<!-- learner-source:([^\s>]+)\s*-->", flags=re.MULTILINE
+)
+QUIZ_ATTEMPT_ID = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{2}$")
+QUIZ_HEADING = re.compile(
+    r"^Quiz progress — (?P<scope>.+?) — attempt (?P<attempt>[^\s]+)$"
+)
+ASSESSMENT_HEADING = re.compile(
+    r"^Assessment — (?P<scope>.+?) — attempt (?P<attempt>[^\s]+)$"
+)
+QUIZ_RECORD = re.compile(
+    r"^- (?P<question>Q[1-9]\d*) \[(?P<kind>[a-z][a-z0-9-]*)\] — "
+    r"(?P<objective>.+?) — status: "
+    r"(?P<status>planned|asked|scored|deferred)(?P<fields>.*)$",
+    flags=re.MULTILINE,
+)
+QUIZ_FIELD = re.compile(
+    r" — (?P<name>prompt|score|assistance|learner confidence|evidence|reason): "
+)
+CONSUMED_ATTEMPT = re.compile(
+    r"^- Consumed by Assessment — (?P<scope>.+?) — attempt "
+    r"(?P<attempt>[^\s]+) on (?P<timestamp>\S+)\s*$"
+)
+CONSUMED_LEGACY = re.compile(
+    r"^- Consumed by Assessment — (?P<scope>.+?) on (?P<timestamp>\S+)\s*$"
+)
+ATTEMPT_STATUS = re.compile(
+    r"^- Attempt status: (?P<status>active|paused|completed) — updated: "
+    r"(?P<timestamp>\S+)\s*$"
+)
+BUDGET_RECORD = re.compile(
+    r"^- Budget: minimum (?P<minimum>\d+); target (?P<target>\d+); "
+    r"maximum (?P<maximum>\d+); mode adaptive\s*$"
+)
+ASSESSMENT_RECORD = re.compile(
+    r"^- (?P<objective>.+?) — mastery: "
+    r"(?P<mastery>solid \(recall-only\)|solid|partial|gap)(?P<fields>.*)$",
+    flags=re.MULTILINE,
+)
+ASSESSMENT_FIELD = re.compile(
+    r" — (?P<name>evidence question|score|assistance|evidence|tutor confidence|"
+    r"learner confidence|calibration|review stage|next review|next action): "
+)
+SCORE_NOTATION = re.compile(
+    r"^(?P<score>\d+)/(?P<denominator>\d+)(?P<applicable> applicable)?$"
+)
+LOCAL_ISO_DATETIME = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{4}$"
+)
+RECALL_ONLY_KINDS = {
+    "definition",
+    "fill-in-the-blank",
+    "free-production",
+    "free-recall",
+    "recall",
+    "recognition",
+    "term-definition",
+}
+APPLIED_KINDS = {
+    "application",
+    "applied",
+    "classification",
+    "compare-contrast",
+    "discrimination",
+    "lab",
+    "scenario",
+    "transfer",
+}
+QUESTION_KINDS = RECALL_ONLY_KINDS | APPLIED_KINDS
 VISUAL_LABEL = "Visual review artifact - not an assessment"
 FORBIDDEN_VISUAL_ELEMENTS = {
     "base",
@@ -241,6 +311,536 @@ def heading_blocks(text: str) -> list[tuple[str, int, int]]:
     ]
 
 
+def quiz_heading_parts(title: str) -> tuple[str, str | None] | None:
+    prefix = "Quiz progress — "
+    if not title.startswith(prefix):
+        return None
+    match = QUIZ_HEADING.fullmatch(title)
+    if match:
+        return match.group("scope"), match.group("attempt")
+    return title.removeprefix(prefix), None
+
+
+def assessment_heading_parts(title: str) -> tuple[str, str | None] | None:
+    prefix = "Assessment — "
+    if not title.startswith(prefix):
+        return None
+    match = ASSESSMENT_HEADING.fullmatch(title)
+    if match:
+        return match.group("scope"), match.group("attempt")
+    return title.removeprefix(prefix), None
+
+
+def quiz_fields(raw: str) -> tuple[dict[str, str], str | None]:
+    if not raw:
+        return {}, None
+    matches = list(QUIZ_FIELD.finditer(raw))
+    if not matches or matches[0].start() != 0:
+        return {}, "fields must use ` — <name>: <value>`"
+    fields: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        name = match.group("name")
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(raw)
+        value = raw[match.end() : end].strip()
+        if name in fields:
+            return {}, f"duplicate field: {name}"
+        if not value:
+            return {}, f"empty field: {name}"
+        fields[name] = value
+    return fields, None
+
+
+def assessment_fields(
+    raw: str,
+) -> tuple[dict[str, str], list[str], str | None]:
+    matches = list(ASSESSMENT_FIELD.finditer(raw))
+    if not matches or matches[0].start() != 0:
+        return {}, [], "fields must use ` — <name>: <value>`"
+    fields: dict[str, str] = {}
+    order: list[str] = []
+    for index, match in enumerate(matches):
+        name = match.group("name")
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(raw)
+        value = raw[match.end() : end].strip()
+        if name in fields:
+            return {}, [], f"duplicate field: {name}"
+        if not value:
+            return {}, [], f"empty field: {name}"
+        fields[name] = value
+        order.append(name)
+    return fields, order, None
+
+
+def validate_score_notation(
+    path: Path,
+    label: str,
+    score_text: str,
+    issues: list[Issue],
+) -> tuple[int, int] | None:
+    match = SCORE_NOTATION.fullmatch(score_text)
+    if not match:
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                f"{label} has malformed score notation: {score_text}",
+            )
+        )
+        return None
+    score = int(match.group("score"))
+    denominator = int(match.group("denominator"))
+    applicable = match.group("applicable") is not None
+    valid = True
+    if denominator not in {2, 4, 6, 8} or score > denominator:
+        issues.append(
+            Issue("ERROR", path, f"{label} score is outside its denominator: {score_text}")
+        )
+        valid = False
+    if denominator < 8 and not applicable:
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                f"{label} score below /8 must name its applicable denominator",
+            )
+        )
+        valid = False
+    if denominator == 8 and applicable:
+        issues.append(
+            Issue("ERROR", path, f"{label} full /8 score must not say applicable")
+        )
+        valid = False
+    return (score, denominator) if valid else None
+
+
+def validate_quiz_attempt(
+    path: Path,
+    title: str,
+    scope: str,
+    attempt_id: str,
+    section: str,
+    issues: list[Issue],
+) -> tuple[bool, str | None, dict[str, tuple[str, str, str, str, str]]]:
+    budget_lines = [line for line in section.splitlines() if line.startswith("- Budget:")]
+    minimum_questions: int | None = None
+    maximum_questions: int | None = None
+    if len(budget_lines) != 1:
+        issues.append(Issue("ERROR", path, f"{title} must have exactly one Budget record"))
+    else:
+        budget_match = BUDGET_RECORD.fullmatch(budget_lines[0])
+        if budget_match is None:
+            issues.append(Issue("ERROR", path, f"{title} has a malformed Budget record"))
+        else:
+            minimum_questions = int(budget_match.group("minimum"))
+            target = int(budget_match.group("target"))
+            maximum_questions = int(budget_match.group("maximum"))
+            if not 1 <= minimum_questions <= target <= maximum_questions:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"{title} Budget must satisfy 1 <= minimum <= target <= maximum",
+                    )
+                )
+
+    status_lines = [
+        line for line in section.splitlines() if line.startswith("- Attempt status:")
+    ]
+    attempt_status: str | None = None
+    if len(status_lines) != 1:
+        issues.append(
+            Issue("ERROR", path, f"{title} must have exactly one Attempt status record")
+        )
+    else:
+        status_match = ATTEMPT_STATUS.fullmatch(status_lines[0])
+        if status_match is None:
+            issues.append(Issue("ERROR", path, f"{title} has a malformed Attempt status"))
+        else:
+            attempt_status = status_match.group("status")
+            if not LOCAL_ISO_DATETIME.fullmatch(status_match.group("timestamp")):
+                issues.append(
+                    Issue("ERROR", path, f"{title} Attempt status has a malformed timestamp")
+                )
+
+    record_matches = list(QUIZ_RECORD.finditer(section))
+    record_lines = [line for line in section.splitlines() if line.startswith("- Q")]
+    if not record_matches:
+        issues.append(Issue("ERROR", path, f"{title} has no structured question records"))
+    if len(record_lines) != len(record_matches):
+        issues.append(Issue("ERROR", path, f"{title} has a malformed question record"))
+
+    question_counts = Counter(match.group("question") for match in record_matches)
+    for question, count in sorted(question_counts.items()):
+        if count > 1:
+            issues.append(
+                Issue("ERROR", path, f"{title} has duplicate question record: {question}")
+            )
+    if maximum_questions is not None and len(question_counts) > maximum_questions:
+        issues.append(
+            Issue("ERROR", path, f"{title} has more question IDs than its maximum Budget")
+        )
+    if minimum_questions is not None and len(question_counts) < minimum_questions:
+        issues.append(
+            Issue("ERROR", path, f"{title} has fewer question IDs than its minimum Budget")
+        )
+
+    required_fields = {
+        "planned": set(),
+        "asked": {"prompt"},
+        "scored": {"prompt", "score", "assistance", "learner confidence", "evidence"},
+        "deferred": {"reason"},
+    }
+    allowed_fields = {
+        "planned": set(),
+        "asked": {"prompt"},
+        "scored": {
+            "prompt",
+            "score",
+            "assistance",
+            "learner confidence",
+            "evidence",
+        },
+        "deferred": {"prompt", "reason"},
+    }
+    question_evidence: dict[str, tuple[str, str, str, str, str]] = {}
+    unresolved_questions: list[str] = []
+    for match in record_matches:
+        question = match.group("question")
+        question_kind = match.group("kind")
+        status = match.group("status")
+        if question_kind not in QUESTION_KINDS:
+            issues.append(
+                Issue("ERROR", path, f"{question} has unsupported question kind: {question_kind}")
+            )
+        fields, field_error = quiz_fields(match.group("fields"))
+        if field_error:
+            issues.append(Issue("ERROR", path, f"{question} has malformed fields: {field_error}"))
+            continue
+        missing = required_fields[status] - set(fields)
+        unexpected = set(fields) - allowed_fields[status]
+        if missing:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{question} status {status} is missing: {', '.join(sorted(missing))}",
+                )
+            )
+        if unexpected:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{question} status {status} has unexpected fields: "
+                    f"{', '.join(sorted(unexpected))}",
+                )
+            )
+        if status == "asked":
+            issues.append(
+                Issue("WARN", path, f"{title} has an asked-but-unscored question: {question}")
+            )
+        if status in {"planned", "asked"}:
+            unresolved_questions.append(question)
+        if status == "scored" and "score" in fields:
+            validate_score_notation(path, question, fields["score"], issues)
+            assistance = fields.get("assistance")
+            if assistance not in {
+                "none",
+                "hint-1",
+                "hint-2",
+                "hint-3",
+                "revealed",
+            }:
+                issues.append(
+                    Issue("ERROR", path, f"{question} has unsupported assistance value")
+                )
+            elif "score" in fields:
+                question_evidence[question] = (
+                    match.group("objective"),
+                    fields["score"],
+                    assistance,
+                    fields.get("learner confidence", ""),
+                    question_kind,
+                )
+            if fields.get("learner confidence") not in {
+                "Low",
+                "Medium",
+                "High",
+                "unknown",
+            }:
+                issues.append(
+                    Issue("ERROR", path, f"{question} has unsupported learner confidence")
+                )
+
+    consumed_lines = [
+        line
+        for line in section.splitlines()
+        if line.startswith("- Consumed by Assessment —")
+    ]
+    if len(consumed_lines) > 1:
+        issues.append(Issue("ERROR", path, f"{title} has multiple consumed records"))
+    valid_consumed = False
+    if consumed_lines:
+        consumed = CONSUMED_ATTEMPT.fullmatch(consumed_lines[0])
+        if consumed is None:
+            issues.append(Issue("ERROR", path, f"{title} has a malformed consumed record"))
+        else:
+            valid_consumed = True
+            if consumed.group("scope") != scope or consumed.group("attempt") != attempt_id:
+                issues.append(
+                    Issue("ERROR", path, f"{title} consumed record does not match its attempt")
+                )
+            if not LOCAL_ISO_DATETIME.fullmatch(consumed.group("timestamp")):
+                issues.append(
+                    Issue("ERROR", path, f"{title} consumed record has a malformed timestamp")
+                )
+        if unresolved_questions:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{title} is consumed with unresolved questions: "
+                    f"{', '.join(unresolved_questions)}",
+                )
+            )
+    if valid_consumed and attempt_status != "completed":
+        message = (
+            f"{title} {attempt_status} attempt must remain unconsumed"
+            if attempt_status in {"active", "paused"}
+            else f"{title} is consumed but Attempt status is not completed"
+        )
+        issues.append(Issue("ERROR", path, message))
+    return valid_consumed, attempt_status, question_evidence
+
+
+def mastery_band(score: int, denominator: int) -> str:
+    if score * 8 >= denominator * 7:
+        return "solid"
+    if score * 2 >= denominator:
+        return "partial"
+    return "gap"
+
+
+def expected_calibration(mastery: str, learner_confidence: str) -> str:
+    if learner_confidence == "unknown":
+        return "unknown"
+    expected_confidence = {
+        "solid": "High",
+        "solid (recall-only)": "High",
+        "partial": "Medium",
+        "gap": "Low",
+    }[mastery]
+    ranks = {"Low": 0, "Medium": 1, "High": 2}
+    if ranks[learner_confidence] == ranks[expected_confidence]:
+        return "well-calibrated"
+    if ranks[learner_confidence] > ranks[expected_confidence]:
+        return "overconfident"
+    return "underconfident"
+
+
+def validate_assessment_attempt(
+    path: Path,
+    title: str,
+    section: str,
+    quiz_evidence: dict[str, tuple[str, str, str, str, str]] | None,
+    issues: list[Issue],
+) -> None:
+    matches = list(ASSESSMENT_RECORD.finditer(section))
+    record_lines = [line for line in section.splitlines() if line.startswith("- ")]
+    if not matches:
+        issues.append(Issue("ERROR", path, f"{title} has no structured assessment records"))
+    if len(matches) != len(record_lines):
+        issues.append(Issue("ERROR", path, f"{title} has a malformed assessment record"))
+
+    objective_counts = Counter(match.group("objective") for match in matches)
+    for objective, count in sorted(objective_counts.items()):
+        if count > 1:
+            issues.append(
+                Issue("ERROR", path, f"{title} has duplicate objective record: {objective}")
+            )
+
+    shared_order = [
+        "evidence question",
+        "score",
+        "assistance",
+        "evidence",
+        "tutor confidence",
+        "learner confidence",
+        "calibration",
+    ]
+    for match in matches:
+        objective = match.group("objective")
+        mastery = match.group("mastery")
+        fields, order, field_error = assessment_fields(match.group("fields"))
+        if field_error:
+            issues.append(
+                Issue("ERROR", path, f"{objective} has malformed assessment fields: {field_error}")
+            )
+            continue
+        expected_order = shared_order + (
+            ["review stage", "next review"]
+            if mastery.startswith("solid")
+            else ["next action"]
+        )
+        if order != expected_order:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{objective} assessment fields are missing, unexpected, or out of order",
+                )
+            )
+
+        assistance = fields.get("assistance")
+        assistance_values = {"none", "hint-1", "hint-2", "hint-3", "revealed"}
+        if assistance not in assistance_values:
+            issues.append(Issue("ERROR", path, f"{objective} has unsupported assistance"))
+        if quiz_evidence is not None:
+            evidence_question = fields.get("evidence question", "")
+            selected_evidence = quiz_evidence.get(evidence_question)
+            if selected_evidence is None:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"{objective} evidence question is not a scored quiz record: "
+                        f"{evidence_question or '<missing>'}",
+                    )
+                )
+            else:
+                (
+                    quiz_objective,
+                    quiz_score,
+                    quiz_assistance,
+                    quiz_learner_confidence,
+                    quiz_kind,
+                ) = selected_evidence
+                if quiz_objective != objective:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"{objective} evidence question belongs to {quiz_objective}",
+                        )
+                    )
+                if fields.get("score") != quiz_score:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"{objective} score must match {evidence_question}: {quiz_score}",
+                        )
+                    )
+                if assistance != quiz_assistance:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"{objective} assistance must match {evidence_question}: "
+                            f"{quiz_assistance}",
+                        )
+                    )
+                if fields.get("learner confidence") != quiz_learner_confidence:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"{objective} learner confidence must match "
+                            f"{evidence_question}: {quiz_learner_confidence}",
+                        )
+                    )
+                if mastery == "solid" and quiz_kind in RECALL_ONLY_KINDS:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"{objective} solid {quiz_kind} evidence must be recall-only",
+                        )
+                    )
+                if mastery == "solid (recall-only)" and quiz_kind not in RECALL_ONLY_KINDS:
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"{objective} {quiz_kind} evidence cannot be recall-only",
+                        )
+                    )
+
+        parsed_score = None
+        if "score" in fields:
+            parsed_score = validate_score_notation(
+                path, objective, fields["score"], issues
+            )
+        if parsed_score is not None:
+            score, denominator = parsed_score
+            numeric_mastery = mastery_band(score, denominator)
+            expected_mastery = (
+                "partial"
+                if assistance in assistance_values - {"none"} and numeric_mastery == "solid"
+                else numeric_mastery
+            )
+            recorded_band = "solid" if mastery.startswith("solid") else mastery
+            if recorded_band != expected_mastery:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"{objective} mastery {mastery} does not match score {fields['score']}",
+                    )
+                )
+            if mastery == "solid (recall-only)" and denominator == 8:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"{objective} recall-only mastery must use an applicable denominator",
+                    )
+                )
+
+        tutor_confidence = fields.get("tutor confidence")
+        if tutor_confidence not in {"low", "medium", "high"}:
+            issues.append(
+                Issue("ERROR", path, f"{objective} has unsupported tutor confidence")
+            )
+        if mastery == "solid (recall-only)" and tutor_confidence == "high":
+            issues.append(
+                Issue("ERROR", path, f"{objective} recall-only tutor confidence exceeds medium")
+            )
+
+        learner_confidence = fields.get("learner confidence")
+        if learner_confidence not in {"Low", "Medium", "High", "unknown"}:
+            issues.append(
+                Issue("ERROR", path, f"{objective} has unsupported learner confidence")
+            )
+        calibration = fields.get("calibration")
+        if calibration not in {
+            "well-calibrated",
+            "overconfident",
+            "underconfident",
+            "unknown",
+        }:
+            issues.append(Issue("ERROR", path, f"{objective} has unsupported calibration"))
+        if learner_confidence in {"Low", "Medium", "High", "unknown"}:
+            expected = expected_calibration(mastery, learner_confidence)
+            if calibration != expected:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"{objective} calibration must be {expected}, not {calibration}",
+                    )
+                )
+
+        if mastery.startswith("solid"):
+            if fields.get("review stage") not in {"1", "2", "3", "4", "5"}:
+                issues.append(Issue("ERROR", path, f"{objective} has invalid review stage"))
+            next_review = fields.get("next review", "")
+            try:
+                date.fromisoformat(next_review)
+            except ValueError:
+                issues.append(Issue("ERROR", path, f"{objective} has invalid next review date"))
+
+
 def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
     if path.is_symlink():
         try:
@@ -287,10 +887,145 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
             )
         previous_group = max(previous_group, group)
 
+    quiz_attempts: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+    assessment_attempts: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+    quiz_id_locations: dict[str, list[str]] = defaultdict(list)
+    assessment_id_locations: dict[str, list[str]] = defaultdict(list)
+    legacy_quizzes: list[tuple[str, str, str]] = []
     for title, start, end in headings:
         section = text[start:end]
-        if title.startswith("Quiz progress — ") and "Consumed by Assessment —" not in section:
+        quiz_parts = quiz_heading_parts(title)
+        if quiz_parts is not None:
+            scope, attempt_id = quiz_parts
+            malformed = (
+                re.search(r" — attempt(?:\s|$)", title) is not None
+                and attempt_id is None
+            )
+            if malformed:
+                issues.append(
+                    Issue("ERROR", path, f"malformed quiz attempt heading: {title}")
+                )
+            elif attempt_id is None:
+                legacy_quizzes.append((title, scope, section))
+            else:
+                quiz_attempts[(scope, attempt_id)].append((title, section))
+                quiz_id_locations[attempt_id].append(title)
+                if not QUIZ_ATTEMPT_ID.fullmatch(attempt_id):
+                    issues.append(
+                        Issue("ERROR", path, f"malformed quiz attempt id: {attempt_id}")
+                    )
+            continue
+
+        assessment_parts = assessment_heading_parts(title)
+        if assessment_parts is not None:
+            scope, attempt_id = assessment_parts
+            malformed = (
+                re.search(r" — attempt(?:\s|$)", title) is not None
+                and attempt_id is None
+            )
+            if malformed:
+                issues.append(
+                    Issue("ERROR", path, f"malformed assessment attempt heading: {title}")
+                )
+            elif attempt_id is not None:
+                assessment_attempts[(scope, attempt_id)].append((title, section))
+                assessment_id_locations[attempt_id].append(title)
+                if not QUIZ_ATTEMPT_ID.fullmatch(attempt_id):
+                    issues.append(
+                        Issue(
+                            "ERROR", path, f"malformed assessment attempt id: {attempt_id}"
+                        )
+                    )
+
+    quiz_results: dict[
+        tuple[str, str],
+        list[tuple[bool, str | None, dict[str, tuple[str, str, str, str, str]]]],
+    ] = defaultdict(list)
+    for key, attempts in quiz_attempts.items():
+        scope, attempt_id = key
+        for title, section in attempts:
+            consumed, attempt_status, question_evidence = validate_quiz_attempt(
+                path, title, scope, attempt_id, section, issues
+            )
+            quiz_results[key].append(
+                (consumed, attempt_status, question_evidence)
+            )
+            if not consumed:
+                status_label = attempt_status or "unknown"
+                issues.append(
+                    Issue(
+                        "WARN",
+                        path,
+                        f"unconsumed {title} (Attempt status: {status_label})",
+                    )
+                )
+
+    for title, scope, section in legacy_quizzes:
+        consumed_lines = [
+            line
+            for line in section.splitlines()
+            if line.startswith("- Consumed by Assessment —")
+        ]
+        valid = [
+            match
+            for line in consumed_lines
+            if (match := CONSUMED_LEGACY.fullmatch(line)) is not None
+            and match.group("scope") == scope
+        ]
+        if len(consumed_lines) > 1:
+            issues.append(Issue("ERROR", path, f"{title} has multiple consumed records"))
+        if consumed_lines and not valid:
+            issues.append(Issue("ERROR", path, f"{title} has a malformed consumed record"))
+        if not valid:
             issues.append(Issue("WARN", path, f"unconsumed {title}"))
+
+    for key, assessments in assessment_attempts.items():
+        matching_quizzes = quiz_results.get(key, [])
+        quiz_evidence = matching_quizzes[0][2] if len(matching_quizzes) == 1 else None
+        for title, section in assessments:
+            validate_assessment_attempt(
+                path, title, section, quiz_evidence, issues
+            )
+        if len(matching_quizzes) != 1:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{assessments[0][0]} must link to exactly one quiz attempt",
+                )
+            )
+        elif not matching_quizzes[0][0]:
+            issues.append(
+                Issue("ERROR", path, f"{assessments[0][0]} links to an unconsumed quiz attempt")
+            )
+
+    for key, results in quiz_results.items():
+        for consumed, _, _ in results:
+            if consumed and len(assessment_attempts.get(key, [])) != 1:
+                title = quiz_attempts[key][0][0]
+                issues.append(
+                    Issue("ERROR", path, f"{title} must link to exactly one assessment")
+                )
+
+    for attempt_id, attempt_titles in sorted(quiz_id_locations.items()):
+        if len(attempt_titles) > 1:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"duplicate quiz attempt id {attempt_id}: {', '.join(attempt_titles)}",
+                )
+            )
+    for attempt_id, attempt_titles in sorted(assessment_id_locations.items()):
+        if len(attempt_titles) > 1:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"duplicate assessment attempt id {attempt_id}: "
+                    f"{', '.join(attempt_titles)}",
+                )
+            )
 
     for logged in re.findall(r"Wrote `([^`]+\.md)`", text):
         relative = PurePosixPath(logged)
@@ -357,6 +1092,103 @@ def study_check_blocks(text: str) -> list[tuple[str, str]]:
     return blocks
 
 
+def learner_edit_blocks(text: str) -> list[tuple[str, str]]:
+    blocks: list[tuple[str, str]] = []
+    for start in LEARNER_EDIT_START.finditer(text):
+        marker_id = start.group(1)
+        closing = next(
+            (
+                match
+                for match in LEARNER_EDIT_END.finditer(text, start.end())
+                if match.group(1) == marker_id
+            ),
+            None,
+        )
+        if closing is not None:
+            blocks.append((marker_id, text[start.start() : closing.end()]))
+    return blocks
+
+
+def gap_response(block: str) -> str:
+    structured = re.search(
+        r"<!-- learner-answer:gap-response\s*-->\s*\n(.*?)"
+        r"(?=\n<!-- learner-source:|\n<!-- learner-edit:end)",
+        block,
+        flags=re.DOTALL,
+    )
+    if structured:
+        return structured.group(1).strip()
+    body = LEARNER_EDIT_START.sub("", block)
+    body = LEARNER_EDIT_END.sub("", body)
+    body = re.sub(
+        r"<!-- learner-source:[^>]+-->\s*\n- \*\*Source:\*\*[^\n]*",
+        "",
+        body,
+    )
+    body = re.sub(r"<!-- learner-answer:[^>]+-->", "", body)
+    return body.strip()
+
+
+def validate_gap_sources(
+    path: Path,
+    status: str | None,
+    text: str,
+    issues: list[Issue],
+) -> None:
+    local_source_counts: Counter[str] = Counter()
+    gap_ids: set[str] = set()
+    for marker_id, edit_block in learner_edit_blocks(text):
+        if not marker_id.startswith("gap-"):
+            continue
+        gap_ids.add(marker_id)
+        source_markers = LEARNER_SOURCE.findall(edit_block)
+        local_source_counts.update(source_markers)
+        if not source_markers:
+            issues.append(
+                Issue("WARN", path, f"gap is missing learner source marker: {marker_id}")
+            )
+        elif len(source_markers) > 1:
+            issues.append(
+                Issue("ERROR", path, f"gap has duplicate source markers: {marker_id}")
+            )
+        elif source_markers[0] != marker_id:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"learner source marker {source_markers[0]} does not match {marker_id}",
+                )
+            )
+        else:
+            source = re.search(
+                rf"<!-- learner-source:{re.escape(marker_id)}\s*-->\s*\n"
+                r"- \*\*Source:\*\*\s*(.*)$",
+                edit_block,
+                flags=re.MULTILINE,
+            )
+            if source is None or source.group(1).strip() in {"", "Write here."}:
+                issues.append(
+                    Issue("WARN", path, f"gap has no learner source value: {marker_id}")
+                )
+
+        response = gap_response(edit_block)
+        answered = bool(response and response != "Write here.")
+        if status == "reviewed" and not answered:
+            issues.append(Issue("ERROR", path, "reviewed note still contains a pending gap"))
+
+    global_source_counts = Counter(LEARNER_SOURCE.findall(text))
+    for source_id, count in sorted(global_source_counts.items()):
+        if count > 1:
+            issues.append(
+                Issue("ERROR", path, f"duplicate learner source marker: {source_id}")
+            )
+        orphaned = count - local_source_counts[source_id]
+        if source_id not in gap_ids or orphaned > 0:
+            issues.append(
+                Issue("ERROR", path, f"orphan learner source marker: {source_id}")
+            )
+
+
 def check_is_answered(block: str) -> bool:
     if re.search(r"^- \[[xX]\] ", block, flags=re.MULTILINE):
         return True
@@ -404,14 +1236,7 @@ def validate_note(
                 Issue(severity, path, f"answered study-check has no review: {marker_id}")
             )
 
-    pending_gap = re.search(
-        r"<!-- learner-edit:start\s+id=gap-[^>]+-->.*?\bWrite here\.\s*"
-        r"<!-- learner-edit:end\s+id=gap-[^>]+-->",
-        text,
-        flags=re.DOTALL,
-    )
-    if status == "reviewed" and pending_gap:
-        issues.append(Issue("ERROR", path, "reviewed note still contains a pending gap"))
+    validate_gap_sources(path, status, text, issues)
     if status == "reviewed" and "RESEARCH NEEDED" in text:
         issues.append(Issue("ERROR", path, "reviewed note still says RESEARCH NEEDED"))
 
@@ -448,18 +1273,26 @@ def allowed_local_url(value: str) -> bool:
     )
 
 
-def validate_visual_artifact(path: Path, vault: Path, issues: list[Issue]) -> None:
-    visuals_root = vault / "_study" / "visuals"
-    if path.is_symlink():
-        try:
-            if not path.resolve().is_relative_to(visuals_root):
-                issues.append(
-                    Issue("ERROR", path, "visual artifact symlink resolves outside _study/visuals")
-                )
-                return
-        except (OSError, RuntimeError) as exc:
-            issues.append(Issue("ERROR", path, f"visual artifact symlink is unsafe: {exc}"))
-            return
+def validate_visual_artifact(
+    path: Path,
+    vault: Path,
+    issues: list[Issue],
+    visuals_root: Path | None = None,
+) -> None:
+    configured_root = visuals_root or vault / "_study" / "visuals"
+    try:
+        resolved_vault = vault.resolve()
+        resolved_root = configured_root.resolve()
+        resolved_path = path.resolve()
+    except (OSError, RuntimeError) as exc:
+        issues.append(Issue("ERROR", path, f"visual artifact path is unsafe: {exc}"))
+        return
+    if not resolved_root.is_relative_to(resolved_vault):
+        issues.append(Issue("ERROR", configured_root, "visuals root resolves outside the vault"))
+        return
+    if not resolved_path.is_relative_to(resolved_root):
+        issues.append(Issue("ERROR", path, "visual artifact resolves outside _study/visuals"))
+        return
 
     text = read_utf8(path, issues)
     if text is None:
@@ -498,6 +1331,40 @@ def validate_visual_artifact(path: Path, vault: Path, issues: list[Issue]) -> No
     for field in ("study-source", "study-scope", "study-generated", "study-visual-version"):
         if not visual_meta(elements, field):
             issues.append(Issue("ERROR", path, f"missing {field} metadata"))
+
+    source = visual_meta(elements, "study-source")
+    if source:
+        relative_source = PurePosixPath(source)
+        raw_parts = source.split("/")
+        unsafe_source = (
+            source != source.strip()
+            or relative_source.is_absolute()
+            or any(part in {"", ".", ".."} for part in raw_parts)
+            or "\\" in source
+            or "://" in source
+            or re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", source) is not None
+        )
+        if unsafe_source:
+            issues.append(Issue("ERROR", path, f"unsafe study-source path: {source}"))
+        else:
+            source_path = resolved_vault.joinpath(*relative_source.parts)
+            try:
+                resolved_source = source_path.resolve()
+            except (OSError, RuntimeError) as exc:
+                issues.append(Issue("ERROR", path, f"study-source path is unsafe: {exc}"))
+            else:
+                if not resolved_source.is_relative_to(resolved_vault):
+                    issues.append(
+                        Issue("ERROR", path, f"study-source resolves outside vault: {source}")
+                    )
+                elif not source_path.is_file():
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"study-source is not an existing regular file: {source}",
+                        )
+                    )
 
     csp = visual_csp(elements)
     required_csp = (
@@ -613,6 +1480,8 @@ def validate_state(vault: Path, issues: list[Issue]) -> None:
     session = vault.joinpath(*relative.parts)
     if not session.exists():
         issues.append(Issue("ERROR", path, f"active session does not exist: {active}"))
+    elif not session.is_file():
+        issues.append(Issue("ERROR", path, f"active session is not a regular file: {active}"))
     else:
         try:
             resolved_session = session.resolve()
@@ -667,11 +1536,23 @@ def validate_vault(vault: Path, notes_dir: Path) -> list[Issue]:
             )
 
     visuals_dir = vault / "_study" / "visuals"
-    if visuals_dir.exists() and not visuals_dir.is_dir():
+    try:
+        resolved_vault = vault.resolve()
+        resolved_visuals = visuals_dir.resolve()
+    except (OSError, RuntimeError) as exc:
+        issues.append(Issue("ERROR", visuals_dir, f"visuals path is unsafe: {exc}"))
+        return issues
+    if (visuals_dir.exists() or visuals_dir.is_symlink()) and not resolved_visuals.is_relative_to(
+        resolved_vault
+    ):
+        issues.append(Issue("ERROR", visuals_dir, "visuals root resolves outside the vault"))
+    elif visuals_dir.is_symlink() and not visuals_dir.exists():
+        issues.append(Issue("ERROR", visuals_dir, "visuals root symlink target does not exist"))
+    elif visuals_dir.exists() and not visuals_dir.is_dir():
         issues.append(Issue("ERROR", visuals_dir, "visuals path is not a directory"))
     elif visuals_dir.is_dir():
         for artifact in sorted(visuals_dir.glob("*.html")):
-            validate_visual_artifact(artifact, vault, issues)
+            validate_visual_artifact(artifact, vault, issues, resolved_visuals)
     return issues
 
 
