@@ -68,10 +68,6 @@ sexpect 0 -- phase --from intake --to discovery
 sexpect 0 -- phase --from consult --to task-loop          # loop back after consult
 sexpect 1 -- phase --from intake --to completion          # illegal skip
 sexpect 0 -- phase --from intake --to completion --allow-regress
-sexpect 1 -- task --from todo --to done                   # must pass in-progress
-sexpect 0 -- task --from in-progress --to done
-sexpect 1 -- task --from done --to in-progress            # terminal
-sexpect 0 -- task --from done --to in-progress --allow-reopen
 
 # --- closure-proof + append seq + validate_state (integration) ---
 BS="$DIR/bootstrap_project.sh"; AE="$DIR/append_event.sh"; VS="$DIR/validate_state.py"
@@ -80,6 +76,68 @@ TDIR="$(mktemp -d)"
 "$BS" --base "$TDIR/p" --title 'selftest proj' --category software-development --apply >/dev/null 2>&1
 PJ="$TDIR/p/software-development/selftest-proj"
 iexpect() { local want="$1" got="$2" label="$3"; if [ "$got" -eq "$want" ]; then pass=$((pass+1)); else fail=$((fail+1)); printf 'FAIL(integ) %s want rc=%s got rc=%s\n' "$label" "$want" "$got"; fi; }
+
+# Task dependency graph: only conductor-confirmed `done` prerequisites unlock
+# in-progress/done. Missing depends_on stays backward-compatible.
+GPD="$TDIR/graph-project"; mkdir -p "$GPD"; cp "$PJ/project.json" "$GPD/project.json"
+write_graph_tasks() {
+  python3 - "$GPD/project.json" "$1" "${2:-1.1}" <<'PY'
+import json, sys
+
+path, tasks_json, schema_version = sys.argv[1:]
+project = json.load(open(path, encoding="utf-8"))
+project["schema_version"] = schema_version
+project["tasks"] = json.loads(tasks_json)
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(project, fh)
+    fh.write("\n")
+PY
+}
+write_graph_tasks '[{"id":"1.1","title":"root","status":"todo"},{"id":"1.2","title":"child","status":"todo","depends_on":["1.1"]}]' 1.0
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 0 $? "graph-legacy-missing-depends-on-compatible"
+"$SC" task --project "$GPD" --task 1.1 --to in-progress >/dev/null 2>&1; iexpect 1 $? "graph-legacy-task-work-needs-migration"
+write_graph_tasks '[{"id":"1.1","title":"root","status":"todo"}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-v1.1-missing-depends-on-rejected"
+write_graph_tasks '[{"id":"1.1","title":"root","status":"todo","depends_on":[]},{"id":"1.2","title":"child","status":"todo","depends_on":["1.1"]}]'
+"$SC" task --project "$GPD" --task 1.1 --to in-progress >/dev/null 2>&1; iexpect 0 $? "graph-root-ready"
+"$SC" task --from todo --to in-progress >/dev/null 2>&1; iexpect 2 $? "graph-raw-transition-rejected"
+"$SC" task --project "$GPD" --task 1.1 --from blocked --to in-progress >/dev/null 2>&1; iexpect 1 $? "graph-from-mismatch-blocked"
+for dep_status in todo in-progress blocked; do
+  write_graph_tasks "[{\"id\":\"1.1\",\"title\":\"root\",\"status\":\"$dep_status\",\"depends_on\":[]},{\"id\":\"1.2\",\"title\":\"child\",\"status\":\"todo\",\"depends_on\":[\"1.1\"]}]"
+  "$SC" task --project "$GPD" --task 1.2 --to in-progress >/dev/null 2>&1; iexpect 1 $? "graph-child-blocked-by-$dep_status"
+done
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo","depends_on":[]},{"id":"1.2","title":"b","status":"blocked","depends_on":[]},{"id":"1.3","title":"c","status":"todo","depends_on":["1.1","1.2"]}]'
+blocker_out=$("$SC" task --project "$GPD" --task 1.3 --to in-progress 2>&1); blocker_rc=$?
+iexpect 1 "$blocker_rc" "graph-multiple-blockers"
+printf '%s\n' "$blocker_out" | grep -Fq 'unmet dependencies: 1.1, 1.2'; iexpect 0 $? "graph-blocker-output-names-all"
+write_graph_tasks '[{"id":"1.1","title":"root","status":"done","depends_on":[]},{"id":"1.2","title":"child","status":"todo","depends_on":["1.1"]}]'
+"$SC" task --project "$GPD" --task 1.2 --to in-progress >/dev/null 2>&1; iexpect 0 $? "graph-child-ready-after-done"
+"$SC" task --project "$GPD" --task 9.9 --to in-progress >/dev/null 2>&1; iexpect 1 $? "graph-unknown-task-blocked"
+write_graph_tasks '[{"id":"1.1","title":"root","status":"todo","depends_on":[]},{"id":"1.2","title":"child","status":"in-progress","depends_on":["1.1"]}]'
+"$SC" task --project "$GPD" --task 1.2 --to done >/dev/null 2>&1; iexpect 1 $? "graph-done-blocked-by-dependency"
+write_graph_tasks '[{"id":"1.1","title":"root","status":"done","depends_on":[]},{"id":"1.2","title":"child","status":"in-progress","depends_on":["1.1"]}]'
+"$SC" task --project "$GPD" --task 1.2 --to done >/dev/null 2>&1; iexpect 1 $? "graph-done-blocked-without-closure"
+mkdir -p "$GPD/build-log"
+printf '# t\n## Validation And Evidence\n| Check | Command | Expected | Observed | Evidence pointer | Status |\n|---|---|---|---|---|---|\n| dependency close | probe | pass | pass | evidence/x.txt | observed |\n' > "$GPD/build-log/task-1.2.steps.md"
+"$SC" task --project "$GPD" --task 1.2 --to done >/dev/null 2>&1; iexpect 0 $? "graph-done-ready-with-closure"
+write_graph_tasks '[{"id":"1.1","title":"root","status":"done","depends_on":[]}]'
+"$SC" task --project "$GPD" --task 1.1 --to in-progress --allow-reopen >/dev/null 2>&1; iexpect 0 $? "graph-done-reopen-explicit"
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo","depends_on":["9.9"]}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-unknown-dependency-rejected"
+"$SC" task --project "$GPD" --task 1.1 --to in-progress >/dev/null 2>&1; iexpect 1 $? "graph-invalid-project-blocked"
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo","depends_on":["1.1"]}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-self-dependency-rejected"
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo","depends_on":["1.2"]},{"id":"1.2","title":"b","status":"todo","depends_on":["1.1"]}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-cycle-rejected"
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo"},{"id":"1.1","title":"b","status":"blocked"}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-duplicate-id-rejected"
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo","depends_on":"1.0"}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-non-array-dependency-rejected"
+write_graph_tasks '[{"id":"1.1","title":"a","status":"todo","depends_on":[]},{"id":"1.2","title":"b","status":"todo","depends_on":["1.1","1.1"]}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-duplicate-dependency-rejected"
+write_graph_tasks '[{"id":"1.1","title":"a","status":[],"depends_on":[]}]'
+python3 "$VS" project "$GPD/project.json" >/dev/null 2>&1; iexpect 1 $? "graph-malformed-status-rejected"
+
 "$SC" closure --project "$PJ" --task 1.1 >/dev/null 2>&1; iexpect 1 $? "closure-no-ledger"
 printf '# t\n<!-- task-steps-ledger:task-1.1 -->\n## Validation And Evidence\n| Check | Command or probe | Expected | Observed | Evidence pointer | Status |\n|---|---|---|---|---|---|\n| DNS | dig x | A | A returned | evidence/x.txt | observed |\n' > "$PJ/build-log/task-1.1.steps.md"
 "$SC" closure --project "$PJ" --task 1.1 >/dev/null 2>&1; iexpect 0 $? "closure-validated-row"
@@ -111,7 +169,7 @@ mkdir -p "$TDIR/bp"; printf '{"ts":"a","seq":true,"event":"x"}\n' > "$TDIR/bp/ev
 # malformed --raw rejected
 "$AE" --project "$PJ" --event x --raw bad='{nope' >/dev/null 2>&1; iexpect 2 $? "append-malformed-raw-rejected"
 # task validation: example strict-invalid, --example valid, bad enum invalid
-python3 "$VS" task "$DIR/../references/schemas/task.json" >/dev/null 2>&1; iexpect 1 $? "task-example-strict-invalid"
+python3 "$VS" task "$DIR/../references/schemas/task.json" >/dev/null 2>&1; iexpect 1 $? "reference-task-strict-invalid"
 python3 "$VS" task --example "$DIR/../references/schemas/task.json" >/dev/null 2>&1; iexpect 0 $? "task-example-flag-valid"
 printf '{"id":"1.1","title":"t","status":"finished","gate":"validate"}\n' > "$TDIR/bt.json"
 python3 "$VS" task "$TDIR/bt.json" >/dev/null 2>&1; iexpect 1 $? "task-bad-status-invalid"

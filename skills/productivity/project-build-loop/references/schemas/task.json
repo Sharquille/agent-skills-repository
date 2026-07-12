@@ -18,8 +18,6 @@
   "status": "todo | in-progress | blocked | done",
   "gate": "authorize | baseline | build | deploy | execute | validate | redact | publish-approval | decommission",
   "capability_flags": ["passive_recon"],
-  "authorization_required": false,
-  "isolation_required": true,
   "domain_skills": ["performing-dns-enumeration-and-zone-transfer"],
   "tools": [
     {
@@ -51,7 +49,6 @@
       "promotes_capability_flag": null
     }
   ],
-  "build_log": "build-log/task-1.2.md",
   "steps_ledger": "build-log/task-1.2.steps.md",
   "checkpoint": {
     "git_before": "<sha>",

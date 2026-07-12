@@ -7,7 +7,7 @@
 # Usage:
 #   state_check.sh phase   --from <p> --to <p> [--allow-regress]
 #   state_check.sh phase   --project <dir> --to <p> [--allow-regress]
-#   state_check.sh task    --from <s> --to <s> [--allow-reopen]
+#   state_check.sh task    --project <dir> --task <N.N> --to <s> [--allow-reopen]
 #   state_check.sh closure --project <dir> --task <N.N> [--task-json <path>]
 #
 # Phases (ordered): intake > discovery > classify > roadmap > task-loop >
@@ -15,12 +15,16 @@
 #   Any other move needs --allow-regress.
 # Task status: todo->{in-progress,blocked}; in-progress->{blocked,done};
 #   blocked->{in-progress,todo}; done is terminal (reopen needs --allow-reopen).
+# Project-aware task transitions derive the current status from project.json and
+#   require every depends_on task to be done before in-progress or done.
 # Closure: build-log/task-<id>.steps.md must show >=1 real validation/evidence
-#   row OR a documented limitation. Fail closed.
+#   row OR a documented limitation. A transition to done re-runs this gate.
 #
 # Exit: 0 allow, 1 block, 2 usage.
 
 set -uo pipefail
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 die() { echo "error: $*" >&2; exit 2; }
 block() { echo "BLOCK: $*" >&2; exit 1; }
@@ -72,7 +76,41 @@ case "$MODE" in
     block "illegal phase transition $FROM -> $TO (use --allow-regress with rationale)"
     ;;
   task)
-    [ -n "$FROM" ] && [ -n "$TO" ] || die "task mode needs --from and --to"
+    [ -n "$PROJECT" ] || die "task mode needs --project; raw --from transitions are not a lifecycle gate"
+    [ -n "$TASK" ] || die "task mode needs --task"
+    [ -n "$TO" ] || die "task mode needs --to"
+    [ -f "$PROJECT/project.json" ] || die "no project.json in $PROJECT"
+    UNMET=""
+    if ! python3 "$SCRIPT_DIR/validate_state.py" project "$PROJECT/project.json" >/dev/null; then
+      block "project state or task dependency graph is invalid"
+    fi
+    TASK_INFO=$(python3 - "$PROJECT/project.json" "$TASK" <<'PY'
+import json, sys
+
+project = json.load(open(sys.argv[1], encoding="utf-8"))
+task_id = sys.argv[2]
+tasks = project.get("tasks", [])
+task = next((item for item in tasks if item.get("id") == task_id), None)
+if task is None:
+    sys.exit(3)
+status = {item["id"]: item["status"] for item in tasks}
+unmet = [dep for dep in task.get("depends_on", []) if status.get(dep) != "done"]
+print(project["schema_version"])
+print(task["status"])
+print(", ".join(unmet))
+PY
+    )
+    rc=$?
+    [ "$rc" -eq 0 ] || block "task $TASK is not present in project.json"
+    PROJECT_SCHEMA_VERSION=$(printf '%s\n' "$TASK_INFO" | sed -n '1p')
+    [ "$PROJECT_SCHEMA_VERSION" = "1.1" ] \
+      || block "project schema $PROJECT_SCHEMA_VERSION must be migrated to 1.1 with explicit depends_on edges before task work"
+    DERIVED_FROM=$(printf '%s\n' "$TASK_INFO" | sed -n '2p')
+    UNMET=$(printf '%s\n' "$TASK_INFO" | sed -n '3p')
+    if [ -n "$FROM" ] && [ "$FROM" != "$DERIVED_FROM" ]; then
+      block "task $TASK status mismatch: --from $FROM, project.json $DERIVED_FROM"
+    fi
+    FROM="$DERIVED_FROM"
     legal=0
     case "$FROM" in
       todo)        case "$TO" in todo|in-progress|blocked) legal=1 ;; esac ;;
@@ -82,7 +120,25 @@ case "$MODE" in
       *) block "unknown from-status: $FROM" ;;
     esac
     case "$TO" in todo|in-progress|blocked|done) : ;; *) block "unknown to-status: $TO" ;; esac
-    [ "$legal" -eq 1 ] && allow "task status $FROM -> $TO"
+    if [ "$legal" -eq 1 ]; then
+      case "$TO" in
+        in-progress|done)
+          if [ -n "$UNMET" ]; then
+            block "task $TASK has unmet dependencies: $UNMET"
+          fi
+          ;;
+      esac
+      if [ "$TO" = "done" ]; then
+        if [ -n "$TASK_JSON" ]; then
+          "$SCRIPT_DIR/state_check.sh" closure --project "$PROJECT" --task "$TASK" --task-json "$TASK_JSON" >/dev/null 2>&1 \
+            || block "task $TASK lacks closure proof"
+        else
+          "$SCRIPT_DIR/state_check.sh" closure --project "$PROJECT" --task "$TASK" >/dev/null 2>&1 \
+            || block "task $TASK lacks closure proof"
+        fi
+      fi
+      allow "task $TASK status $FROM -> $TO (dependencies satisfied)"
+    fi
     [ "$FROM" = "done" ] && block "task is done (terminal); reopen needs --allow-reopen"
     block "illegal task transition $FROM -> $TO"
     ;;

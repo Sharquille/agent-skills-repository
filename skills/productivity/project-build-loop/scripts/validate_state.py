@@ -22,6 +22,7 @@ import json
 import sys
 
 PHASES = ["intake", "discovery", "classify", "roadmap", "task-loop", "consult", "completion"]
+PROJECT_SCHEMA_VERSIONS = {"1.0", "1.1"}
 CLASS_STATUS = {"provisional", "confirmed", "review_required"}
 TIERS = {"T0", "T1", "T2", "T3", "T4"}
 PUBLISH_POLICY = {"no-publish", "defensive-only", "sanitized-only", "publishable"}
@@ -39,8 +40,109 @@ def _load(path: str):
 
 
 def _enum(errs, label, value, allowed):
-    if value not in allowed:
+    if not isinstance(value, str) or value not in allowed:
         errs.append(f"{label}: {value!r} not in {sorted(allowed)}")
+
+
+def _depends_on(errs, label: str, task_id, value) -> list[str]:
+    """Validate one dependency list and return its usable string IDs."""
+    if value is None:
+        errs.append(f"{label}: must be an array of task IDs")
+        return []
+    if not isinstance(value, list):
+        errs.append(f"{label}: must be an array of task IDs")
+        return []
+    deps: list[str] = []
+    seen: set[str] = set()
+    for i, dep in enumerate(value):
+        item_label = f"{label}[{i}]"
+        if not isinstance(dep, str) or not dep.strip():
+            errs.append(f"{item_label}: must be a non-empty string")
+            continue
+        if dep != dep.strip():
+            errs.append(f"{item_label}: task ID must not have surrounding whitespace")
+            continue
+        if dep in seen:
+            errs.append(f"{item_label}: duplicate dependency {dep!r}")
+            continue
+        if isinstance(task_id, str) and dep == task_id:
+            errs.append(f"{item_label}: task cannot depend on itself")
+            continue
+        seen.add(dep)
+        deps.append(dep)
+    return deps
+
+
+def _validate_project_tasks(errs, tasks, require_explicit_dependencies: bool) -> None:
+    """Validate task summaries and their dependency graph, fail closed."""
+    if not isinstance(tasks, list):
+        errs.append("tasks: must be an array")
+        return
+
+    task_ids: set[str] = set()
+    graph: dict[str, list[str]] = {}
+    for i, task in enumerate(tasks):
+        label = f"tasks[{i}]"
+        if not isinstance(task, dict):
+            errs.append(f"{label}: must be an object")
+            continue
+        for key in ("id", "title", "status"):
+            if key not in task:
+                errs.append(f"{label}.{key}: missing")
+        task_id = task.get("id")
+        if not isinstance(task_id, str) or not task_id.strip():
+            errs.append(f"{label}.id: must be a non-empty string")
+            continue
+        if task_id != task_id.strip():
+            errs.append(f"{label}.id: task ID must not have surrounding whitespace")
+            continue
+        if task_id in task_ids:
+            errs.append(f"{label}.id: duplicate task ID {task_id!r}")
+            continue
+        task_ids.add(task_id)
+        if "status" in task:
+            _enum(errs, f"{label}.status", task["status"], TASK_STATUS)
+        if require_explicit_dependencies and "depends_on" not in task:
+            errs.append(f"{label}.depends_on: missing in project schema 1.1")
+        graph[task_id] = _depends_on(
+            errs, f"{label}.depends_on", task_id, task.get("depends_on", [])
+        )
+
+    for task_id, deps in graph.items():
+        for dep in deps:
+            if dep not in task_ids:
+                errs.append(
+                    f"task {task_id!r}: dependency {dep!r} does not reference a project task"
+                )
+
+    # DFS over task -> dependency edges. Unknown edges were reported above and
+    # are skipped here so the cycle diagnostic remains deterministic.
+    state: dict[str, int] = {}
+    stack: list[str] = []
+
+    def visit(task_id: str) -> list[str] | None:
+        state[task_id] = 1
+        stack.append(task_id)
+        for dep in graph.get(task_id, []):
+            if dep not in graph:
+                continue
+            if state.get(dep, 0) == 0:
+                cycle = visit(dep)
+                if cycle:
+                    return cycle
+            elif state.get(dep) == 1:
+                start = stack.index(dep)
+                return stack[start:] + [dep]
+        stack.pop()
+        state[task_id] = 2
+        return None
+
+    for task_id in graph:
+        if state.get(task_id, 0) == 0:
+            cycle = visit(task_id)
+            if cycle:
+                errs.append(f"tasks: dependency cycle detected: {' -> '.join(cycle)}")
+                break
 
 
 def validate_project(path: str) -> list[str]:
@@ -54,6 +156,9 @@ def validate_project(path: str) -> list[str]:
     for key in ("schema_version", "id", "title", "category", "phase", "classification"):
         if key not in p:
             errs.append(f"missing required key: {key}")
+    schema_version = p.get("schema_version")
+    if "schema_version" in p:
+        _enum(errs, "schema_version", schema_version, PROJECT_SCHEMA_VERSIONS)
     if "phase" in p:
         _enum(errs, "phase", p["phase"], set(PHASES))
     cls = p.get("classification")
@@ -71,8 +176,12 @@ def validate_project(path: str) -> list[str]:
             _enum(errs, "classification.publish_policy", cls["publish_policy"], PUBLISH_POLICY)
         if "git_policy" in cls:
             _enum(errs, "classification.git_policy", cls["git_policy"], GIT_POLICY)
-    if "tasks" in p and not isinstance(p["tasks"], list):
-        errs.append("tasks: must be an array")
+    if "tasks" in p:
+        _validate_project_tasks(
+            errs,
+            p["tasks"],
+            require_explicit_dependencies=schema_version == "1.1",
+        )
     return errs
 
 

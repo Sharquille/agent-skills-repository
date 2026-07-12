@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "id": "osint-lab-kali-wg-mullvad",
   "title": "OSINT Lab: Kali -> WireGuard -> Mullvad",
   "category": "networking-and-cybersecurity",
@@ -32,7 +32,7 @@
   },
   "audience": "community-shared",
   "tasks": [
-    { "id": "1.1", "title": "Build the anonymity chain", "status": "done", "capability_flags": ["internet_egress"], "checkpoint": "evt-0007" },
-    { "id": "1.2", "title": "Passive recon of owned target", "status": "in-progress", "capability_flags": ["passive_recon"] }
+    { "id": "1.1", "title": "Build the anonymity chain", "status": "done", "depends_on": [], "capability_flags": ["internet_egress"], "checkpoint": "evt-0007" },
+    { "id": "1.2", "title": "Passive recon of owned target", "status": "in-progress", "depends_on": ["1.1"], "capability_flags": ["passive_recon"] }
   ]
 }

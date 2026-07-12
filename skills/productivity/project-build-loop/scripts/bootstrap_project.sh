@@ -170,7 +170,7 @@ TITLE_J="$(json_escape "$TITLE")"
 CATEGORY_J="$(json_escape "$CATEGORY")"
 cat > "$TARGET/project.json" <<JSON
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "id": "$SLUG",
   "title": "$TITLE_J",
   "category": "$CATEGORY_J",

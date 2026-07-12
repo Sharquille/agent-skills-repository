@@ -33,3 +33,7 @@ secrets.*
 
 # --- Skill runtime output (e.g. security-ownership-map) ---
 ownership-map-out/
+
+# --- evidence-research-loop / research workspaces (default ./research/<slug>/) ---
+# Scratch research output; never belongs in the skills repo.
+/research/

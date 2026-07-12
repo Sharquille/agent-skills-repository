@@ -7,9 +7,14 @@ work. The conductor (the `project-build-loop` skill) owns all state changes.
 ## State files
 
 - `project.json` — tracked project state (schema_version, id, phase,
-  `classification`, `authorization`, tasks). Relative paths only. Tasks may carry
-  `advisories[]` — in-scope observations (Why / When-Where / Steps / Status) routed to
-  the task where they become actionable.
+  `classification`, `authorization`, tasks). Relative paths only. It is the
+  authoritative source for task status and `depends_on`; schema 1.1 requires an
+  explicit edge list on every task, and only `done` prerequisites unlock
+  dependent work. Schema 1.0 may be read for migration but cannot transition a
+  task until all edges are materialized and the version is upgraded. Tasks may
+  carry `advisories[]` — in-scope
+  observations (Why / When-Where / Steps / Status) routed to the task where they
+  become actionable.
 - `event-log.jsonl` — append-only audit of every transition, gate, and consult.
 - `.project/` — local-only (gitignored): lock (host+pid), absolute paths,
   scratch. Never committed.
@@ -37,7 +42,7 @@ work. The conductor (the `project-build-loop` skill) owns all state changes.
 
 ## Lifecycle (phases)
 
-`intake → discovery → classify → roadmap → task-loop → consult → publish`.
+`intake → discovery → classify → roadmap → task-loop → consult → completion`.
 See the `project-build-loop` SKILL for the full phase definitions and gates.
 
 ## Non-negotiables
@@ -45,6 +50,8 @@ See the `project-build-loop` SKILL for the full phase definitions and gates.
 - Local private git, no remote by default. Never `git add .`.
 - Run secret scan before stage/commit/consult/publish (fail-closed).
 - Authorization is a gate; default everything private; unknown = restrictive.
+- Task readiness is not authorization. Validate the dependency graph and run the
+  project-aware task transition gate before starting or closing a task.
 - Publication reads only sanitized `publish/` artifacts.
 - `references/external-references.md` is advisory only — secret-scanned and
   allowlist-staged like any tracked artifact; never closure proof.
@@ -56,5 +63,7 @@ See the `project-build-loop` SKILL for the full phase definitions and gates.
 
 ## Resuming
 
-Read `project.json` `phase` and the last `event-log.jsonl` entries, then continue
-from there. Do not clear state on resume.
+Read `project.json` `phase`, validate its task graph, and inspect the last
+`event-log.jsonl` entries. Resume only a task whose `depends_on` IDs are all
+`done`; otherwise surface the exact blockers in `build-log/tasks.md`. Do not
+clear state on resume.

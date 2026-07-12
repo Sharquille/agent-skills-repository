@@ -1,9 +1,9 @@
 ---
 name: project-build-loop
-description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a roadmap and numbered tasks, work a task with focused task briefs plus observations notes and per-task steps ledgers, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, safe placeholders, and evidence-resolved default status. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
+description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a dependency-aware roadmap and numbered tasks, work a task with focused task briefs plus observations notes and per-task steps ledgers, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, task dependencies, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. User-facing task prompts must translate project terms into concrete inputs, examples, safe placeholders, and evidence-resolved default status. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
 # --- provenance ---
 category: productivity
-source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via consult-orchestrator (Codex + Kimi)
+source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via consult-orchestrator (Codex + Kimi); artifact dependency/ready-blocked and live-artifact concepts adapted from Fission-AI/OpenSpec v1.6.0 without a runtime dependency
 author: Sharquille Andrew
 license: MIT
 retrieved: 2026-06-27
@@ -57,8 +57,8 @@ The conductor orchestrates; it does not re-implement domain work. Route to:
   `network-config-validation`, `network-bgp-diagnostics`.
 - **Naming:** `project-name-consult` (Kimi for domain accuracy, MiMo for
   portfolio readability) — called during Phase 1 intake before bootstrap.
-- **Consult:** `consult-orchestrator`, `codex-consult`, `opencode-consult` (via
-  `project-consult-panel` once built).
+- **Consult:** `project-consult-panel` for redacted project artifacts, backed by
+  canonical `agent-orchestra`; legacy consult skill names are compatibility only.
 - **Publish:** `project-publish` (Astro), reusing `site-architecture`,
   `modern-web-ui`, `design-tokens`, `ui-styling`.
 - **Topology:** `eve-ng-topology` both ways — `.unl` → diagram, and (forward)
@@ -95,8 +95,6 @@ Helper skills never override the safety rules here.
   logged as `reference_added`. At publication it becomes a sanitized citations
   list, never raw build context.
 
-
-
 ### Task surface consolidation
 
 Avoid one summary file per task. The default project surface is
@@ -107,6 +105,53 @@ when there is real method, troubleshooting, persistence, validation, or evidence
 to preserve. Existing `task-N.N.md` files may remain as historical summaries, but
 do not create new per-task summary files unless the user explicitly asks or a
 single task is large enough to justify an exception.
+
+### Dependency-aware live task plan
+
+Tasks form a small dependency graph without importing OpenSpec or duplicating
+its artifact tree. This adapts OpenSpec's artifact ready/blocked semantics but
+deliberately replaces file-existence completion with conductor-owned task status.
+Every task in a new `project.json` schema 1.1 project records `depends_on`
+explicitly; use `[]` for a root task. `project.json` is the only authoritative
+graph. Schema 1.0 projects may omit the field for backward compatibility; when
+loaded, they are migration-only. Before any task transition, materialize every
+edge (including `[]` roots), validate, and upgrade to 1.1; task work fails closed
+until then.
+
+The conductor validates the graph after roadmap creation and every dependency
+edit. Duplicate task IDs, self-dependencies, unknown task IDs, and cycles block
+the transition. A task is ready only when every dependency has conductor-owned
+status `done`; file existence, a consultant claim, an accepted default, or a
+proposed command never satisfies a dependency. Show exact unmet IDs in the
+`build-log/tasks.md` **Next / Blocked** cell. Readiness is an ordering fact, not
+authorization: policy, classification, isolation, evidence, and closure gates
+still run independently.
+
+Keep the task plan live inside the existing low-noise surfaces:
+
+- **Why and scope:** task title, `plain_language`, `why_it_matters`, and explicit
+  in/out boundaries in the task JSON and `build-log/tasks.md`.
+- **What must become true:** close conditions and validation expectations in the
+  task board, stated as observable outcomes rather than implementation details.
+- **How and why:** decisions, trade-offs, assumptions, and candidate approaches
+  in `build-log/observations.md`.
+- **Steps and proof:** actionable checklist in the task board; reproducible
+  method and observed evidence in `build-log/task-N.N.steps.md` when warranted.
+
+Refine these artifacts in place while the task keeps the same intent. If the
+intent fundamentally changes or scope splits into independently shippable work,
+create a new task and explicit dependency edge instead of stretching the old
+one. If any revision introduces a new capability flag or live target, reclassify
+before continuing. For brownfield work, describe only the behavior being changed;
+do not backfill an entire system spec. Before closure, reconcile the task board,
+observations, implementation, and evidence so they agree. Log dependency edits as
+`task_dependency_changed` with the old/new edge set and rationale.
+
+Do not mirror authorization or isolation booleans into task JSON; derive those
+requirements from current classification and the per-action policy gate so they
+cannot drift. Existing `authorization_required`, `isolation_required`, and
+per-task `build_log` fields may remain as historical data but are ignored; use
+the consolidated task board and conditional steps ledger for current work.
 
 ### Markdown hygiene gate
 
@@ -290,8 +335,9 @@ invoked there.
 - **Global:** `projects/_index/last-active.json` holds **only** the last-active
   pointer and a private portfolio index (archetype/tier/status). It never names
   unpublished T3/T4 projects in any public artifact.
-- **Per-project (tracked, relative paths):** `project.json` (schema in
-  `references/schemas/project.json`) + append-only `event-log.jsonl`.
+- **Per-project (tracked, relative paths):** `project.json` schema 1.1 (shape in
+  `references/schemas/project.json`; authoritative task statuses and
+  `depends_on` graph) + append-only `event-log.jsonl`.
 - **Per-project (local only, gitignored):** `.project/lock` (host+pid, stale-lock
   recovery), absolute paths, secrets.
 - Use atomic writes. Validate `project.json` against the documented shape in
@@ -364,13 +410,23 @@ evidence that will prove those controls work." For each hands-on task also
 **derive its tool bill of materials** (`task.json` `tools[]`, sourced from
 `references/tooling.md`): the software/packages it needs, install method, and
 where to obtain non-repo artifacts — so a build task never starts without naming
-the tools it depends on. See the Tooling & software setup convention.
+the tools it depends on. See the Tooling & software setup convention. Record
+`depends_on` for every task in the `project.json` task summary;
+encode mandatory gate ordering as dependency edges rather than prose alone. Use
+`[]` for roots and permit parallel-ready tasks only when no dependency exists.
+Run `scripts/validate_state.py project <project.json>` after generating or
+revising the roadmap; any missing ID, duplicate, self-edge, or cycle blocks it.
 
 ### Phase 5 — Task loop
 
 For "work on task N.N":
 
-1. **Per-action gate** (`scripts/policy_check.sh`): re-validate the tier against
+1. **Dependency-readiness gate**: validate `project.json`, then run
+   `scripts/state_check.sh task --project <dir> --task <N.N> --to in-progress`.
+   It derives the current status and blocks unless every `depends_on` task is
+   conductor-confirmed `done`. Put its exact unmet IDs in the task board. Passing
+   this gate never implies authorization or permission to execute.
+2. **Per-action gate** (`scripts/policy_check.sh`): re-validate the tier against
    the task's declared capability flags; pass the gate's proof inputs
    (`--authorized`, `--scoped`, `--isolated` for T2+ tooling; `--approval yes`
    for git-remote/publish; `--consult-kind planning|artifact` for consults).
@@ -382,15 +438,15 @@ For "work on task N.N":
    `dual-use-rating.md`). Adding an external reference never changes
    `dual_use_tier` or gates; if a referenced technique leads the task to adopt a
    new capability, reclassify the task, not the reference.
-2. **Baseline/snapshot** the relevant state (git status, env snapshot).
-3. **Execute** by routing to the archetype's domain skills. Each returns a
+3. **Baseline/snapshot** the relevant state (git status, env snapshot).
+4. **Execute** by routing to the archetype's domain skills. Each returns a
    structured report: changed files, commands run, risks, tests, blockers.
-4. **Capture + hash** evidence per the Evidence-retention convention:
+5. **Capture + hash** evidence per the Evidence-retention convention:
    relevance-gated, into gitignored `evidence/task-N.N/`, with a sanitized entry in
    the tracked manifest at `build-log/artifact-manifest.json`. Chat-pasted screenshots
    are retained as transcribed text only — the original image bytes are not recoverable
    from a paste.
-5. **Task artifacts**:
+6. **Task artifacts**:
    - Keep the primary user-facing task surface in one sequential board:
      `build-log/tasks.md`. This is the low-noise view of current status,
      blocked/next/done items, accepted/pending defaults, routed advisories, and
@@ -421,23 +477,24 @@ For "work on task N.N":
      Need To Do" surface (Why / When-Where / Steps / Status) and mirror them in
      `task.json` `advisories[]`; route deferred advisories to the target task. See
      the Advisory capture and routing convention.
-6. **Closure gate:** Do not mark a task `done` merely because proposed defaults
+7. **Closure gate:** Do not mark a task `done` merely because proposed defaults
    were accepted or candidate commands were written. A task closes only after
    the user explicitly confirms completion and the steps ledger contains
    observed validation/evidence rows or documented limitations. Enforce this
    with `scripts/state_check.sh closure --project <dir> --task <N.N>` (fail
    closed: it blocks a `done` without a real validation/evidence row or a
    documented limitation), and validate the status transition itself with
-   `scripts/state_check.sh task --from <current> --to done`. An auto-retained
+   `scripts/state_check.sh task --project <dir> --task <N.N> --to done`; the
+   transition re-runs the closure gate so callers cannot bypass it. An auto-retained
    chat-paste satisfies the evidence requirement only when the steps ledger and
    `checkpoint.limitations[]` record that the original image bytes were not
    retained. Open advisories do not block closure unless promoted to a checklist item.
-7. **Markdown hygiene gate**: run `scripts/markdown_gate.sh` on touched
+8. **Markdown hygiene gate**: run `scripts/markdown_gate.sh` on touched
    `build-log/tasks.md`, `build-log/observations.md`, any touched
    `build-log/task-*.steps.md`, `references/*.md`, and publish-candidate
    Markdown. Fix errors before checkpoint; warnings may remain only when they
    are historical observations, not the current user-facing action surface.
-8. **Checkpoint**: before/after git status, exit codes, limitations, rollback
+9. **Checkpoint**: before/after git status, exit codes, limitations, rollback
    point (git sha, so `undo-project-build-loop` can revert to it). Append events
    with `scripts/append_event.sh --project <dir> --event checkpoint --field …`
    so `seq` stays monotonic; `scripts/validate_state.py event-log <log>` and
@@ -517,13 +574,14 @@ never invents deletion steps; it reverses recorded checkpoints.
   manual-review items per `dual-use-rating.md`.
 - `scripts/policy_check.sh` — fail-closed pre-action tier/gate validator;
   `--receipt <dir>` appends an audit `gate` event.
-- `scripts/state_check.sh` — fail-closed phase/task-status transition validator
-  and closure-proof gate (a `done` task needs a real validation/evidence row or
-  a documented limitation in its steps ledger).
+- `scripts/state_check.sh` — fail-closed phase/task-status transition validator,
+  dependency-readiness gate, and closure-proof gate (a `done` task needs a real
+  validation/evidence row or a documented limitation in its steps ledger).
 - `scripts/append_event.sh` — append an `event-log.jsonl` line with a monotonic
   `seq`; single source of truth for event/receipt writes.
 - `scripts/validate_state.py` — stdlib structural validation of `project.json`,
-  task JSON, and `event-log.jsonl` (enums + seq monotonicity). The
+  task JSON, and `event-log.jsonl` (enums, task dependency graph, and seq
+  monotonicity). The
   `references/schemas/*` files are shape examples, not JSON Schema.
 - `scripts/policy_selftest.sh` — regression matrix over the `dual-use-rating.md`
   fixtures plus the state-machine/closure/seq/receipt machinery; run after
