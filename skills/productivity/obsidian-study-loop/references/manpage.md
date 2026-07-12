@@ -169,15 +169,16 @@ concrete scenarios, worked examples, and explanations that build on your
 answers — the quiz's answer-withholding rules don't apply here, because dive
 answers never count toward your grades anyway. If a picture would help, ask
 for one ("draw it") — the tutor draws the analogy first, then the same
-picture relabeled with the real terms. Diagrams land in your note where
-Obsidian renders them, and your session record lists every diagram drawn, so
-nothing lives in a separate folder.
+picture relabeled with the real terms, and Obsidian renders them.
 
-The topic is checked against your active session first — in-scope dives are
-announced and integrated; unrelated ones run standalone so your session stays
-clean. What the dive produces is saved: an entry in your session file, and
-durable content as a `### Deep dive` subsection in the relevant note. No
-separate folders to dig through.
+Teaching dives stay out of your real study notes. Your `Notes/` folder is
+built only by the study flow (quiz → grade → write notes) — a dive never
+touches it. Instead each teaching dive is saved as its own file in
+`_study/dives/`, and your session record links to it. So the tutoring is
+kept, but it never overwrites or pre-empts the course notes your quizzes
+produce. The topic is still checked against your active session first —
+in-scope dives are labeled with the section they belong to; unrelated ones
+run standalone.
 
 **Deep dives never change your grades.** Teaching answers are hint-saturated,
 so they aren't mastery evidence; instead every dive ends by offering a short
@@ -208,6 +209,7 @@ collection, no network, and it never touches your assessments.
     sessions/            # one file per session: study content, quiz
                          #   progress, assessments, deep dives, review log
     visuals/             # offline HTML study aids
+    dives/               # teaching-dive notes (decoupled from Notes/)
     research/            # research-dive workspaces (sources, evidence,
                          #   synthesis, audit)
 ```

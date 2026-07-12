@@ -174,6 +174,7 @@ A scaffolded study vault has this shape. Keep writes inside these locations:
     state.json                         # active-session pointer
     sessions/                          # one file per study session
     visuals/                           # generated visual-review .html artifacts
+    dives/                             # teaching-dive notes (created on first dive)
     research/                          # research-dive workspaces (created on first dive)
     README.md                          # one-paragraph explainer (see Setup)
 ```
@@ -554,6 +555,8 @@ When the user asks to install or set up the study loop:
       .gitkeep
     visuals/
       .gitkeep
+    dives/
+      .gitkeep
     research/
       .gitkeep
     README.md
@@ -587,6 +590,10 @@ recovering.
 - `sessions/` stores study-session logs and assessment history.
 - `visuals/` stores current-scope visual review artifacts. These are
   self-contained HTML study aids, not quizzes or mastery evidence.
+- `dives/` stores teaching-dive notes (`teach-complex-concepts`) — decoupled
+  explanations and diagrams, never graded study notes and never mastery
+  evidence. Canonical study notes live in `Notes/`, authored only by the
+  quiz → assess → write-notes flow.
 - `research/` stores session-integrated research-dive workspaces
   (`evidence-research-loop`). Stage files there are source material for gap
   research, never mastery evidence.
@@ -1108,8 +1115,8 @@ contaminate:
 - <ISO datetime> — <helper skill> — <topic>
   - Trigger: <why the learner needed it>
   - Outcome: <what now clicks / what stays fragile — tutor observation only>
-  - Persisted: `<notes-dir>/<note>.md` `### Deep dive — <topic> (<date>)` or
-    `_study/research/<YYYY-MM-DD>-<question-slug>/`
+  - Persisted: `_study/dives/<YYYY-MM-DD>-<topic-slug>.md` (teaching dive) or
+    `_study/research/<YYYY-MM-DD>-<question-slug>/` (research dive)
   - Visuals: <n> Mermaid diagram(s) — "<title>" — embedded in the dive
     subsection (omit this line when no diagram was drawn)
   - Mastery: unchanged — re-quiz <offered|accepted|declined>, study-check
@@ -1118,17 +1125,18 @@ contaminate:
 
   A second same-scope entry that revisits the same topic states whether it
   supersedes or complements the earlier entry.
-- Notes: durable teaching content lands in the same section note under the
-  relevant objective as `### Deep dive — <topic> (<date>)`, including any
-  Mermaid diagrams drawn during the dive, so the note remains the illustrated
-  explanation. When the note does
-  not exist yet, follow the Phase 5 pre-draft rules first (vault search,
-  peer-note `course`/`domain` formats, append-vs-new question when a note
-  already covers the scope). When the objective's section is a gap
-  placeholder, put the dive subsection after the `<!-- learner-edit:end -->`
-  marker — never inside the learner-edit region, and never replacing the
-  stub. Dive subsections are preserved verbatim by later consolidation unless
-  the learner explicitly approves a merge.
+- Teaching dives are decoupled from the canonical study notes. `Notes/`
+  belongs to the mastery flow — only Phase 5 Write Notes, after a quiz and
+  assessment, authors a study note there — and a dive never writes into
+  `Notes/`. A teaching dive persists the distilled explanation and any Mermaid
+  diagrams to `_study/dives/<YYYY-MM-DD>-<topic-slug>.md` (create the file and
+  the `_study/dives/` directory if missing). Give it light frontmatter
+  (`type: teaching-dive`, `scope`, `created`, `source: teaching-dive`), never
+  the `type: learning` graded-note contract. The session `## Deep dive` entry
+  points at this file. If the learner later wants dive content folded into a
+  study note, that happens only through the mastery flow (Write Notes or
+  Review), citing the dive note as a source — never by the dive writing
+  `Notes/` directly.
 - Research dives root their workspace at
   `_study/research/<YYYY-MM-DD>-<question-slug>/` (create the directory if
   missing). Every `evidence-research-loop` stage file and gate applies
@@ -1144,7 +1152,9 @@ contaminate:
 ### Mastery boundary
 
 - A dive never changes `## Assessment`, `## Unit progress`,
-  `## Mastery evidence`, session frontmatter status, or note status.
+  `## Mastery evidence`, session frontmatter status, or note status, and never
+  writes a study note in `Notes/` — that directory is authored only by the
+  mastery flow (Phase 5 Write Notes).
 - The teaching skill's internal mastery labels (emerging, developing, secure,
   transfer-ready) are tutor observations for the dive entry only. They are not
   8-point-rubric evidence and are not inputs to tutor-confidence or

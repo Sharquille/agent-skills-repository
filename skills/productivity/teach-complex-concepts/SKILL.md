@@ -56,11 +56,13 @@ active, run as a **teaching dive** under that protocol instead of standalone:
    as the learner profile (course, certification goal, in-scope objectives,
    prior assessments) instead of re-asking what it already answers. Then
    persist per the study loop: write the dive entry under
-   `## Deep dive — <scope>` in the session file, land durable content as
-   `### Deep dive — <topic> (<date>)` in the section note, and append the
-   session-log line. The study loop owns the section order and validator;
-   this skill writes within that structure without calling back into the
-   loop.
+   `## Deep dive — <scope>` in the session file, land the durable explanation
+   and any Mermaid diagrams in a decoupled dive note at
+   `_study/dives/<YYYY-MM-DD>-<topic-slug>.md`, and append the session-log
+   line. Never write into `Notes/` — the vault's canonical study notes are
+   authored only by the study loop's quiz → assess → write-notes flow. The
+   study loop owns the section order and validator; this skill writes within
+   that structure without calling back into the loop.
 4. Keep the mastery boundary: mid-dive answers and this skill's mastery labels
    never enter the study loop's assessments, rubric evidence, or confidence
    calculations. Close by offering the canonical follow-ups (scoped re-quiz or
