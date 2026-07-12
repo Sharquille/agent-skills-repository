@@ -116,6 +116,10 @@ Portable does not mean plain. Use the standard constructs well:
   `## Review` block, or use none.
 - **Lists:** tight and parallel; no trailing `etc.`; no one-item lists.
 - **Examples:** exactly one concise example per concept, in a `> [!NOTE]` box.
+- **Diagrams:** a fenced `` ```mermaid `` block is the sanctioned diagram form —
+  plain text on disk, rendered natively by Obsidian and GitHub. Place a
+  one-line plain-text description immediately before the block so the
+  explanation survives unrendered. No other embedded diagram format.
 - **No decorative emoji** in body text or headings.
 - **Spacing:** exactly one blank line between blocks; a blank line before and after
   every alert (and any table you do keep); never two blank lines in a row; no

@@ -167,7 +167,11 @@ When the material just isn't landing, you don't have to leave the session:
 A teaching dive is real tutoring, not more quizzing: expect a clear goal,
 concrete scenarios, worked examples, and explanations that build on your
 answers — the quiz's answer-withholding rules don't apply here, because dive
-answers never count toward your grades anyway.
+answers never count toward your grades anyway. If a picture would help, ask
+for one ("draw it") — the tutor draws the analogy first, then the same
+picture relabeled with the real terms. Diagrams land in your note where
+Obsidian renders them, and your session record lists every diagram drawn, so
+nothing lives in a separate folder.
 
 The topic is checked against your active session first — in-scope dives are
 announced and integrated; unrelated ones run standalone so your session stays

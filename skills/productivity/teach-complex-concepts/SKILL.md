@@ -98,6 +98,8 @@ meaningful turn at a time.
 Treat these as valid controls at any point:
 
 - "hint" - move one level down the hint ladder;
+- "draw it" or "visualize that" - render the current model as a diagram
+  (Mermaid preferred; decouple/recouple pair when an analogy is in play);
 - "another example" - change the surface form while preserving the structure;
 - "show me" or "give me the answer" - provide the solution with reasoning;
 - "simpler" or "slow down" - reduce step size or switch representation;
@@ -173,6 +175,18 @@ Move through representations as needed:
 Use ASCII sketches, tables, diagrams, tiny simulations, runnable examples, or
 other tools when they materially reduce abstraction. Never add a visual merely
 for decoration.
+
+When a diagram helps, a Mermaid fenced code block is the only embedded diagram
+form: it renders natively in Obsidian and on GitHub, stays plain text on disk,
+and can be edited later. A strong pattern for analogy-driven teaching is the
+**decouple/recouple pair**: first draw the structure in the analogy's own
+labels, then repeat the identical layout with the domain's real terms — the
+unchanged shape is what carries the mapping, and both halves persist. Place a
+one-line plain-text description immediately before each block so the
+explanation does not depend on vision or rendering, self-check the fence and
+diagram type before emitting, and never emit HTML for teaching visuals. When
+the client exposes a diagram renderer, render the same Mermaid source for the
+live view instead of leaving it as raw code.
 
 ### 5. Make the learner act
 

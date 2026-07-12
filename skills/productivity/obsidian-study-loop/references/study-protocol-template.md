@@ -939,6 +939,24 @@ matching script.
   the course, certification goal, in-scope objectives, and prior assessment
   evidence. Do not re-ask what it answers; calibrate the lesson from it and
   ask at most one genuinely missing diagnostic question.
+- Teaching visuals: when a picture materially reduces abstraction — or the
+  learner asks ("draw it", "visualize that") — draw it as a Mermaid fenced
+  code block, the **only** embedded diagram format for teaching content;
+  every other visual format (HTML, Excalidraw, images) routes to the
+  post-assessment visual review artifact lane. For analogy-driven teaching
+  prefer the **decouple/recouple pair**: the structure in the analogy's own
+  labels, then the identical layout relabeled with the domain's real terms
+  (one block with two subgraphs, or two adjacent blocks) — the unchanged
+  shape carries the mapping, and both halves persist. Place a one-line
+  plain-text description immediately before each block so the explanation
+  survives even where Mermaid is not rendered. Before emitting, self-check
+  the block (fence opens and closes, valid diagram type) and render it
+  through the client's diagram renderer when one exists. Keep diagrams
+  teachable: past roughly 20 nodes, split into smaller diagrams or escalate
+  to the artifact lane. A corrected diagram replaces the prior version in
+  the note; the dive entry notes the correction. Outside an active dive,
+  "draw it" renders in chat only and persists nothing unless the learner
+  asks to save it.
 
 ### Evidence collision check
 
@@ -972,6 +990,8 @@ contaminate:
   - Outcome: <what now clicks / what stays fragile — tutor observation only>
   - Persisted: `<notes-dir>/<note>.md` `### Deep dive — <topic> (<date>)` or
     `_study/research/<YYYY-MM-DD>-<question-slug>/`
+  - Visuals: <n> Mermaid diagram(s) — "<title>" — embedded in the dive
+    subsection (omit this line when no diagram was drawn)
   - Mastery: unchanged — re-quiz <offered|accepted|declined>, study-check
     <embedded|none>
 ```
@@ -979,7 +999,9 @@ contaminate:
   A second same-scope entry that revisits the same topic states whether it
   supersedes or complements the earlier entry.
 - Notes: durable teaching content lands in the same section note under the
-  relevant objective as `### Deep dive — <topic> (<date>)`. When the note does
+  relevant objective as `### Deep dive — <topic> (<date>)`, including any
+  Mermaid diagrams drawn during the dive, so the note remains the illustrated
+  explanation. When the note does
   not exist yet, follow the Phase 5 pre-draft rules first (vault search,
   peer-note `course`/`domain` formats, append-vs-new question when a note
   already covers the scope). When the objective's section is a gap

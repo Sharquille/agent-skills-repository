@@ -388,6 +388,12 @@ def validate_note(
     marker_counts(path, STUDY_CHECK_START, STUDY_CHECK_END, text, "study-check", issues)
     marker_counts(path, LEARNER_EDIT_START, LEARNER_EDIT_END, text, "learner-edit", issues)
 
+    fence_lines = sum(
+        1 for line in text.splitlines() if line.lstrip().startswith("```")
+    )
+    if fence_lines % 2 == 1:
+        issues.append(Issue("ERROR", path, "unbalanced code fences"))
+
     for marker_id, check_block in study_check_blocks(text):
         check_locations[marker_id].append(path)
         answered = check_is_answered(check_block)
