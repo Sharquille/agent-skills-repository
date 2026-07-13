@@ -5,14 +5,15 @@
 # steps ledger. Run before checkpoint, consult, and publish.
 #
 # Usage:
-#   state_check.sh phase   --from <p> --to <p> [--allow-regress]
-#   state_check.sh phase   --project <dir> --to <p> [--allow-regress]
+#   state_check.sh phase   --from <p> --to <p> [--allow-regress --rationale <text>]
+#   state_check.sh phase   --project <dir> --to <p> [--allow-regress --rationale <text>]
 #   state_check.sh task    --project <dir> --task <N.N> --to <s> [--allow-reopen]
 #   state_check.sh closure --project <dir> --task <N.N> [--task-json <path>]
 #
 # Phases (ordered): intake > discovery > classify > roadmap > task-loop >
 #   consult > completion. Legal: same, next, or consult->task-loop (loop back).
-#   Any other move needs --allow-regress.
+#   Other backward moves need --allow-regress plus a non-empty rationale.
+#   Forward skips are always blocked.
 # Task status: todo->{in-progress,blocked}; in-progress->{blocked,done};
 #   blocked->{in-progress,todo}; done is terminal (reopen needs --allow-reopen).
 # Project-aware task transitions derive the current status from project.json and
@@ -30,11 +31,32 @@ die() { echo "error: $*" >&2; exit 2; }
 block() { echo "BLOCK: $*" >&2; exit 1; }
 allow() { echo "ALLOW: $*"; exit 0; }
 need_val() { [ "$#" -ge 2 ] || die "$1 needs a value"; case "$2" in -*|"") die "$1 needs a non-option value";; esac; }
+canonical_path() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }
+
+validate_task_json_proof() {
+  [ -n "$TASK_JSON" ] || return 0
+  local task_json_arg="$TASK_JSON" task_json_real task_json_id
+  task_json_real=$(canonical_path "$task_json_arg" 2>/dev/null) \
+    || block "cannot resolve --task-json path: $task_json_arg"
+  [ -f "$task_json_real" ] || block "--task-json is not a file: $task_json_arg"
+  case "$task_json_real" in
+    "$PROJECT"/*) : ;;
+    *) block "--task-json must resolve inside the same project" ;;
+  esac
+  if ! python3 "$SCRIPT_DIR/validate_state.py" task "$task_json_real" >/dev/null; then
+    block "--task-json is not a valid task file"
+  fi
+  task_json_id=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["id"])' "$task_json_real" 2>/dev/null) \
+    || block "cannot read task ID from --task-json"
+  [ "$task_json_id" = "$TASK" ] \
+    || block "--task-json id $task_json_id does not match requested task $TASK"
+  TASK_JSON="$task_json_real"
+}
 
 [ "$#" -ge 1 ] || die "mode required (phase|task|closure)"
 MODE="$1"; shift
 
-FROM=""; TO=""; PROJECT=""; TASK=""; TASK_JSON=""; ALLOW_REGRESS=0; ALLOW_REOPEN=0
+FROM=""; TO=""; PROJECT=""; TASK=""; TASK_JSON=""; RATIONALE=""; ALLOW_REGRESS=0; ALLOW_REOPEN=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --from) need_val "$@"; FROM="$2"; shift 2 ;;
@@ -42,12 +64,18 @@ while [ "$#" -gt 0 ]; do
     --project) need_val "$@"; PROJECT="$2"; shift 2 ;;
     --task) need_val "$@"; TASK="$2"; shift 2 ;;
     --task-json) need_val "$@"; TASK_JSON="$2"; shift 2 ;;
+    --rationale) need_val "$@"; RATIONALE="$2"; shift 2 ;;
     --allow-regress) ALLOW_REGRESS=1; shift ;;
     --allow-reopen) ALLOW_REOPEN=1; shift ;;
     -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
+
+# Validate the identifier before it can become part of a ledger path.
+if [ -n "$TASK" ] && ! [[ "$TASK" =~ ^[0-9]+\.[0-9]+$ ]]; then
+  block "invalid task ID $TASK (expected numbered N.N form)"
+fi
 
 PHASES="intake discovery classify roadmap task-loop consult completion"
 phase_index() { # -> index or -1
@@ -58,11 +86,20 @@ phase_index() { # -> index or -1
 
 case "$MODE" in
   phase)
-    if [ -z "$FROM" ] && [ -n "$PROJECT" ]; then
-      [ -f "$PROJECT/project.json" ] || die "no project.json in $PROJECT"
-      FROM=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("phase",""))' "$PROJECT/project.json" 2>/dev/null)
+    if [ -n "$PROJECT" ]; then
+      [ -f "$PROJECT/project.json" ] || block "no project.json in $PROJECT"
+      if ! python3 "$SCRIPT_DIR/validate_state.py" project "$PROJECT/project.json" >/dev/null; then
+        block "project state is invalid"
+      fi
+      DERIVED_FROM=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["phase"])' "$PROJECT/project.json" 2>/dev/null) \
+        || block "cannot derive authoritative phase from project.json"
+      if [ -n "$FROM" ] && [ "$FROM" != "$DERIVED_FROM" ]; then
+        block "phase mismatch: --from $FROM, project.json $DERIVED_FROM"
+      fi
+      FROM="$DERIVED_FROM"
+    else
+      [ -n "$FROM" ] || die "phase mode needs --from or --project"
     fi
-    [ -n "$FROM" ] || die "phase mode needs --from or --project"
     [ -n "$TO" ] || die "phase mode needs --to"
     fi_=$(phase_index "$FROM"); ti_=$(phase_index "$TO")
     [ "$fi_" -ge 0 ] || block "unknown from-phase: $FROM"
@@ -72,8 +109,15 @@ case "$MODE" in
        || { [ "$FROM" = "consult" ] && [ "$TO" = "task-loop" ]; }; then
       allow "phase $FROM -> $TO"
     fi
-    [ "$ALLOW_REGRESS" -eq 1 ] && allow "phase $FROM -> $TO (regress override)"
-    block "illegal phase transition $FROM -> $TO (use --allow-regress with rationale)"
+    if [ "$ti_" -lt "$fi_" ]; then
+      [ "$ALLOW_REGRESS" -eq 1 ] \
+        || block "illegal backward phase transition $FROM -> $TO (use --allow-regress with --rationale <text>)"
+      case "$RATIONALE" in
+        *[![:space:]]*) allow "phase $FROM -> $TO (regress override with rationale)" ;;
+        *) block "backward phase transition $FROM -> $TO needs a non-empty --rationale" ;;
+      esac
+    fi
+    block "illegal forward phase skip $FROM -> $TO"
     ;;
   task)
     [ -n "$PROJECT" ] || die "task mode needs --project; raw --from transitions are not a lifecycle gate"
@@ -145,8 +189,37 @@ PY
   closure)
     [ -n "$PROJECT" ] || die "closure mode needs --project"
     [ -n "$TASK" ] || die "closure mode needs --task"
-    LEDGER="$PROJECT/build-log/task-$TASK.steps.md"
-    [ -f "$LEDGER" ] || block "no steps ledger for task $TASK (expected $LEDGER); a done task needs one"
+    PROJECT=$(canonical_path "$PROJECT" 2>/dev/null) || block "cannot resolve --project path"
+    [ -d "$PROJECT" ] || block "project directory does not exist: $PROJECT"
+    [ -f "$PROJECT/project.json" ] || block "no project.json in $PROJECT"
+    if ! python3 "$SCRIPT_DIR/validate_state.py" project "$PROJECT/project.json" >/dev/null; then
+      block "project state or task dependency graph is invalid"
+    fi
+    if ! python3 - "$PROJECT/project.json" "$TASK" <<'PY' >/dev/null 2>&1
+import json, sys
+
+project = json.load(open(sys.argv[1], encoding="utf-8"))
+task_id = sys.argv[2]
+raise SystemExit(0 if any(task.get("id") == task_id for task in project.get("tasks", [])) else 1)
+PY
+    then
+      block "task $TASK is not present in project.json"
+    fi
+    validate_task_json_proof
+    BUILD_LOG=$(canonical_path "$PROJECT/build-log" 2>/dev/null) \
+      || block "cannot resolve project build-log directory"
+    case "$BUILD_LOG" in
+      "$PROJECT"/*) : ;;
+      *) block "project build-log must resolve inside the project" ;;
+    esac
+    LEDGER_ARG="$PROJECT/build-log/task-$TASK.steps.md"
+    [ -f "$LEDGER_ARG" ] \
+      || block "no steps ledger for task $TASK (expected $LEDGER_ARG); a done task needs one"
+    LEDGER=$(canonical_path "$LEDGER_ARG" 2>/dev/null) || block "cannot resolve steps ledger for task $TASK"
+    case "$LEDGER" in
+      "$BUILD_LOG"/*) : ;;
+      *) block "steps ledger for task $TASK must resolve inside the project build-log" ;;
+    esac
     LEDGER="$LEDGER" TASK_JSON="$TASK_JSON" python3 - <<'PY'
 import os, re, sys, json
 
@@ -162,6 +235,14 @@ NEG_STATUS = {"pending", "todo", "tbd", "n/a", "na", "blocked", "failed",
               "fail", "rejected", "open", "not run", "skipped", "wip", ""}
 NEG_LIMIT = {"", "none", "n/a", "na", "tbd", "no limitations", "no limitation",
              "not applicable", "-"}
+NEG_PROOF = NEG_STATUS | NEG_LIMIT | {
+    "no evidence", "not observed", "not verified", "unverified", "unknown",
+}
+NEG_PROOF_PREFIX = (
+    "no evidence", "not run", "not observed", "not verified", "unverified",
+    "unknown", "pending", "todo", "tbd", "n/a", "not applicable", "skipped",
+    "blocked", "failed", "fail",
+)
 
 # Validation section under any of these headings (aliases).
 VAL_HEADINGS = {"validation and evidence", "validation & evidence",
@@ -206,6 +287,15 @@ def col(header, *names):
 def cell(cells, idx):
     return cells[idx].strip() if 0 <= idx < len(cells) else ""
 
+def real_proof(value):
+    normalized = value.strip().lower()
+    if not normalized or normalized in NEG_PROOF or PLACEHOLDER.search(value):
+        return False
+    return not any(
+        normalized == prefix or normalized.startswith(prefix + " ")
+        for prefix in NEG_PROOF_PREFIX
+    )
+
 # 1) Validation: a data row whose Status cell is an explicit pass word AND whose
 #    proof cells (observed + evidence, when those columns exist) are non-placeholder.
 header, rows = table(section_lines(VAL_HEADINGS))
@@ -220,8 +310,8 @@ for cells in rows:
     observed = cell(cells, oi)
     evidence = cell(cells, ei)
     # require at least one real proof cell (no template placeholder, non-empty)
-    proof = [v for v in (observed, evidence) if v and not PLACEHOLDER.search(v)]
-    if (oi < 0 and ei < 0) or proof:
+    proof = [v for v in (observed, evidence) if real_proof(v)]
+    if proof:
         validated = True
         break
 
@@ -235,7 +325,9 @@ if tj and os.path.isfile(tj):
         lims = obj.get("checkpoint", {}).get("limitations", [])
         if isinstance(lims, list):
             for x in lims:
-                s = str(x).strip()
+                if not isinstance(x, str):
+                    continue
+                s = x.strip()
                 if s and s.lower() not in NEG_LIMIT and not PLACEHOLDER.search(s):
                     limitation = True
                     break

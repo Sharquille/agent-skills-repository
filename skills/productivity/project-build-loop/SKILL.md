@@ -429,7 +429,8 @@ For "work on task N.N":
 2. **Per-action gate** (`scripts/policy_check.sh`): re-validate the tier against
    the task's declared capability flags; pass the gate's proof inputs
    (`--authorized`, `--scoped`, `--isolated` for T2+ tooling; `--approval yes`
-   for git-remote/publish; `--consult-kind planning|artifact` for consults).
+   for git-remote/publish; `--remote-visibility private|public` for a
+   project-backed git remote; `--consult-kind planning|artifact` for consults).
    The gate reads tier and `publish_policy` from `project.json` and treats any
    unconfirmed `classification.status` as at least T3. If a task introduces
    `packet_capture` / `active_scan` / `mitm_proxy` / `traffic_decryption` /
@@ -526,8 +527,8 @@ path. Emit the gate decision as an auditable receipt with
 `scripts/policy_check.sh --action consult --consult-kind artifact --project <dir>
 --receipt <dir> --model <m> --artifact <path> [--prompt-hash <hex>]`, which
 appends a `gate` event (model + artifact sha256) to `event-log.jsonl` via
-`append_event.sh`. **T2+** requires a redaction manifest; **T3+** requires a
-security-review consult; **T4** permits only `--consult-kind planning`.
+`append_event.sh`. **T2+** also passes `--redaction-manifest <path>`; **T3+**
+passes `--security-review yes`; **T4** permits only `--consult-kind planning`.
 Advisory only — verify before acting.
 
 ### Phase 7 — Completion & publish handoff

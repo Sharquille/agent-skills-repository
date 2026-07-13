@@ -21,10 +21,13 @@ it reads only `publish/` (allowlisted, sanitized) artifacts — **never** raw
 Before writing any page, confirm with the conductor's policy:
 
 1. `project-build-loop/scripts/policy_check.sh --action publish --project <dir>
-   --approval yes` allows it for the project's tier and `publish_policy`. The
-   gate reads tier + `publish_policy` from `project.json`; `--approval yes`
-   attests the secret scan passed and a human approved. T3 publishes only as a
-   documented exception; T4 never.
+   --approval yes` allows it for the project's tier and `publish_policy`. A
+   `sanitized-only` policy always passes `--redaction-manifest <file>`, regardless
+   of tier. T2 and T3 also require that manifest; T3 additionally passes
+   `--security-review yes` after that review is complete. The gate reads tier +
+   `publish_policy` from `project.json`; `--approval yes` attests the secret scan
+   passed and a human approved. T3 publishes only as a documented exception; T4
+   never.
 2. `project-build-loop/scripts/secret_scan.sh --publish publish/` is clean (real
    IPs → RFC 5737/3849 doc ranges; no creds/keys/PII/EXIF).
 3. An allowlist **publish manifest** lists exactly which artifacts ship.

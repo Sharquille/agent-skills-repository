@@ -178,6 +178,7 @@ cat > "$TARGET/project.json" <<JSON
   "phase": "intake",
   "authorization": null,
   "classification": {
+    "policy_version": "1.0",
     "status": "provisional",
     "archetype": null,
     "capability_flags": [],
@@ -218,7 +219,7 @@ Working notes: assumptions, defaults before resolution, current-state review,
 issue context, candidate decisions, and rationale. Not a checkpoint log.
 MD
 
-printf '{\n  "schema_version": "1.0",\n  "artifacts": []\n}\n' > "$TARGET/build-log/artifact-manifest.json"
+printf '{\n  "schema_version": "1.1",\n  "generated": "%s",\n  "artifacts": []\n}\n' "$NOW" > "$TARGET/build-log/artifact-manifest.json"
 
 cat > "$TARGET/references/external-references.md" <<'MD'
 # External references
