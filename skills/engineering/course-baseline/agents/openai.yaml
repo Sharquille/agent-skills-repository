@@ -1,0 +1,4 @@
+interface:
+  display_name: "Course Baseline"
+  short_description: "Build rigorous, polished, tool-driven course platforms"
+  default_prompt: "Use $course-baseline to turn this course vision into a tested, deployable learning platform."

@@ -66,6 +66,15 @@ fixer roles, inventory-backed work queues supplemented by diagnostics, and
 progressive evidence gates without copying model routing into the change
 workflow.
 
+## Course platform baseline
+
+Use [course-baseline](skills/engineering/course-baseline/) to turn a course
+vision, syllabus, role target, or slide-like training site into a tested learning
+platform. It preserves the LexLabs paper-and-console feel while adapting the
+subject: authentic project spines, real or browser-isolated tools, machine-checked
+competency, decoupled focus workspaces, runbooks, responsive regression tests,
+production audits, deployment verification, and safe Git delivery.
+
 ## 🛡️ Security & Auditing
 
 Every third-party skill in this repository has been vetted before inclusion. We recommend using the built-in [vet-skill](skills/engineering/vet-skill/) to audit any new skills before adding them to your registry.

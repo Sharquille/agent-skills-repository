@@ -7,8 +7,9 @@ This repository uses a **mixed-licensing model**.
 The root [LICENSE](LICENSE) (MIT) covers all original content:
 
 - **Self-authored skills:** `agent-orchestra`, `agent-repo-security`,
-  `build-security-policy`, `deploy-agent-skills`, `enhance-skill`, `name-skill`,
-  `powershell-enterprise-app`, `run-large-code-changes`, `vet-skill`.
+  `build-security-policy`, `course-baseline`, `deploy-agent-skills`,
+  `enhance-skill`, `name-skill`, `powershell-enterprise-app`,
+  `run-large-code-changes`, `vet-skill`.
 - **Curation & tooling:** `REGISTRY.md`, `install.sh`, `scripts/`,
   `skills/_template/`, and the repository structure.
 - **Enhancements & adaptations** made to imported skills (the *changes*, not the
