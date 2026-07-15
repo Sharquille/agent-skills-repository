@@ -58,6 +58,14 @@ duties when Claude is unavailable. The older `codex-consult`, `opencode-consult`
 `consult-orchestrator` skills remain as compatibility entry points; their
 scripts forward to the canonical wrappers.
 
+For large behavior-preserving ports, rewrites, migrations, codemods, or
+compiler/test-failure campaigns, pair the orchestra with
+[run-large-code-changes](skills/engineering/run-large-code-changes/). It adds
+preservation contracts, representative pilots, independent writer/reviewer/
+fixer roles, inventory-backed work queues supplemented by diagnostics, and
+progressive evidence gates without copying model routing into the change
+workflow.
+
 ## 🛡️ Security & Auditing
 
 Every third-party skill in this repository has been vetted before inclusion. We recommend using the built-in [vet-skill](skills/engineering/vet-skill/) to audit any new skills before adding them to your registry.

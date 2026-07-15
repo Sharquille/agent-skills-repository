@@ -8,7 +8,7 @@ The root [LICENSE](LICENSE) (MIT) covers all original content:
 
 - **Self-authored skills:** `agent-orchestra`, `agent-repo-security`,
   `build-security-policy`, `deploy-agent-skills`, `enhance-skill`, `name-skill`,
-  `powershell-enterprise-app`, `vet-skill`.
+  `powershell-enterprise-app`, `run-large-code-changes`, `vet-skill`.
 - **Curation & tooling:** `REGISTRY.md`, `install.sh`, `scripts/`,
   `skills/_template/`, and the repository structure.
 - **Enhancements & adaptations** made to imported skills (the *changes*, not the
@@ -34,6 +34,11 @@ each credited separately.
 `openai/codex-plugin-cc` plugin, but it does not use, install, or vendor the
 plugin; its wrappers call the `codex` and `opencode` CLIs directly. The
 upstream plugin retains its Apache-2.0 license.
+
+`run-large-code-changes` is original workflow guidance informed by Bun's
+["Rewriting Bun in Rust"](https://bun.com/blog/bun-in-rust) case study and its
+linked public engineering artifacts (reviewed 2026-07-15). No Bun or Anthropic
+code, prompts, or article text is vendored in this repository.
 
 ## If you reuse a skill from here
 

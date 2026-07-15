@@ -252,6 +252,22 @@ One conductor does not mean one consultant at a time. When a task decomposes
 into genuinely independent sub-tasks, fan them out concurrently — the
 conductor stays the single point of alignment and merge.
 
+For a large behavior-preserving port, rewrite, migration, codemod, or failure
+campaign, invoke `run-large-code-changes`. It owns the preservation baseline,
+pattern and semantic-delta contract, representative pilot, inventory-backed
+work queues supplemented by diagnostics, and progressive phase gates. Agent
+Orchestra still owns routing, containment, and the final accept/reject decision;
+do not duplicate those protocols in worker briefs.
+
+For high-risk fan-out, the writer does not approve its own work. Give a
+read-only reviewer a separate context containing the diff, relevant source
+behavior, contract, and oracle expectations, but not the writer's rationale.
+The conductor verifies findings before a fixer applies them. Start with one
+reviewer; use two orthogonal reviews only when blast radius or semantic risk
+justifies the extra cost. If a defect class repeats, stop the affected wave,
+repair and version the shared brief/contract/rubric, then rescan units produced
+under the older version before launching more work.
+
 1. **Split.** Decompose into sub-tasks that do not overlap: if two sub-tasks
    would touch the same files or depend on each other's output, they are not
    independent — merge or serialize them. Write one self-contained brief per
@@ -259,8 +275,11 @@ conductor stays the single point of alignment and merge.
 2. **Mark.** Give every brief the same alignment preamble — global objective,
    interface contracts, naming decisions, and a do-not-touch list — so
    parallel workers cannot drift apart. Record the fan-out in a run ledger
-   (one scratch file): sub-task, lane/model, scope, output file, status. The
-   ledger is the marker that keeps every delegation accountable at join time.
+   (one scratch file): sub-task, lane/model, scope, output file,
+   `execution_status`, `review_status`, and `integration_status`. Use
+   `queued|running|returned|failed`, `pending|verified|weak|rejected`, and
+   `pending|ready|integrated|rejected` respectively. The ledger is the marker
+   that keeps every delegation accountable at join time.
 3. **Launch.** Start each call in the background with stdout redirected to
    its ledger-named output file (never through `tail`/`head`). Concurrency
    rules: parallel Codex calls are fine (separate processes); OpenCode lanes
@@ -268,8 +287,9 @@ conductor stays the single point of alignment and merge.
    overlaps the Codex fleet. Parallel `implement` runs must never share a
    working tree — one isolated `git worktree` per writer, no exceptions.
 4. **Join and verify.** When all calls exit, read each output file, verify
-   claims against the repo exactly as for a single consult, and mark each
-   ledger row verified / weak / rejected. Cross-check the seams where
+   claims against the repo exactly as for a single consult, mark each row's
+   review status `verified`, `weak`, or `rejected`, and set integration to
+   `ready` or `rejected`. Cross-check the seams where
    sub-tasks meet — interfaces, naming, duplicated helpers — that is where
    parallel work drifts.
 5. **Route fixes.** For rejected or buggy output, write a fix brief that
@@ -277,7 +297,8 @@ conductor stays the single point of alignment and merge.
    file) and route it to the lane that fits the failure: the same model for a
    mechanical slip, a stronger reasoning or flagship lane when the approach
    itself was wrong. Re-verify on return. The conductor merges everything
-   into one coherent change and owns the final diff.
+   into one coherent change, marks accepted rows `integrated`, and owns the
+   final diff.
 
 Fan-out multiplies consultant tokens, not conductor judgment: it pays off at
 roughly three or more independent sub-tasks, and a task that cannot be
@@ -343,4 +364,8 @@ study panels keep working with a single underlying implementation.
       branch/worktree unless explicitly overridden.
 - [ ] For fan-outs, gave every brief the shared alignment preamble, kept one
       writer per worktree, and joined through the run ledger before merging.
+- [ ] For high-risk fan-outs, separated writer/reviewer/fixer authority and
+      used a risk-based reviewer count rather than a fixed panel.
+- [ ] Repaired repeated defect classes in the versioned workflow and rescanned
+      outputs produced under the affected version.
 - [ ] The conductor owned final judgment, tests, git, and review.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Large Code Changes"
+  short_description: "Gate large code changes with evidence"
+  default_prompt: "Use $run-large-code-changes to plan and gate this large code change."

@@ -88,6 +88,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [ui-styling](skills/design/ui-styling/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
 | [design-tokens](skills/design/design-tokens/) | design | claudekit (adapted) | [github.com/nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT | 2026-06-14 |
 | [agent-orchestra](skills/engineering/agent-orchestra/) | engineering | Sharquille Andrew (self-authored; design informed by OpenAI codex-plugin-cc, not used or vendored) | this repo | MIT | 2026-07-02 |
+| [run-large-code-changes](skills/engineering/run-large-code-changes/) | engineering | Sharquille Andrew (self-authored; workflow informed by Bun's Rust rewrite case study) | [bun.com/blog/bun-in-rust](https://bun.com/blog/bun-in-rust) | MIT | 2026-07-15 |
 | [codex-consult](skills/engineering/codex-consult/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-14 |
 | [opencode-consult](skills/engineering/opencode-consult/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-24 |
 | [consult-orchestrator](skills/engineering/consult-orchestrator/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-24 |
