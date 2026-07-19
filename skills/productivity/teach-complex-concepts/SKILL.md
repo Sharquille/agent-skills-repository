@@ -198,10 +198,13 @@ rather than at authoring time:
   replaced with `Unsupported markdown: list`. Prefix ordered steps with a word
   instead: `"Step 1 — Authorize"`, `"Panel 1 — The padlock story"`.
 - Use `<br/>` for line breaks inside a label; never a literal newline.
-- Prefer `flowchart TB` over `LR` once a chain exceeds roughly four multi-line
-  nodes, so the diagram does not overflow a narrow viewport and get clipped.
 - Keep each label to a few words per line; push detail into the surrounding
   prose, which stays readable even when the diagram does not render.
+- Layout direction is an authoring decision, not a formatting knob. When the
+  surrounding prose names a reading direction ("read left to right"), the
+  diagram must match it. Fix an overflowing `LR` chain by shortening labels
+  first; only change direction when the prose is silent, or update the prose
+  in the same edit so text and diagram never disagree.
 
 Render the diagram before delivering it whenever a renderer is available. A
 diagram the learner cannot read is worse than no diagram, because it looks

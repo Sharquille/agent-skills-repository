@@ -1010,9 +1010,11 @@ matching script.
   is strict and fails silently: a quoted label that **begins** with a list
   marker (`1.`, `1)`, `- `, `* `) is parsed as markdown and the whole label
   becomes `Unsupported markdown: list`, so prefix ordered steps with a word
-  (`"Step 1 — Authorize"`, `"Panel 1 — ..."`); use `<br/>` for line breaks;
-  and prefer `flowchart TB` over `LR` past roughly four multi-line nodes so
-  the diagram does not overflow and clip. Keep diagrams teachable: past
+  (`"Step 1 — Authorize"`, `"Panel 1 — ..."`); and use `<br/>` for line
+  breaks. Layout direction is an authoring decision: when the surrounding
+  prose names a reading direction, the diagram must match it — fix an
+  overflowing `LR` chain by shortening labels, and change direction only when
+  the prose is silent or is updated in the same edit. Keep diagrams teachable: past
   roughly 20 nodes, split into smaller diagrams or escalate to the artifact
   lane. A corrected diagram replaces the prior version in
   the note; the dive entry notes the correction. Outside an active dive,
