@@ -190,6 +190,23 @@ diagram type before emitting, and never emit HTML for teaching visuals. When
 the client exposes a diagram renderer, render the same Mermaid source for the
 live view instead of leaving it as raw code.
 
+Mermaid label syntax is strict, and violations fail silently at render time
+rather than at authoring time:
+
+- Quoted labels are parsed as markdown, so a label that **begins** with a list
+  marker (`1.`, `1)`, `- `, `* `) is read as a list and the whole label is
+  replaced with `Unsupported markdown: list`. Prefix ordered steps with a word
+  instead: `"Step 1 — Authorize"`, `"Panel 1 — The padlock story"`.
+- Use `<br/>` for line breaks inside a label; never a literal newline.
+- Prefer `flowchart TB` over `LR` once a chain exceeds roughly four multi-line
+  nodes, so the diagram does not overflow a narrow viewport and get clipped.
+- Keep each label to a few words per line; push detail into the surrounding
+  prose, which stays readable even when the diagram does not render.
+
+Render the diagram before delivering it whenever a renderer is available. A
+diagram the learner cannot read is worse than no diagram, because it looks
+like content while teaching nothing.
+
 ### 5. Make the learner act
 
 After a short model, ask for one cognitive action. Good actions include predict,

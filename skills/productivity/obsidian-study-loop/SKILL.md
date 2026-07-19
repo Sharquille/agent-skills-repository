@@ -1090,9 +1090,15 @@ matching script.
   plain-text description immediately before each block so the explanation
   survives even where Mermaid is not rendered. Before emitting, self-check
   the block (fence opens and closes, valid diagram type) and render it
-  through the client's diagram renderer when one exists. Keep diagrams
-  teachable: past roughly 20 nodes, split into smaller diagrams or escalate
-  to the artifact lane. A corrected diagram replaces the prior version in
+  through the client's diagram renderer when one exists. Mermaid label syntax
+  is strict and fails silently: a quoted label that **begins** with a list
+  marker (`1.`, `1)`, `- `, `* `) is parsed as markdown and the whole label
+  becomes `Unsupported markdown: list`, so prefix ordered steps with a word
+  (`"Step 1 — Authorize"`, `"Panel 1 — ..."`); use `<br/>` for line breaks;
+  and prefer `flowchart TB` over `LR` past roughly four multi-line nodes so
+  the diagram does not overflow and clip. Keep diagrams teachable: past
+  roughly 20 nodes, split into smaller diagrams or escalate to the artifact
+  lane. A corrected diagram replaces the prior version in
   the note; the dive entry notes the correction. Outside an active dive,
   "draw it" renders in chat only and persists nothing unless the learner
   asks to save it.
