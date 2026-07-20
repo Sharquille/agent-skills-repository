@@ -184,6 +184,14 @@ doc, RFC/NIST) or it can't earn `solid` — and study-checks are scored on the s
 applicable-dimension rubric, corrections are explained, and the session file
 records it all. Your original words are never rewritten; corrections and a
 reviewed synthesis live in feedback callouts next to them.
+
+**Note refresh on re-quiz.** When you re-quiz a topic later and prove you have
+mastered an objective that previously had gaps, the note section is rewritten as
+clean study material and the old scaffold — your earlier answer, research
+callouts, and review tips — moves into a workpage file under `_study/workpages/`.
+Your note then reads like fresh material, while your old work stays linked and
+fully preserved so you can always trace how you got there. This only happens on an
+already-reviewed note and only with your approval.
 <!-- man:section-end id=notes -->
 
 <!-- man:section id=deep-dives aliases="deep dive,dive,teach me,research dive,teaching dive,go deeper" -->
@@ -252,6 +260,7 @@ script instead of inventing questions.
     dives/               # teaching-dive notes (decoupled from Notes/)
     research/            # research-dive workspaces (sources, evidence,
                          #   synthesis, audit)
+    workpages/           # note-refresh history archives (one per note)
 ```
 
 The session file is the audit trail: every quiz answer, grade, note write,

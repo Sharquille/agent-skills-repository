@@ -58,6 +58,9 @@ class InstallStudyLoopTests(unittest.TestCase):
             json.loads((self.vault / "_study" / "state.json").read_text()),
             {"active_session": None},
         )
+        workpages = self.vault / "_study" / "workpages"
+        self.assertTrue(workpages.is_dir(), "workpages scaffold directory missing")
+        self.assertTrue((workpages / ".gitkeep").is_file(), "workpages .gitkeep missing")
         for name in installer.POINTER_FILES:
             text = (self.vault / name).read_text(encoding="utf-8")
             self.assertEqual(text.count("## Study sessions"), 1)

@@ -177,6 +177,7 @@ A scaffolded study vault has this shape. Keep writes inside these locations:
     visuals/                           # generated visual-review .html artifacts
     dives/                             # teaching-dive notes (created on first dive)
     research/                          # research-dive workspaces (created on first dive)
+    workpages/                         # note-refresh history archives (created on first refresh)
     README.md                          # one-paragraph explainer (see Setup)
 ```
 
@@ -1272,6 +1273,11 @@ all available independent evidence, not the newest answer alone. Optionally
 roll the result into `## Mastery evidence`. Finally, consume the exact attempt
 with `- Consumed by Assessment — <scope> — attempt <attempt-id> on <ISO datetime>`.
 
+When a re-quiz upgrades an objective on an already-reviewed note to `solid`, offer
+the learner a note refresh (see Note Refresh on Re-quiz) so the study note reads as
+clean current material with its prior scaffold archived, not as a record of past
+gaps.
+
 ## Phase 5 - Write Notes
 
 Write notes for the assessed scope, not necessarily the whole session. If the
@@ -1515,6 +1521,105 @@ Ask which support path the user wants next, or tell them they can fill the gaps
 offline and return with "review my additions." Do not start a helper workflow
 unless the user chooses it or has already asked for that help.
 
+## Note Refresh on Re-quiz
+
+When a re-quiz proves an objective is now mastered, offer to rewrite that note
+section into clean current study material and archive the superseded scaffold to
+the note's workpage. The review canvas reads clean; nothing is lost. This runs on
+an already-reviewed note, not during first authoring.
+
+### Preconditions
+
+All of the following must hold. If any fails, do not refresh that section.
+
+- The note exists and its frontmatter `status` is `reviewed`. Never refresh a
+  `draft` note — a draft still holds unreviewed or unfilled gaps, and those must
+  stay visible.
+- For the objective, the **latest** attempt scored `solid` or
+  `solid (recall-only)` with `assistance: none`, and no more-recent attempt
+  downgraded it. A downgrade routes to the normal gap-reopen path, never here.
+- The target section carries stale scaffold anchored to a **filled and reviewed**
+  learner region (a review callout dated at or after `<!-- learner-edit:end -->`),
+  or tutor-only stale callouts / `[!TIP]` flags from a former `partial`.
+- The section is not a Phase 7 consolidation cross-reference pointer (a body that
+  is only `See [[note#section]]`). Refresh the anchor section, not the pointer.
+- The learner approves the offer.
+
+### Actions per upgraded section
+
+- **Archive** to the workpage, verbatim with original markers live — never
+  neutralize or rename a marker, never normalize whitespace: the
+  `[!IMPORTANT] RESEARCH NEEDED` callout, the `<!-- learner-edit:start -->` …
+  `<!-- learner-edit:end -->` region (learner answer and source), and prior
+  review / `[!TIP]` / `[!WARNING]` callouts. If the region holds only markers with
+  no learner-authored prose, do not archive and do not refresh — leave it.
+- **Rewrite** the section as Phase 5 solid-quality notes: plain explanation,
+  `### Key terms`, `### Exam focus`, and a `> [!NOTE]` worked example when the
+  content supports one. For `solid (recall-only)`, keep the rewrite at least as
+  complete as Phase 5 would author and do not overstate mastery. The rewrite cites
+  its own verified source, independent of any unverified source on the archived
+  original.
+- **Determinism**: a second refresh with no new evidence yields byte-identical
+  note prose and only one additional dated archive entry.
+- **Atomicity**: each section's archive and rewrite is atomic. A failure mid-note
+  leaves the note byte-identical to its pre-refresh state with no partial archive
+  entry.
+- **Untouched**: still-`gap`, `partial`, or unfilled objectives. Rewrite scope is
+  per-section, never whole-note.
+
+### The note keeps
+
+- Frontmatter `updated` bumped to today's local date; `status` stays `reviewed`.
+- Exactly one `> [!NOTE]` "Learning history" callout, placed once per note
+  directly below the frontmatter, before the first `##` objective, linking the
+  workpage. Update its date list on later refreshes. Do not add per-section
+  pointers — that would reclutter the canvas.
+
+### Workpage file
+
+Write to `_study/workpages/<note-basename>.md`, one per note, append-only:
+
+```text
+---
+type: study-workpage
+note: <vault-relative path to the note>
+created: <YYYY-MM-DD>
+updated: <YYYY-MM-DD>
+source: note-refresh
+---
+
+Archived history from note refreshes. This is not current study material. The
+session file remains the canonical mastery ledger; on any conflict the session
+file wins.
+
+## Refresh — <YYYY-MM-DD> — <scope>
+
+- Attempt: <attempt-id> — Upgraded: <objective slugs> — Assistance: none
+
+### <objective> — was <prior mastery>, now solid
+
+<verbatim archived scaffold: RESEARCH NEEDED callout, the learner-edit region with
+the learner's answer and source, and any prior review/[!TIP]/[!WARNING] callouts>
+```
+
+Every `<!-- learner-edit:start -->` in a workpage must sit inside a `## Refresh —`
+block, so an archived region can never be mistaken for live evidence.
+
+### Bookkeeping
+
+- Add one line per refresh to the session `## Review — <date>` changelog and
+  `## Session log`, naming the archived objective(s), the workpage path, and the
+  triggering attempt id.
+- The session file is otherwise untouched and remains canonical.
+
+### Approval and mastery boundary
+
+Offer-then-approve the whole bundle (note rewrite plus workpage append); preview
+which sections are rewritten and which bytes move to which workpage. A note
+refresh changes no `## Assessment`, `## Unit progress`, `## Mastery evidence`, or
+mastery grade — it is hygiene of already-earned mastery, never new, altered, or
+deleted evidence.
+
 ## Phase 6 - User Research
 
 The user researches `gap` objectives offline and fills in content under the
@@ -1740,3 +1845,7 @@ Trigger examples: "review my additions", "check my gap notes".
 - Learner grammar cleanup never changes the original answer or learner-owned
   research text. MiMo output is advisory-only and must remain separate from
   graded evidence.
+- A note refresh (see Note Refresh on Re-quiz) only relocates superseded scaffold
+  verbatim to `_study/workpages/`; it never rewrites, deletes, or fabricates
+  learner-owned evidence, runs only on a `status: reviewed` note, is
+  offer-then-approve, and leaves the session file as the canonical ledger.

@@ -52,6 +52,10 @@ recovering.
 - `research/` stores session-integrated research-dive workspaces
   (`evidence-research-loop`). Stage files there are source material for gap
   research, never mastery evidence.
+- `workpages/` stores note-refresh history archives (one per note). When a
+  re-quiz proves mastery, retired note scaffold is filed here verbatim so the
+  study note reads clean. These are archives, never mastery evidence; the
+  session file stays canonical.
 - `quizzes/` is legacy archival space from the deprecated HTML quiz experiment.
   Do not generate, ingest, score, or rely on files there for the active process.
 """
@@ -242,6 +246,7 @@ def build_plan(vault: Path, notes_dir: Path | None) -> list[Change]:
             vault / "_study" / "visuals",
             vault / "_study" / "dives",
             vault / "_study" / "research",
+            vault / "_study" / "workpages",
         )
         if directory is not None
     )
@@ -275,6 +280,7 @@ def build_plan(vault: Path, notes_dir: Path | None) -> list[Change]:
         vault / "_study" / "visuals",
         vault / "_study" / "dives",
         vault / "_study" / "research",
+        vault / "_study" / "workpages",
     ):
         keep = directory / ".gitkeep"
         ensure_safe_path(keep, vault)
