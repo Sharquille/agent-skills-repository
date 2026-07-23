@@ -4,13 +4,18 @@
 # (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents
 # (~/.agents/skills). It also installs reproducible safety guardrails by default.
 #
+# When Claude is part of the run it additionally snapshots the version-controllable
+# ~/.claude/settings.json back into the dotfiles repo (capture only) so the tracked
+# copy never silently drifts from a hand-edit. Skip with --skip-config-sync.
+#
 # Supported agents discover skills one level deep (<dest>/<name>/SKILL.md), so skills
 # are exposed as FLAT per-skill symlinks regardless of this repo's category
 # nesting (skills/<category>/<name>/).
 #
 # Usage:   deploy.sh [--claude-only] [--gemini-only] [--codex-only] [--opencode-only]
-#          deploy.sh [--safety-only] [--skip-safety]
-#          (no flag = deploy to all supported agents and install safety; flags combine)
+#          deploy.sh [--safety-only] [--skip-safety] [--skip-config-sync]
+#          (no flag = deploy to all supported agents, sync Claude config to
+#           dotfiles, and install safety; flags combine)
 # Exit:    0 = success, 1 = failure.
 
 set -euo pipefail
@@ -29,6 +34,7 @@ CODEX_ONLY=false
 OPENCODE_ONLY=false
 SAFETY_ONLY=false
 SKIP_SAFETY=false
+SKIP_CONFIG_SYNC=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -38,6 +44,7 @@ for arg in "$@"; do
     --opencode-only) OPENCODE_ONLY=true ;;
     --safety-only) SAFETY_ONLY=true ;;
     --skip-safety|--no-safety) SKIP_SAFETY=true ;;
+    --skip-config-sync|--no-config-sync) SKIP_CONFIG_SYNC=true ;;
     *) echo "Unknown argument: $arg" >&2; exit 1 ;;
   esac
 done
@@ -206,6 +213,43 @@ deploy_opencode() {
   echo ""
 }
 
+sync_claude_dotfiles() {
+  # Snapshot the version-controllable ~/.claude/settings.json back into the
+  # dotfiles repo so a hand-edit (via /config, /model, theme, or new hooks)
+  # doesn't silently drift from the committed copy. Capture direction ONLY
+  # (live -> dotfiles): never touches the live config, never commits.
+  # Override the destination dir with CLAUDE_DOTFILES_DIR if your repo differs.
+  local src="$HOME/.claude/settings.json"
+  local dest_dir="${CLAUDE_DOTFILES_DIR:-$HOME/dotfiles/.claude}"
+  local dest="$dest_dir/settings.json"
+
+  echo "--- Syncing Claude config to dotfiles ---"
+  if [ ! -f "$src" ]; then
+    echo "  Skipped: $src not found."; echo ""; return 0
+  fi
+  if [ ! -d "$dest_dir" ]; then
+    echo "  Skipped: $dest_dir not found (dotfiles repo absent)."; echo ""; return 0
+  fi
+
+  # Fail-safe: never capture a config that looks like it gained a credential.
+  # (Secrets belong in settings.local.json, which stays git-ignored. The dotfiles
+  # repo's own gitleaks pre-commit hook is the authoritative gate; this is just a
+  # high-signal early guard so a secret never reaches the working tree.)
+  if grep -iqE '(sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{20}|gho_[A-Za-z0-9]{20}|github_pat_|AKIA[0-9A-Z]{12}|xox[baprs]-[0-9A-Za-z-]|-----BEGIN [A-Z].*PRIVATE|apiKeyHelper)' "$src"; then
+    echo "  ⚠ Skipped: $src looks like it contains secrets/credentials — not"
+    echo "    copying into the tracked repo. Move secrets to settings.local.json."
+    echo ""; return 0
+  fi
+
+  if [ -f "$dest" ] && cmp -s "$src" "$dest"; then
+    echo "  Up to date: dotfiles copy already matches live config."; echo ""; return 0
+  fi
+  cp "$src" "$dest"
+  echo "  Updated: $dest"
+  echo "  (dotfiles working tree changed — review & commit when ready)"
+  echo ""
+}
+
 install_safety() {
   local installer="$REPO_DIR/skills/engineering/deploy-agent-skills/scripts/install-agent-safety.py"
   python3 "$installer" --repo-dir "$REPO_DIR"
@@ -229,6 +273,14 @@ else
   if [ "$GEMINI_ONLY" = true ]; then deploy_gemini; fi
   if [ "$CODEX_ONLY" = true ]; then deploy_codex; fi
   if [ "$OPENCODE_ONLY" = true ]; then deploy_opencode; fi
+fi
+
+# Capture the (version-controllable) Claude config back into dotfiles whenever
+# Claude was part of this run — i.e. the default all-agents run, or --claude-only.
+# Capture-only: never edits the live config, never commits.
+if [ "$SKIP_CONFIG_SYNC" = false ] && { [ "$CLAUDE_ONLY" = true ] || \
+   { [ "$CLAUDE_ONLY" = false ] && [ "$GEMINI_ONLY" = false ] && [ "$CODEX_ONLY" = false ] && [ "$OPENCODE_ONLY" = false ]; }; }; then
+  sync_claude_dotfiles
 fi
 
 if [ "$SKIP_SAFETY" = false ]; then

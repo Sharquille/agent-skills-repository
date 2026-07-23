@@ -1,6 +1,6 @@
 ---
 name: deploy-agent-skills
-description: "Automates deployment and symlinking of agent skills in this repository to Claude Desktop/Code (~/.claude/skills), Gemini CLI (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents (~/.agents/skills). Also installs reproducible local safety and orchestration guardrails for destructive command review, protected agent data paths, and Agent Orchestra wrapper-first model routing. Run with no flag to deploy skills and safety to all supported agents, combine --claude-only / --gemini-only / --codex-only / --opencode-only, use --safety-only for guardrails only, or --skip-safety for skills only. Trigger when the user wants to configure, install, link, deploy, update, or reproduce local repository skills and agent safety rules across terminal or AI assistants."
+description: "Automates deployment and symlinking of agent skills in this repository to Claude Desktop/Code (~/.claude/skills), Gemini CLI (~/.gemini/skills), Codex CLI (~/.codex/skills), and OpenCode/shared agents (~/.agents/skills). Also installs reproducible local safety and orchestration guardrails for destructive command review, protected agent data paths, and Agent Orchestra wrapper-first model routing. Run with no flag to deploy skills and safety to all supported agents, combine --claude-only / --gemini-only / --codex-only / --opencode-only, use --safety-only for guardrails only, or --skip-safety for skills only. When Claude is deployed it also snapshots ~/.claude/settings.json into the dotfiles repo (capture-only, secret-guarded; skip with --skip-config-sync). Trigger when the user wants to configure, install, link, deploy, update, or reproduce local repository skills and agent safety rules across terminal or AI assistants."
 category: engineering
 source: self-authored (this repository)
 author: Sharquille Andrew
@@ -74,15 +74,31 @@ The safety installer:
 - Keeps Codex's own `AGENTS.md` safety-only so invoked Codex workers do not
   recursively route back through Agent Orchestra.
 
+### Claude Config Snapshot
+
+When Claude is part of the run (default, or `--claude-only`), the script also
+snapshots the version-controllable `~/.claude/settings.json` back into the
+dotfiles repo (`~/dotfiles/.claude/settings.json`; override with
+`CLAUDE_DOTFILES_DIR`). This keeps the committed copy from silently drifting
+when the config is hand-edited via `/config`, `/model`, theme, or new hooks.
+
+- **Capture only** (`live → dotfiles`): never edits the live config and never
+  commits — it refreshes the working-tree copy for you to review and commit.
+- **Secret fail-safe:** if the config looks like it gained a credential (token
+  shapes, `apiKeyHelper`, private-key blocks) the snapshot is skipped with a
+  warning. Secrets belong in the git-ignored `settings.local.json`.
+- Runs only when Claude is being deployed; disable with `--skip-config-sync`.
+
 ### 4) Command Line Options
 
-- **Default (No arguments):** Deploys to all supported environments and installs safety guardrails.
+- **Default (No arguments):** Deploys to all supported environments, snapshots Claude config to dotfiles, and installs safety guardrails.
 - `--claude-only`: Only deploys and symlinks Claude skills.
 - `--gemini-only`: Only deploys and symlinks Gemini skills.
 - `--codex-only`: Only deploys and symlinks Codex skills.
 - `--opencode-only`: Only deploys and symlinks OpenCode/shared-agent skills.
 - `--safety-only`: Only install safety guardrails.
 - `--skip-safety` / `--no-safety`: Deploy skills without installing safety guardrails.
+- `--skip-config-sync` / `--no-config-sync`: Skip snapshotting `~/.claude/settings.json` into the dotfiles repo.
 - Flags **combine** — e.g. `--claude-only --codex-only` deploys to Claude and Codex but not Gemini.
 
 For a narrow guardrail refresh, call the installer directly with `--target`:
