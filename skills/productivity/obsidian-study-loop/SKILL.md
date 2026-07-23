@@ -120,6 +120,18 @@ When the skill is called from any workspace:
    scaffolded, because the local pointer files are automatically visible to
    agents that read project instructions.
 
+Bare invocation — the skill loaded with no request attached (for example
+`/obsidian-study-loop` with no arguments) — is itself a study-loop action, not
+a cue to greet and wait. Do not print a capability menu first. If the resolved
+vault (rule 1 above) contains study state, immediately run the session-start
+sweep read-only: read `_study/state.json`, resolve the active session, and
+collect due re-reviews, pending gap stubs, unconsumed quiz blocks, and
+resumable research workspaces. Report what was found — active session, topic,
+status, per-scope progress, anything due — and only then offer next actions,
+most likely continuation first. Write nothing during this sweep: no session
+files, no state changes, no stub archiving. If no vault markers exist, fall
+back to offering setup.
+
 ## Timestamp and Link Discipline
 
 Before writing any timestamped frontmatter or session-log entry, get the real
@@ -303,6 +315,13 @@ At the start of every study-loop action:
    setup.
 5. Only write `{ "active_session": null }` when the user explicitly asks to
    clear, close, undo, or remove active state.
+
+Verbatim reporting: when reporting session state — objective names, review
+dates, stages, scores, scope titles — copy the exact strings from file text
+read this turn. Never paraphrase, merge, or reconstruct a name from memory: a
+due-review table may contain only objective names that appear verbatim in an
+assessment block. If a value was not read in this conversation, re-read it
+before reporting it.
 
 ## Scope Boundary Rules
 
