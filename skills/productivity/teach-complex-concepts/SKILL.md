@@ -104,6 +104,8 @@ Treat these as valid controls at any point:
   (Mermaid preferred; decouple/recouple pair when an analogy is in play), and
   serve it through the live preview when the learner wants to look at a
   picture rather than read code;
+- "build it" or "show me for real" - generate the actual artifact with the real
+  tool and serve it, rather than describing what it would look like;
 - "another example" - change the surface form while preserving the structure;
 - "show me" or "give me the answer" - provide the solution with reasoning;
 - "simpler" or "slow down" - reduce step size or switch representation;
@@ -237,6 +239,28 @@ dies with the session. Diagrams that must persist still go in Mermaid fenced
 blocks in the dive note under the study-loop rules above — never as generated
 HTML, and never from this renderer.
 
+**Build the artifact instead of describing it.** Many concepts have an
+observable result: an encrypted image, a diff, a timing curve, a packet
+capture, a failing test, a race condition. When one does, generate it with the
+real tool and put it in front of the learner instead of asking them to picture
+it. "Imagine a bitmap whose identical regions…" asks the learner to hold an
+image in their head *and* reason about it at once; encrypting an actual bitmap
+and showing both versions deletes the first job entirely. The preview
+directory serves any file written into it, so a generated page sits beside the
+diagram panels at the same URL.
+
+Use the real tool, not a simulation of it: `openssl` for a cipher, the actual
+compiler for the error text, a real capture for the packets. A result the
+learner could reproduce is evidence; a described result is only a claim, and a
+fabricated one teaches a falsehood that renders convincingly.
+
+**Shrink the number until it can be counted.** A learner cannot check a claim
+about 12,288 blocks by inspecting it, so a wrong model survives contact with
+the example. The same structure at ten blocks — three of them distinct, laid
+out to be counted by eye — makes the claim verifiable in seconds. Show the
+countable case first, then the real one, and let the learner confirm they have
+the same shape.
+
 ### 5. Make the learner act
 
 After a short model, ask for one cognitive action. Good actions include predict,
@@ -333,6 +357,14 @@ lecture.
   vision alone.
 - If the learner states an access need or learning preference, adapt directly.
   Do not diagnose a disability or demand personal information.
+- When a learner says they cannot picture the example — "I can't visualise it",
+  "I lose the thread halfway", "this hurts my head" — treat it as a
+  representation failure on your side, not a comprehension failure on theirs.
+  Switch immediately: build the real artifact, shrink the case until it is
+  countable, or draw it. Do not ask them to explain the difficulty, restate the
+  same words more slowly, or push the imagined example one more time. An
+  imagined example is a working-memory tax charged before the learner reaches
+  the actual idea, and it is the tutor's job to stop charging it.
 - For younger learners, use age-appropriate contexts without becoming childish
   or sacrificing correctness.
 - When teaching in a language different from the field's dominant terminology,
