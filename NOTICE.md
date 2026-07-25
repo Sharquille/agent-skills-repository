@@ -41,6 +41,20 @@ upstream plugin retains its Apache-2.0 license.
 linked public engineering artifacts (reviewed 2026-07-15). No Bun or Anthropic
 code, prompts, or article text is vendored in this repository.
 
+## Vendored third-party assets
+
+`skills/productivity/teach-complex-concepts/assets/mermaid.min.js` is an
+unmodified distribution build of [Mermaid](https://github.com/mermaid-js/mermaid)
+v11.4.1 — MIT, Copyright (c) 2014 - 2022 Knut Sveidqvist. The upstream license
+text sits beside it in `assets/mermaid.LICENSE.txt`, and the bundle's own
+embedded attributions (jQuery, and the Bezier and Runge-Kutta generators) are
+preserved intact inside the file.
+
+It is vendored rather than fetched from a CDN so the skill's diagram preview
+renders with no network, during offline study sessions. It is a runtime asset
+only: no Mermaid source is copied into this repository's skill content, and the
+file is never modified.
+
 ## If you reuse a skill from here
 
 Check that skill's `SKILL.md` frontmatter and directory `LICENSE` for its terms,

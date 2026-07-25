@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mermaid Preview</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>%F0%9F%93%90</text></svg>" />
+<style>
+  :root {
+    --bg:#fbfbfa; --fg:#1a1a18; --muted:#6b6b66;
+    --card:#ffffff; --line:#e4e4e0; --accent:#b4531f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16161a; --fg:#ececea; --muted:#9a9a95; --card:#1e1e23; --line:#32323a; --accent:#e08b52; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; padding:2.5rem 1.5rem 5rem; background:var(--bg); color:var(--fg);
+    font:16px/1.6 ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width:1100px; margin:0 auto; }
+  h1 { font-size:1.55rem; margin:0 0 .3rem; letter-spacing:-0.01em; }
+  .sub { color:var(--muted); font-size:.9rem; margin:0 0 2.5rem; }
+  .status {
+    position:fixed; top:.75rem; right:.75rem; z-index:10;
+    font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    padding:.45rem .6rem; border-radius:999px;
+    background:var(--card); border:1px solid var(--line); color:var(--muted);
+  }
+  .status.live { color:#2e7d32; border-color:#2e7d3255; }
+  .status.err { color:#c0392b; border-color:#c0392b55; }
+  .panel {
+    background:var(--card); border:1px solid var(--line);
+    border-radius:12px; padding:1.5rem 1.5rem 1.75rem; margin-bottom:1.75rem;
+  }
+  .panel h2 { font-size:1rem; margin:0 0 .55rem; color:var(--accent); font-weight:650; }
+  .note {
+    margin:0 0 1.4rem; color:var(--muted); font-size:.92rem; max-width:68ch;
+    border-left:2px solid var(--line); padding-left:.85rem;
+  }
+  .diagram { overflow-x:auto; text-align:center; }
+  .diagram svg { max-width:100%; height:auto; }
+  .fail {
+    font:12px/1.5 ui-monospace, Menlo, monospace; color:#c0392b;
+    white-space:pre-wrap; background:#c0392b11; padding:.8rem; border-radius:6px; text-align:left;
+  }
+  .empty { color:var(--muted); font-style:italic; }
+</style>
+<script src="mermaid.min.js"></script>
+</head>
+<body>
+<div id="status" class="status">starting…</div>
+<div class="wrap">
+  <h1 id="title">Mermaid Preview</h1>
+  <p class="sub" id="subtitle">waiting for diagrams…</p>
+  <div id="panels"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  window.mermaid.initialize({
+    startOnLoad: false,
+    theme: dark ? "dark" : "default",
+    securityLevel: "strict",
+    flowchart: { curve: "basis", padding: 18 }
+  });
+
+  var statusEl = document.getElementById("status");
+  var last = "";
+  var seq = 0;
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = "status " + (cls || "");
+  }
+
+  // A failed mermaid.render() leaves its scratch container — and the "Syntax
+  // error in text" bomb graphic — attached to <body>, outside the panel list.
+  // Emptying #panels does not remove it, so without this sweep one bad diagram
+  // haunts every later re-render.
+  function dropOrphans() {
+    var kids = Array.prototype.slice.call(document.body.children);
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].id && /^d?m\d+$/.test(kids[i].id)) {
+        kids[i].parentNode.removeChild(kids[i]);
+      }
+    }
+  }
+
+  function render(doc) {
+    dropOrphans();
+    document.getElementById("title").textContent = doc.title || "Mermaid Preview";
+    document.getElementById("subtitle").textContent = doc.subtitle || "";
+    var host = document.getElementById("panels");
+    host.innerHTML = "";
+
+    var panels = doc.panels || [];
+    if (!panels.length) {
+      host.innerHTML = '<p class="empty">No panels yet.</p>';
+      return Promise.resolve();
+    }
+
+    return panels.reduce(function (chain, panel) {
+      return chain.then(function () {
+        var card = document.createElement("div");
+        card.className = "panel";
+
+        var h = document.createElement("h2");
+        h.textContent = panel.title || "";
+        card.appendChild(h);
+
+        if (panel.note) {
+          var n = document.createElement("p");
+          n.className = "note";
+          n.textContent = panel.note;
+          card.appendChild(n);
+        }
+
+        var box = document.createElement("div");
+        box.className = "diagram";
+        card.appendChild(box);
+        host.appendChild(card);
+
+        var id = "m" + (seq++);
+        return window.mermaid.render(id, panel.mermaid || "")
+          .then(function (res) { box.innerHTML = res.svg; })
+          .catch(function (err) {
+            var pre = document.createElement("pre");
+            pre.className = "fail";
+            pre.textContent = "Mermaid failed to render:\n" + (err && err.message ? err.message : String(err));
+            box.appendChild(pre);
+          })
+          .then(dropOrphans);
+      });
+    }, Promise.resolve());
+  }
+
+  function poll() {
+    fetch("diagrams.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        if (text !== last) {
+          last = text;
+          return render(JSON.parse(text));
+        }
+      })
+      .then(function () { setStatus("live · auto-updating", "live"); })
+      .catch(function () { setStatus("disconnected", "err"); });
+  }
+
+  poll();
+  setInterval(poll, 1500);
+})();
+</script>
+</body>
+</html>

@@ -101,7 +101,9 @@ Treat these as valid controls at any point:
 
 - "hint" - move one level down the hint ladder;
 - "draw it" or "visualize that" - render the current model as a diagram
-  (Mermaid preferred; decouple/recouple pair when an analogy is in play);
+  (Mermaid preferred; decouple/recouple pair when an analogy is in play), and
+  serve it through the live preview when the learner wants to look at a
+  picture rather than read code;
 - "another example" - change the surface form while preserving the structure;
 - "show me" or "give me the answer" - provide the solution with reasoning;
 - "simpler" or "slow down" - reduce step size or switch representation;
@@ -188,7 +190,8 @@ one-line plain-text description immediately before each block so the
 explanation does not depend on vision or rendering, self-check the fence and
 diagram type before emitting, and never emit HTML for teaching visuals. When
 the client exposes a diagram renderer, render the same Mermaid source for the
-live view instead of leaving it as raw code.
+live view instead of leaving it as raw code; when it does not,
+`scripts/mermaid-preview.sh` supplies one.
 
 Mermaid label syntax is strict, and violations fail silently at render time
 rather than at authoring time:
@@ -208,7 +211,31 @@ rather than at authoring time:
 
 Render the diagram before delivering it whenever a renderer is available. A
 diagram the learner cannot read is worse than no diagram, because it looks
-like content while teaching nothing.
+like content while teaching nothing. Terminal clients show Mermaid as raw
+code, so this skill ships its own renderer:
+
+```text
+scripts/mermaid-preview.sh start [--dir DIR] [--port PORT] [--open]
+scripts/mermaid-preview.sh stop|status [--dir DIR]
+```
+
+Write the panels to `DIR/diagrams.json` — `title`, optional `subtitle`, and a
+`panels` array of `title` / `note` / `mermaid`. The page polls every 1.5s and
+re-renders on change, so a diagram can be corrected mid-turn without the
+learner reloading anything. Mermaid is vendored at `assets/mermaid.min.js`, so
+it renders with no network. Always fill `note`: it carries the plain-text
+description that keeps the diagram usable without vision or rendering.
+
+The renderer earns its place on the silent failures listed above. A label
+beginning with a list marker does not raise an error — it renders as
+`Unsupported markdown: list` inside the picture, so only an actual render
+catches it before the learner sees it.
+
+The preview is a viewing aid, never a deliverable. It writes to a scratch
+directory, refuses to run inside an Obsidian vault or a git working tree, and
+dies with the session. Diagrams that must persist still go in Mermaid fenced
+blocks in the dive note under the study-loop rules above — never as generated
+HTML, and never from this renderer.
 
 ### 5. Make the learner act
 
