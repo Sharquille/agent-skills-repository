@@ -34,7 +34,10 @@ Read [research-foundations.md](references/research-foundations.md) when designin
 a substantial learning path, comparing pedagogies, or deciding between discovery
 and direct instruction. Read
 [lesson-patterns.md](references/lesson-patterns.md) when choosing activities,
-hints, misconception repairs, or mastery checks.
+hints, misconception repairs, or mastery checks. Read
+[demonstration-pages.md](references/demonstration-pages.md) when a concept has
+an observable result and the learner would learn more from seeing it than from
+reading about it.
 
 **Study-session integration.** This skill runs live, conversational tutoring
 of a concept. When invoked while an `obsidian-study-loop` vault session is
@@ -253,6 +256,13 @@ Use the real tool, not a simulation of it: `openssl` for a cipher, the actual
 compiler for the error text, a real capture for the packets. A result the
 learner could reproduce is evidence; a described result is only a claim, and a
 fabricated one teaches a falsehood that renders convincingly.
+
+Read [demonstration-pages.md](references/demonstration-pages.md) before
+building one. It carries the rules that decide whether the page teaches or just
+looks impressive — compute every number rather than asserting it, colour by
+identity so equality becomes visible, vary exactly one thing across
+side-by-side panels, and keep the page readable with images disabled.
+`assets/demo-page.css` holds the shared styling.
 
 **Shrink the number until it can be counted.** A learner cannot check a claim
 about 12,288 blocks by inspecting it, so a wrong model survives contact with

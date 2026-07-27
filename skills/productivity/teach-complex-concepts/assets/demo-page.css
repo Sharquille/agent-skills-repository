@@ -1,0 +1,92 @@
+/*
+ * demo-page.css — shared styling for generated demonstration pages.
+ *
+ * Drop this next to a generated page and link it, or inline it. It exists so a
+ * demonstration built mid-lesson starts out readable instead of being restyled
+ * from scratch every time. Theme-aware, responsive, and safe for wide content:
+ * hex dumps and tables scroll inside their own container rather than pushing
+ * the page sideways.
+ *
+ * The classes below are a vocabulary, not a layout. Use the ones that fit.
+ */
+
+:root {
+  --bg:#fbfbfa; --fg:#1a1a18; --muted:#6b6b66;
+  --card:#fff; --line:#e4e4e0; --accent:#b4531f;
+  --ok:#2e7d32; --bad:#c0392b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:#16161a; --fg:#ececea; --muted:#9a9a95;
+    --card:#1e1e23; --line:#32323a; --accent:#e08b52;
+    --ok:#7fc98a; --bad:#ef8a80;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; padding:2.5rem 1.5rem 5rem; background:var(--bg); color:var(--fg);
+  font:16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width:940px; margin:0 auto; }
+h1 { font-size:1.5rem; margin:0 0 .4rem; letter-spacing:-.01em; }
+h2 { font-size:1.05rem; color:var(--accent); margin:2.6rem 0 .4rem; }
+p  { max-width:70ch; }
+.sub, .muted { color:var(--muted); font-size:.9rem; }
+.sub { margin:0 0 2.4rem; }
+
+/* Card: one idea per card. */
+.card {
+  background:var(--card); border:1px solid var(--line);
+  border-radius:12px; padding:1.1rem 1.2rem; margin-top:.9rem;
+}
+.card h3 {
+  font-size:.85rem; margin:0 0 .7rem; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.06em;
+}
+
+/* Side-by-side: the same input under two treatments, never two unrelated things. */
+.grid, .two {
+  display:grid; gap:1rem;
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+}
+
+/* Byte rows. Colour the left border by BLOCK IDENTITY: two rows share a colour
+   only when their bytes are genuinely identical. That is the whole point —
+   equality becomes something the learner sees rather than something told. */
+.row { display:flex; align-items:center; gap:.6rem; margin:.3rem 0; }
+.idx { font:11px ui-monospace, Menlo, monospace; color:var(--muted); width:2.2rem; flex:none; }
+.hex {
+  font:12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding:.32rem .6rem; background:#8881; border-radius:0 5px 5px 0;
+  overflow-x:auto; white-space:nowrap; flex:1;
+}
+
+/* Countable strip: shrink the real case until it can be counted by eye. */
+.strip { display:flex; gap:5px; margin:.7rem 0 .3rem; flex-wrap:wrap; }
+.cell {
+  width:52px; height:52px; border-radius:6px; border:1px solid var(--line);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.cell span {
+  font:10px ui-monospace, Menlo, monospace; color:#8a8a8a;
+  background:#ffffffcc; border-radius:3px; padding:0 3px; margin-bottom:3px;
+}
+
+/* Verdict: state what the panel proves, in the panel. */
+.verdict { margin-top:.7rem; font-size:.9rem; font-weight:650; }
+.good { color:var(--ok); }
+.bad  { color:var(--bad); }
+
+/* Measurements. Prefer computed numbers over asserted ones. */
+.table-scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; margin-top:1rem; font-size:.92rem; }
+th, td { padding:.55rem .6rem; border-bottom:1px solid var(--line); text-align:left; }
+th { color:var(--muted); font-weight:600; }
+td.n, .num { font-family:ui-monospace, Menlo, monospace; }
+.big { font-size:1.05rem; font-weight:700; }
+
+img { max-width:100%; height:auto; border:1px solid var(--line); border-radius:6px; }
+img.pixels { image-rendering:pixelated; }   /* small bitmaps, scaled up */
+.mermaid { text-align:center; margin:.5rem 0; overflow-x:auto; }
+code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
