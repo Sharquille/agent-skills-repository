@@ -1,11 +1,103 @@
 # Visual Review Artifact Standard
 
-Use this reference when creating or redesigning HTML under
-`_study/visuals/`. It turns the protocol's security boundary into a compact
-design and review system. The protocol remains authoritative if the two ever
-disagree.
+Use this reference when creating or redesigning Markdown visual reviews under
+`_study/visuals/`. The active artifact format is Markdown with Mermaid so the
+same file remains reachable and renderable in Obsidian on desktop and iPadOS.
+The protocol remains authoritative if the two ever disagree.
 
-## Design intent
+## Active Markdown and Mermaid contract
+
+A generated artifact is
+`<VAULT>/_study/visuals/<YYYY-MM-DD>-<scope-slug>.md`. Never generate a new
+`.html` artifact. Existing `.html` artifacts remain supported by the separate
+legacy contract below.
+
+Every Markdown artifact has YAML frontmatter with these four fields:
+
+```yaml
+---
+study-source: Notes/Topic.md
+study-scope: 2.3 Topic
+study-generated: 2026-07-09T12:30:00-0400
+study-visual-version: 2
+---
+```
+
+Each `study-*` value is a bare scalar on one line. Quoted and multiline values
+are forbidden. `study-source` is a vault-local POSIX path to an existing regular
+file inside the vault, never a URL. Extension dispatch happens before contract
+selection: `.md` requires version `2`; legacy `.html` requires version `1`.
+
+The body must:
+
+- Show the exact label `Visual review artifact - not an assessment`.
+- Contain one logical `#` H1, with `##` headings for body sections.
+- Use Markdown, Mermaid, compact tables, and Obsidian callouts to explain only
+  the assessed or written scope.
+- Avoid remote images and external link dependencies. Markdown link and image
+  destinations and raw HTML URL attributes may use vault-relative paths or
+  fragments only. `http:`, `https:`, `//`, and all other external schemes are
+  errors.
+- Contain no answer collection, scoring, grading, persistence, or mastery
+  writes.
+
+Scope locking is a human gate. The validator checks that `study-source` exists
+as a vault-local regular file; it does not cross-check `study-scope` against
+session assessments or notes-written records.
+
+Obsidian Canvas is a manual option for large spatial maps, but generated visual
+reviews never create `.canvas` files and the validator ignores them.
+
+### Mermaid structural checks
+
+The validator performs deterministic structural checks, not Mermaid parsing.
+Fences must be balanced and well formed. Unterminated fences, empty `mermaid`
+blocks, and malformed or nested fence boundaries are errors.
+
+The first non-empty line in each Mermaid block must begin with a recognized
+diagram declaration. The allowlist is: `flowchart`, `graph`,
+`sequenceDiagram`, `classDiagram`, `stateDiagram`, `stateDiagram-v2`,
+`erDiagram`, `journey`, `gantt`, `pie`, `mindmap`, `timeline`,
+`quadrantChart`, `gitGraph`, `sankey-beta`, `xychart-beta`, and `block-beta`.
+An unknown declaration is an error because Obsidian renders it as an error box.
+
+A quoted Mermaid label must not begin with a list marker: `1.`, `1)`, `- `, or
+`* `. That lexical pattern can silently fail in Obsidian.
+
+### Retrieval prompts
+
+Use foldable Obsidian callouts:
+
+```markdown
+> [!QUESTION]- Which key encrypts for confidentiality?
+> The recipient's public key. Only their private key decrypts.
+```
+
+The hidden response is a study aid, not evidence. To turn a prompt into mastery
+evidence, ask it again through the normal chat quiz or reviewed study-check
+path.
+
+### Release review
+
+1. Verify manually that the artifact scope has already been assessed or written.
+2. Run `scripts/validate_study_vault.py <VAULT_PATH>` and resolve every visual
+   error.
+3. Open the Markdown file in Obsidian on a target device.
+4. Confirm every Mermaid diagram renders, callouts fold, hierarchy is readable,
+   and local links resolve.
+5. Log the generated or regenerated artifact under the matching session's
+   `## Session log`.
+
+Full rendering fidelity is human/Obsidian QA. The validator's deterministic
+checks do not prove rendering fidelity, scope coverage, or mastery.
+
+## Legacy HTML contract
+
+The contract below is retained only so existing `.html` artifacts continue to
+validate cleanly. It is no longer the active visual system and must not be used
+to generate new artifacts.
+
+### Design intent
 
 A visual review artifact is a study diagram, not a dashboard or quiz shell. Its
 single job is to make relationships inside one already assessed or written
@@ -25,16 +117,16 @@ Ground the design in the subject:
   terminal chrome, or arbitrary numbered steps unless the source material
   genuinely contains metrics, commands, or sequence.
 
-## Default tactile study surface (v2)
+### Legacy tactile study surface (v2)
 
-The default experience is the tactile study surface: a precise, keyboard-
+The former default experience is the tactile study surface: a precise, keyboard-
 friendly technical reading interface defined by flow and information
 architecture, not decoration. Build it from the bundled template in
 `tactile-study-surface/` (chrome, compiled behaviors, assembler, worked
 example — see its `SPEC.md`), so every artifact shares byte-identical chrome
 and only the declarative per-scope JSON manifest changes.
 
-### Narrative flow
+#### Narrative flow
 
 Arrange supported content in this order:
 
@@ -48,7 +140,7 @@ Arrange supported content in this order:
 Do not manufacture a stage when the note has no supporting content. The source
 scope controls the page, never the template.
 
-### Visual grammar
+#### Visual grammar
 
 - Tactile technical surface: oklch tokens, system font stacks only, 1px
   borders with hard asymmetric shadows, small radii, a subtle graph-paper
@@ -65,7 +157,7 @@ scope controls the page, never the template.
   in-memory toggle. Design mobile-first at 320 CSS pixels; the frame
   collapses to a single column below 900 pixels.
 
-### Mind-map routing
+#### Mind-map routing
 
 Use a mind map for real hierarchy, branching, taxonomy, ownership, or
 one-to-many relationships. Use a comparison for two-sided distinctions, a
@@ -73,7 +165,7 @@ matrix for repeated exact mappings, and a flow or timeline for ordered stages.
 Every node and edge must be traceable to the source note. A mind map may reveal
 detail on selection, but must not collect answers or imply scoring.
 
-### Maintainer interaction boundary
+#### Maintainer interaction boundary
 
 Normal study-time generation uses the bundled reviewed `behaviors.js` and must
 not invoke package managers, install dependencies, or download a compiler.
@@ -83,14 +175,14 @@ the compiled diff. The released artifact remains one offline HTML file: no
 TypeScript runtime, JSX, Tailwind runtime, package import, module script, source
 map, or external dependency. Static pages should remain script-free.
 
-### Content-preservation gate
+#### Content-preservation gate
 
 Before an in-place redesign, inventory headings, factual paragraphs, examples,
 comparisons, limitations, scope boundaries, and retrieval references. After the
 redesign, compare the inventory. Missing, rewritten, broadened, or silently
 collapsed subject matter blocks release even when the page looks better.
 
-## Required document posture
+### Required document posture
 
 Every file includes:
 
@@ -103,7 +195,7 @@ Every file includes:
 - A restrictive Content Security Policy with `default-src 'none'`,
   `connect-src 'none'`, `form-action 'none'`, and `base-uri 'none'`.
 - A visible footer that repeats the scope, local source identifier, generation
-  timestamp, and `Visual review only - not an assessment`.
+  timestamp, and `Visual review artifact - not an assessment`.
 
 Use a CSP shaped to the actual file. A no-script page can use:
 
@@ -116,7 +208,7 @@ If classic inline JavaScript is essential, change only `script-src` to
 `'unsafe-inline'`. Do not use module scripts, external files, hosts, or wildcard
 sources.
 
-## Accessibility and resilience
+### Accessibility and resilience
 
 - Use semantic HTML before ARIA. Native `<details>` and `<summary>` are the
   default disclosure pattern.
@@ -136,7 +228,7 @@ sources.
 - Add a print stylesheet when the page benefits from paper review. Print is a
   quality enhancement, not a validator gate.
 
-## Content structure
+### Content structure
 
 A strong page usually contains:
 
@@ -155,7 +247,7 @@ they are ephemeral: in-memory only, reset on reload, never collected, stored,
 exported, scored, or written to mastery evidence — adding persistence to them
 breaches this contract.
 
-## Forbidden surface
+### Forbidden surface
 
 Do not add:
 
@@ -174,7 +266,7 @@ concept-native diagram truly needs inline SVG, author it through a separately
 reviewed offline artifact, give it the accessibility treatment below, and run
 the same validator and browser checks; never smuggle SVG through `body_html`.
 
-## Release review
+### Release review
 
 1. Verify the artifact's scope exists in an assessment or notes-written record.
 2. For an in-place redesign, complete the content-preservation inventory and

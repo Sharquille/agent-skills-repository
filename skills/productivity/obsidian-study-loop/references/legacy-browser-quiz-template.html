@@ -4,10 +4,10 @@
 
   This browser-quiz engine is retained only so old generated artifacts remain
   understandable. The active study-loop protocol no longer uses HTML as a quiz,
-  grading surface, result-ingestion path, or mastery evidence source. New HTML
-  output belongs to the Optional Visual Review Artifact flow and should be
-  written as static, self-contained visual reference material under
-  _study/visuals/.
+  grading surface, result-ingestion path, mastery evidence source, or visual
+  generation format. The current Optional Visual Review Artifact flow writes
+  Markdown with Mermaid under _study/visuals/. Do not use this template to
+  generate new HTML.
 -->
 <html lang="en">
 <head>
@@ -459,7 +459,7 @@ const QUIZ_DATA = null; /* INJECT-QUIZ-DATA — conductor replaces this whole li
 
     html += '<div class="callout"><b>Legacy export only</b><ol style="margin:8px 0 0;padding-left:20px">'
       + '<li>The current study loop ignores results from this legacy page.</li>'
-      + '<li>Use chat for mastery assessment and <code>_study/visuals/</code> for current-scope visual artifacts.</li>'
+      + '<li>Use chat for mastery assessment and Markdown with Mermaid in <code>_study/visuals/</code> for current-scope visual artifacts. Do not generate new HTML.</li>'
       + '<li>The export buttons remain only so old artifacts can be inspected if needed.</li></ol></div>';
     html += '<div class="row"><button class="btn" id="dlBtn">Download legacy JSON</button>'
       + '<button class="btn ghost" id="copyBtn">Copy legacy JSON</button>'

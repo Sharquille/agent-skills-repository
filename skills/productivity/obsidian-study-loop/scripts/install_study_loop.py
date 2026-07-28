@@ -44,7 +44,7 @@ recovering.
 
 - `sessions/` stores study-session logs and assessment history.
 - `visuals/` stores current-scope visual review artifacts. These are
-  self-contained HTML study aids, not quizzes or mastery evidence.
+  Markdown and Mermaid study aids, not quizzes or mastery evidence.
 - `dives/` stores teaching-dive notes (`teach-complex-concepts`) — decoupled
   explanations and diagrams, never graded study notes and never mastery
   evidence. Canonical study notes live in `Notes/`, authored only by the

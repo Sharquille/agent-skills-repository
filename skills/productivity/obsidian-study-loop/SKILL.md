@@ -1,6 +1,6 @@
 ---
 name: obsidian-study-loop
-description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs except explicit read-only advisory consults. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz a full session or scoped unit, assess objective mastery, write tagged notes with gap placeholders and applied exercises, generate optional self-contained offline HTML review artifacts for assessed scopes, run relevance-checked mid-session deep dives that route teach-complex-concepts tutoring or evidence-research-loop research into the session under a strict mastery boundary, review learner additions, or grammar-clean learner answers while preserving the original evidence. Do not trigger for generic note capture, one-off quizzes the user does not want persisted, general Obsidian administration, flashcard export, or standalone app/API-based study tools."
+description: "Run or install a disk-backed Obsidian study workflow where the agent acts as tutor without calling external LLM APIs except explicit read-only advisory consults. Use when the user wants to set up STUDY-PROTOCOL.md in an Obsidian vault, start a study session from objectives or per-section study content, quiz a full session or scoped unit, assess objective mastery, write tagged notes with gap placeholders and applied exercises, generate optional Markdown and Mermaid visual review artifacts for assessed scopes, run relevance-checked mid-session deep dives that route teach-complex-concepts tutoring or evidence-research-loop research into the session under a strict mastery boundary, review learner additions, or grammar-clean learner answers while preserving the original evidence. Do not trigger for generic note capture, one-off quizzes the user does not want persisted, general Obsidian administration, flashcard export, or standalone app/API-based study tools."
 # --- provenance ---
 category: productivity
 source: self-authored from the ComptiaSec+ Obsidian study-loop protocol
@@ -186,7 +186,7 @@ A scaffolded study vault has this shape. Keep writes inside these locations:
   _study/
     state.json                         # active-session pointer
     sessions/                          # one file per study session
-    visuals/                           # generated visual-review .html artifacts
+    visuals/                           # generated visual-review .md artifacts
     dives/                             # teaching-dive notes (created on first dive)
     research/                          # research-dive workspaces (created on first dive)
     workpages/                         # note-refresh history archives (created on first refresh)
@@ -865,15 +865,16 @@ Trigger examples:
 19. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
 
+<!-- shared-contract:start id=visual-artifact -->
 ## Optional Visual Review Artifact
 
-Chat remains the exam-standard quiz and mastery path. HTML artifacts are
-optional post-assessment study aids: they can help the learner see relationships
-between concepts, but they never quiz, grade, ingest results, or write mastery
-evidence.
+Chat remains the exam-standard quiz and mastery path. Markdown and Mermaid
+artifacts are optional post-assessment study aids: they can help the learner see
+relationships between concepts, but they never quiz, grade, ingest results, or
+write mastery evidence.
 
-Trigger examples: "make me a visual review for the current scope", "make an
-HTML concept map for 2.3", "diagram this scope", "visualize the malware
+Trigger examples: "make me a visual review for the current scope", "make a
+Mermaid concept map for 2.3", "diagram this scope", "visualize the malware
 taxonomy", or "make a comparison page for these controls".
 
 Generate a visual review artifact only for the current active study scope after
@@ -883,136 +884,102 @@ written before treating it as the artifact scope. If the requested scope has not
 been assessed or written yet, explain that mastery remains chat-based and offer
 to quiz first.
 
-### Purpose and content
+Scope locking is a human gate. The validator confirms that `study-source` is a
+vault-local regular file, but it does not cross-check `study-scope` against
+session assessments or notes-written records.
 
-Use the artifact to visually reinforce concepts already covered in the current
-scope. Useful formats include:
+### Purpose and format
 
-- Concept maps and relationship diagrams.
-- Comparison tables for similar terms or controls.
-- Process flows, timelines, and remediation ladders.
-- Attack paths, supply-chain dependency maps, and taxonomy diagrams.
-- Visual retrieval prompts such as unlabeled diagrams or "explain this flow"
-  cues, without scoring or answer collection.
+Use Markdown structure, Mermaid diagrams, compact tables, and Obsidian callouts
+to reinforce concepts already covered in the current scope. Useful formats
+include concept maps, comparison tables, process flows, timelines, remediation
+ladders, attack paths, dependency maps, taxonomies, and retrieval prompts.
 
-Every visual artifact must be self-contained offline HTML. Inline CSS and JS
-are allowed when they support the visual explanation. Do not add remote
-scripts, stylesheets, fonts, images, telemetry, accounts, persistence, or
-network calls.
-
-### Approved tactile study surface (v2)
-
-Use the tactile study surface as the default visual language, built from the
-bundled template in `references/tactile-study-surface/` (read its `SPEC.md`
-before generating). This is a structural and typographic system, not a skin:
-
-- Build a deliberate study narrative: **orient -> map or classify -> contrast
-  -> respond or apply -> retrieve**. Omit a stage only when the scope does not
-  support it; never invent content to fill the sequence.
-- Keep the stable page frame the template provides: sticky command bar,
-  scrollspy index rail, one strong thesis, and numbered section panels. When
-  honest retrieval cues exist, append the interactive deck last; otherwise
-  omit it and produce a script-free static page.
-- Assemble with `tactile-study-surface/assemble.py --vault <VAULT_PATH>
-  <content.json> <VAULT_PATH>/_study/visuals/<slug>.html` and a declarative
-  per-scope JSON manifest so every assembled artifact carries
-  byte-identical chrome. The manifest is data, never executable code. Express
-  content only through the assembler's validated primitives.
-- The JSON assembler supports its documented semantic and CSS primitives and
-  deliberately rejects SVG. If the source genuinely requires a concept-native
-  SVG, author a separate offline artifact under the visual review standard;
-  validate and browser-review it instead of placing SVG in `body_html`.
-- Use rich UI elements only when they carry study meaning. Do not add
-  dashboard metrics, ornamental cards, generic hero chrome, or controls that
-  do not change an explanatory view.
-- Add a mind map only when the source contains real hierarchy, branching,
-  ownership, taxonomy, or one-to-many relationships. Keep pairwise contrasts
-  as comparison layouts and ordered material as a flow or timeline. Never
-  force every scope into a mind map.
-- Treat the source note and assessment as immutable content authority during a
-  visual migration. Preserve every factual claim, distinction, example,
-  limitation, scope boundary, and retrieval reference. Presentation may move;
-  subject matter may not drift, disappear, or expand.
-- Normal study-time generation uses the bundled reviewed `behaviors.js`; it
-  must not invoke package managers or download build tools. `behaviors.ts` is
-  maintainer source only and may be rebuilt during repository maintenance with
-  an already-installed pinned compiler, followed by inspection and tests.
-  TypeScript, JSX, runtimes, and build dependencies never ship in the HTML.
-  The deck's self-marks stay ephemeral and never become mastery evidence.
-
-Before migrating an existing artifact, inventory its headings, factual blocks,
-comparisons, examples, and retrieval cues. After migration, compare the same
-inventory and fail the migration if any source content is missing or altered.
-
-This is a local-first, agent-agnostic vault artifact. Do not route it through a
-Claude Artifact, cloud-hosted page, or Claude-specific workflow; write the
-current-scope HTML directly into this vault.
+Write new artifacts only as Markdown. Never generate a new `.html` visual
+artifact. Existing `.html` artifacts are legacy compatibility files and remain
+validated by their separate HTML contract. Obsidian Canvas may be used manually
+for a large spatial map, but this lane never generates or validates `.canvas`
+files.
 
 ### Generation rules
 
 1. Keep the artifact scope locked to the assessed or written scope. Do not use a
    visual artifact to introduce future-section content.
-2. Put the current scope in the page title and filename.
-3. Write generated files to `<VAULT>/_study/visuals/<YYYY-MM-DD>-<scope-slug>.html`.
-4. Label the page visibly as "Visual review artifact - not an assessment".
-5. Do not include quiz scoring, submit buttons, answer collection, automatic
-   grading code, mastery ledger writes, or pass/fail language.
-6. Visual retrieval prompts may ask the learner to recall or explain, but the
+2. Put the current scope in the H1 and filename.
+3. Write generated files to
+   `<VAULT>/_study/visuals/<YYYY-MM-DD>-<scope-slug>.md`.
+4. Show the exact label `Visual review artifact - not an assessment` in the
+   body.
+5. Use one logical `#` H1. Use `##` headings for body sections.
+6. Do not include quiz scoring, answer collection, automatic grading, mastery
+   ledger writes, or pass/fail language.
+7. Visual retrieval prompts may ask the learner to recall or explain, but the
    artifact must not collect, score, store, or export answers.
-7. Log generation under `## Session log`, for example:
-   "Generated visual review artifact for 2.3 -> `_study/visuals/...html`."
-8. For a redesign or in-place migration, log the visual-system change without
+8. Log generation under `## Session log`, for example:
+   `Generated visual review artifact for 2.3 -> _study/visuals/2026-07-09-2.3.md`.
+9. For a redesign or in-place migration, log the visual-system change without
    implying new mastery evidence or a new assessment.
 
-### Artifact contract and quality gate
+### Markdown artifact contract
 
-When available, read `references/visual-review-standard.md` before generating
-or overhauling visual artifacts. The following core contract is authoritative
-even when that reference is unavailable:
+Read `references/visual-review-standard.md` before generating or overhauling a
+visual artifact. Every new artifact begins with YAML frontmatter shaped like:
 
-- Use one logical `<h1>`, a `<main>` landmark, `<html lang>`, UTF-8 charset,
-  viewport metadata, and a visible focus treatment for interactive elements.
-- In a separately authored artifact, give informative inline SVGs an accessible
-  name with `aria-label` or `aria-labelledby`; mark decorative SVGs
-  `aria-hidden="true"`.
-- Reflow without losing information at 320 CSS pixels. A complex table or code
-  sample may use a deliberately scrollable wrapper.
-- If motion is present, include a `prefers-reduced-motion: reduce` override.
-  Prefer native `<details>`/`<summary>` over custom JavaScript disclosures.
-- Include `study-source`, `study-scope`, `study-generated`, and
-  `study-visual-version` metadata. `study-source` must be a vault-local POSIX
-  path to an existing regular file inside the vault, never a remote URL. Use
-  visual contract version `1`.
-- Add `referrer=no-referrer` and a Content Security Policy that denies all
-  default and network access. At minimum it must contain
-  `default-src 'none'`, `connect-src 'none'`, `form-action 'none'`, and
-  `base-uri 'none'`. Permit inline styles or classic inline scripts only when
-  the page actually needs them; never permit a host or wildcard source.
-- Do not use forms, inputs, textareas, selects, iframes, objects, embeds,
-  external or relative resource links, inline event-handler attributes,
-  module scripts, network APIs, browser storage, cookies, device APIs, dynamic
-  imports, `eval`, or function constructors. Fragment links and inline
-  `data:image/` resources are the only URL-bearing exceptions.
-- Treat print styling as recommended, not a release gate. Treat browser console
-  output as diagnostic because extensions can add unrelated messages.
+```yaml
+---
+study-source: Notes/Topic.md
+study-scope: 2.3 Topic
+study-generated: 2026-07-09T12:30:00-0400
+study-visual-version: 2
+---
+```
+
+All four `study-*` values are bare scalars on one line. Quoted and multiline
+values are forbidden. `study-source` is a vault-local POSIX path to an existing
+regular file inside the vault, never a remote URL. The `.md` contract version is
+`2`. The validator dispatches on extension first; legacy `.html` artifacts use
+their separate version `1` contract.
+
+Mermaid validation is a deterministic structural check, not a Mermaid parser.
+Fences must be balanced and well formed; nested or malformed boundaries,
+unterminated fences, and empty `mermaid` blocks are errors. The first non-empty
+line of each Mermaid block must begin with one of these declarations:
+`flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram`,
+`stateDiagram-v2`, `erDiagram`, `journey`, `gantt`, `pie`, `mindmap`,
+`timeline`, `quadrantChart`, `gitGraph`, `sankey-beta`, `xychart-beta`, or
+`block-beta`.
+
+Do not begin a quoted Mermaid label with a list marker such as `1.`, `1)`,
+`- `, or `* `; Obsidian can silently fail to render that label. Markdown image
+and link destinations and raw HTML URL attributes must remain vault-local or
+fragment-only. `http:`, `https:`, `//`, and every other external scheme are
+errors. Do not add remote images, external link dependencies, scripts,
+stylesheets, fonts, telemetry, accounts, persistence, or network calls.
+
+Retrieval prompts use foldable Obsidian callouts:
+
+```markdown
+> [!QUESTION]- Which key encrypts for confidentiality?
+> The recipient's public key. Only their private key decrypts.
+```
 
 Before logging or presenting a new or changed artifact, run:
 
 ```text
-scripts/validate_study_vault.py <VAULT_PATH>
+<skill-dir>/scripts/validate_study_vault.py <VAULT_PATH>
 ```
 
 Any visual-artifact error blocks release. Fix the file and rerun the validator;
 do not add an automatic fixer or weaken the contract to pass an artifact. Then
-open the local file in a browser and visually inspect it at a wide and narrow
-viewport. Confirm readable hierarchy, no clipped content, visible keyboard
-focus, and no attempted network access. This browser pass is human-facing QA,
-not mastery evidence.
+open the Markdown file in Obsidian on a target device. Confirm that every
+Mermaid diagram renders, callouts fold, hierarchy is readable, and local links
+resolve. Full rendering fidelity is human/Obsidian QA, not validator coverage
+or mastery evidence.
 
 ### Mastery boundary
 
-HTML visual artifacts are not evidence. Opening, completing, annotating, or
-discussing a visual artifact does not change `## Assessment`, `## Unit progress`,
+Visual review artifacts are not evidence. Opening, completing, annotating, or
+discussing one does not change `## Assessment`, `## Unit progress`,
 `## Mastery evidence`, note status, or session status.
 
 If the learner wants to use a visual prompt as mastery evidence, run a normal
@@ -1026,6 +993,7 @@ chat quiz -> assessment -> notes/gaps -> review -> mastery evidence
 Legacy files from the old HTML quiz flow may still exist in `_study/quizzes/`,
 but new study-loop work should treat them as archival and should not generate,
 read, score, or rely on HTML quiz results.
+<!-- shared-contract:end id=visual-artifact -->
 
 ## Mid-Session Deep Dives
 
@@ -1101,8 +1069,8 @@ matching script.
 - Teaching visuals: when a picture materially reduces abstraction — or the
   learner asks ("draw it", "visualize that") — draw it as a Mermaid fenced
   code block, the **only** embedded diagram format for teaching content;
-  every other visual format (HTML, Excalidraw, images) routes to the
-  post-assessment visual review artifact lane. For analogy-driven teaching
+  larger persistent reviews route to the post-assessment Markdown visual
+  artifact lane. For analogy-driven teaching
   prefer the **decouple/recouple pair**: the structure in the analogy's own
   labels, then the identical layout relabeled with the domain's real terms
   (one block with two subgraphs, or two adjacent blocks) — the unchanged

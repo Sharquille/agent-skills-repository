@@ -1,6 +1,10 @@
 # Tactile Study Surface v2 — visual artifact template
 
-The default visual system for `_study/visuals/` artifacts. Shared CSS and
+> **LEGACY HTML COMPATIBILITY:** This directory is no longer the active visual
+> system. New visual review artifacts use Markdown and Mermaid; retain these
+> files only to support existing HTML artifacts and compatibility tests.
+
+The former visual system for `_study/visuals/` artifacts. Shared CSS and
 compiled behaviors are combined with a declarative per-scope JSON manifest to
 produce one self-contained offline HTML file.
 

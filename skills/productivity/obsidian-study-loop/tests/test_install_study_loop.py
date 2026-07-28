@@ -61,6 +61,8 @@ class InstallStudyLoopTests(unittest.TestCase):
         workpages = self.vault / "_study" / "workpages"
         self.assertTrue(workpages.is_dir(), "workpages scaffold directory missing")
         self.assertTrue((workpages / ".gitkeep").is_file(), "workpages .gitkeep missing")
+        study_readme = (self.vault / "_study" / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Markdown and Mermaid study aids", study_readme)
         for name in installer.POINTER_FILES:
             text = (self.vault / name).read_text(encoding="utf-8")
             self.assertEqual(text.count("## Study sessions"), 1)

@@ -171,6 +171,38 @@ status: reviewed
         )
         return artifact
 
+    def write_valid_markdown_visual(
+        self, name: str = "2026-07-09-1.1-topic.md"
+    ) -> Path:
+        artifact = self.vault / "_study" / "visuals" / name
+        artifact.write_text(
+            """---
+study-source: Notes/Topic.md
+study-scope: 1.1 Topic
+study-generated: 2026-07-09T12:30:00-0400
+study-visual-version: 2
+---
+
+Visual review artifact - not an assessment
+
+# 1.1 Topic
+
+## Relationship
+
+```mermaid
+flowchart TD
+    A["Sender"] --> B["Recipient"]
+```
+
+## Retrieval prompt
+
+> [!QUESTION]- Which side receives the message?
+> The recipient.
+""",
+            encoding="utf-8",
+        )
+        return artifact
+
 
 class SyncTests(VaultFixture):
     def test_uninstalled_obsidian_vault_does_not_overwrite_unrelated_manual(self) -> None:
@@ -372,6 +404,242 @@ class ValidatorTests(VaultFixture):
     def test_valid_visual_artifact_has_no_findings(self) -> None:
         self.make_valid_vault()
         self.write_valid_visual()
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_valid_markdown_visual_artifact_has_no_findings(self) -> None:
+        self.make_valid_vault()
+        self.write_valid_markdown_visual()
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_undated_markdown_in_visuals_is_not_an_artifact(self) -> None:
+        """A README or index note in `_study/visuals/` is not a generated artifact.
+
+        Regression: dispatching every `.md` in the directory to the artifact
+        contract made a pre-existing `_study/visuals/README.md` fail a live vault
+        with five errors.
+        """
+        self.make_valid_vault()
+        self.write_valid_markdown_visual()
+        readme = self.vault / "_study" / "visuals" / "README.md"
+        readme.write_text(
+            "# Visual Review Artifacts\n\nCurrent-scope artifacts live here.\n",
+            encoding="utf-8",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_markdown_visual_rejects_unterminated_fence(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                '\n```\n\n## Retrieval prompt',
+                "\n\n## Retrieval prompt",
+            ),
+            encoding="utf-8",
+        )
+        self.assertIn("unterminated fenced block", [i.message for i in self.errors()])
+
+    def test_markdown_visual_rejects_empty_mermaid_block(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                'flowchart TD\n    A["Sender"] --> B["Recipient"]',
+                "",
+            ),
+            encoding="utf-8",
+        )
+        self.assertIn("empty mermaid block", [i.message for i in self.errors()])
+
+    def test_markdown_visual_rejects_unknown_mermaid_diagram_type(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "flowchart TD",
+                "networkDiagram TD",
+            ),
+            encoding="utf-8",
+        )
+        messages = [i.message for i in self.errors()]
+        self.assertTrue(any("unknown Mermaid diagram type" in message for message in messages))
+        self.assertTrue(any("flowchart, graph, sequenceDiagram" in message for message in messages))
+
+    def test_markdown_visual_rejects_list_marker_mermaid_label(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                'A["Sender"]',
+                'A["1. Sender"]',
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any(
+                "quoted Mermaid label begins with a list marker" in i.message
+                for i in self.errors()
+            )
+        )
+
+    def test_markdown_visual_rejects_nested_fence_boundary(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "flowchart TD",
+                "```mermaid\nflowchart TD",
+            ),
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "malformed or nested fence boundary",
+            [i.message for i in self.errors()],
+        )
+
+    def test_markdown_visual_rejects_remote_image(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "## Relationship",
+                "![Remote](https://example.invalid/diagram.png)\n\n## Relationship",
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any("external Markdown link destination" in i.message for i in self.errors())
+        )
+
+    def test_markdown_visual_rejects_remote_link(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "## Relationship",
+                "[Remote reference](https://example.invalid/topic)\n\n## Relationship",
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any("external Markdown link destination" in i.message for i in self.errors())
+        )
+
+    def test_markdown_visual_rejects_external_raw_html_url_attribute(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "## Relationship",
+                '<img src="//cdn.example.invalid/topic.png" alt="Remote">\n\n'
+                "## Relationship",
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any("external raw HTML src destination" in i.message for i in self.errors())
+        )
+
+    def test_markdown_visual_rejects_quoted_frontmatter_value(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "study-scope: 1.1 Topic",
+                'study-scope: "1.1 Topic"',
+            ),
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "study-scope must be a bare one-line scalar",
+            [i.message for i in self.errors()],
+        )
+
+    def test_markdown_visual_requires_version_two(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "study-visual-version: 2",
+                "study-visual-version: 1",
+            ),
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "study-visual-version must be 2 for .md artifacts",
+            [i.message for i in self.errors()],
+        )
+
+    def test_legacy_html_visual_requires_version_one(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                '<meta name="study-visual-version" content="1">',
+                '<meta name="study-visual-version" content="2">',
+            ),
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "study-visual-version must be 1 for .html artifacts",
+            [i.message for i in self.errors()],
+        )
+
+    def test_markdown_visual_rejects_study_source_resolving_outside_vault(self) -> None:
+        self.make_valid_vault()
+        outside = Path(self.temporary.name) / "outside-markdown.md"
+        outside.write_text("outside", encoding="utf-8")
+        (self.vault / "Notes" / "OutsideMarkdown.md").symlink_to(outside)
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "Notes/Topic.md",
+                "Notes/OutsideMarkdown.md",
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any("study-source resolves outside vault" in i.message for i in self.errors())
+        )
+
+    def test_markdown_visual_requires_existing_study_source(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "Notes/Topic.md",
+                "Notes/Missing.md",
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any(
+                "study-source is not an existing regular file" in i.message
+                for i in self.errors()
+            )
+        )
+
+    def test_markdown_visual_requires_exact_visible_label(self) -> None:
+        self.make_valid_vault()
+        artifact = self.write_valid_markdown_visual()
+        artifact.write_text(
+            artifact.read_text(encoding="utf-8").replace(
+                "Visual review artifact - not an assessment",
+                "Visual review",
+            ),
+            encoding="utf-8",
+        )
+        self.assertTrue(any("missing visible label" in i.message for i in self.errors()))
+
+    def test_canvas_visual_file_is_ignored(self) -> None:
+        self.make_valid_vault()
+        (self.vault / "_study" / "visuals" / "manual-map.canvas").write_text(
+            '{"nodes": "not validated by this lane"}',
+            encoding="utf-8",
+        )
         issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
         self.assertEqual(issues, [])
 
@@ -1135,9 +1403,9 @@ class ProtocolAlignmentTests(unittest.TestCase):
 
     def test_visual_contract_is_shared(self) -> None:
         required = [
-            "study-visual-version",
-            "Content Security Policy",
-            "prefers-reduced-motion",
+            "study-visual-version: 2",
+            "not a Mermaid parser",
+            "never generates or validates `.canvas`",
             "Visual review artifact - not an assessment",
         ]
         for path in (SKILL_PATH, TEMPLATE_PATH):
@@ -1167,6 +1435,7 @@ class ProtocolAlignmentTests(unittest.TestCase):
             "retrieval-schedule",
             "teaching-evidence-boundary",
             "gap-evidence",
+            "visual-artifact",
         }
         self.assertTrue(expected.issubset(skill_blocks))
         for block_id in expected:

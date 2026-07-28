@@ -99,6 +99,43 @@ APPLIED_KINDS = {
 }
 QUESTION_KINDS = RECALL_ONLY_KINDS | APPLIED_KINDS
 VISUAL_LABEL = "Visual review artifact - not an assessment"
+MARKDOWN_VISUAL_FIELDS = (
+    "study-source",
+    "study-scope",
+    "study-generated",
+    "study-visual-version",
+)
+MERMAID_DIAGRAM_TYPES = (
+    "flowchart",
+    "graph",
+    "sequenceDiagram",
+    "classDiagram",
+    "stateDiagram",
+    "stateDiagram-v2",
+    "erDiagram",
+    "journey",
+    "gantt",
+    "pie",
+    "mindmap",
+    "timeline",
+    "quadrantChart",
+    "gitGraph",
+    "sankey-beta",
+    "xychart-beta",
+    "block-beta",
+)
+FENCE_BOUNDARY = re.compile(r"^[ \t]*(?P<marker>`{3,}|~{3,})(?P<rest>.*)$")
+MARKDOWN_LINK_DESTINATION = re.compile(
+    r"!?\[[^\]\n]*\]\(\s*(?:<(?P<angle>[^>\n]+)>|(?P<plain>[^\s)\n]+))"
+)
+MARKDOWN_REFERENCE_DESTINATION = re.compile(
+    r"^[ \t]*\[[^\]\n]+\]:[ \t]*(?:<(?P<angle>[^>\n]+)>|(?P<plain>\S+))",
+    flags=re.MULTILINE,
+)
+MARKDOWN_AUTOLINK_DESTINATION = re.compile(
+    r"<(?P<destination>(?:[A-Za-z][A-Za-z0-9+.-]*:|//)[^>\n]*)>"
+)
+EXTERNAL_URL_SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 FORBIDDEN_VISUAL_ELEMENTS = {
     "base",
     "embed",
@@ -1273,12 +1310,12 @@ def allowed_local_url(value: str) -> bool:
     )
 
 
-def validate_visual_artifact(
+def validate_visual_path(
     path: Path,
     vault: Path,
     issues: list[Issue],
     visuals_root: Path | None = None,
-) -> None:
+) -> tuple[Path, Path] | None:
     configured_root = visuals_root or vault / "_study" / "visuals"
     try:
         resolved_vault = vault.resolve()
@@ -1286,13 +1323,274 @@ def validate_visual_artifact(
         resolved_path = path.resolve()
     except (OSError, RuntimeError) as exc:
         issues.append(Issue("ERROR", path, f"visual artifact path is unsafe: {exc}"))
-        return
+        return None
     if not resolved_root.is_relative_to(resolved_vault):
         issues.append(Issue("ERROR", configured_root, "visuals root resolves outside the vault"))
-        return
+        return None
     if not resolved_path.is_relative_to(resolved_root):
         issues.append(Issue("ERROR", path, "visual artifact resolves outside _study/visuals"))
+        return None
+    return resolved_vault, resolved_root
+
+
+def validate_visual_study_source(
+    path: Path,
+    source: str,
+    resolved_vault: Path,
+    issues: list[Issue],
+) -> None:
+    relative_source = PurePosixPath(source)
+    raw_parts = source.split("/")
+    unsafe_source = (
+        source != source.strip()
+        or relative_source.is_absolute()
+        or any(part in {"", ".", ".."} for part in raw_parts)
+        or "\\" in source
+        or "://" in source
+        or EXTERNAL_URL_SCHEME.match(source) is not None
+    )
+    if unsafe_source:
+        issues.append(Issue("ERROR", path, f"unsafe study-source path: {source}"))
         return
+
+    source_path = resolved_vault.joinpath(*relative_source.parts)
+    try:
+        resolved_source = source_path.resolve()
+    except (OSError, RuntimeError) as exc:
+        issues.append(Issue("ERROR", path, f"study-source path is unsafe: {exc}"))
+        return
+    if not resolved_source.is_relative_to(resolved_vault):
+        issues.append(Issue("ERROR", path, f"study-source resolves outside vault: {source}"))
+    elif not source_path.is_file():
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                f"study-source is not an existing regular file: {source}",
+            )
+        )
+
+
+def is_external_destination(value: str) -> bool:
+    target = value.strip()
+    return target.startswith("//") or EXTERNAL_URL_SCHEME.match(target) is not None
+
+
+VISUAL_ARTIFACT_NAME = re.compile(r"^\d{4}-\d{2}-\d{2}-.+\.md$")
+
+
+def is_visual_artifact_name(path: Path) -> bool:
+    """Only dated `<YYYY-MM-DD>-<scope-slug>.md` files are generated artifacts.
+
+    `_study/visuals/` may also hold hand-written companions such as a README or
+    an index note. Those are not generated artifacts and must not be held to the
+    artifact contract, so the directory keeps validating clean.
+    """
+    return bool(VISUAL_ARTIFACT_NAME.match(path.name))
+
+
+def validate_markdown_visual_artifact(
+    path: Path,
+    vault: Path,
+    issues: list[Issue],
+    visuals_root: Path | None = None,
+) -> None:
+    resolved = validate_visual_path(path, vault, issues, visuals_root)
+    if resolved is None:
+        return
+    resolved_vault, _ = resolved
+
+    text = read_utf8(path, issues)
+    if text is None:
+        return
+    block = frontmatter(text)
+    values: dict[str, str] = {}
+    for field in MARKDOWN_VISUAL_FIELDS:
+        line_match = (
+            re.search(
+                rf"^{re.escape(field)}:[ \t]*(.*)$",
+                block,
+                flags=re.MULTILINE,
+            )
+            if block is not None
+            else None
+        )
+        value = frontmatter_value(block, field)
+        line_value = line_match.group(1).strip() if line_match is not None else ""
+        if value is None or not line_value:
+            issues.append(Issue("ERROR", path, f"missing {field} frontmatter"))
+            continue
+        if (
+            value != line_value
+            or line_value[0] in {'"', "'", "[", "{"}
+            or line_value[-1] in {'"', "'", "]", "}"}
+            or re.fullmatch(r"[>|][+-]?", line_value) is not None
+        ):
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{field} must be a bare one-line scalar",
+                )
+            )
+            continue
+        values[field] = line_value
+
+    version = values.get("study-visual-version")
+    if version is not None and version != "2":
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                "study-visual-version must be 2 for .md artifacts",
+            )
+        )
+    source = values.get("study-source")
+    if source is not None:
+        validate_visual_study_source(path, source, resolved_vault, issues)
+
+    body_start = text.find("\n---\n", 4)
+    body = text[body_start + 5 :] if block is not None and body_start != -1 else text
+    visible_body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+    if VISUAL_LABEL not in visible_body:
+        issues.append(Issue("ERROR", path, f"missing visible label: {VISUAL_LABEL}"))
+
+    outside_fence_lines: list[str] = []
+    mermaid_blocks: list[str] = []
+    fence_marker: str | None = None
+    fence_length = 0
+    fence_info = ""
+    fence_content: list[str] = []
+    fence_error = False
+
+    for line in body.splitlines():
+        boundary = FENCE_BOUNDARY.match(line)
+        if fence_marker is None:
+            if boundary is None:
+                outside_fence_lines.append(line)
+                continue
+            marker = boundary.group("marker")
+            fence_marker = marker[0]
+            fence_length = len(marker)
+            fence_info = boundary.group("rest").strip()
+            fence_content = []
+            fence_error = False
+            continue
+
+        if boundary is None:
+            fence_content.append(line)
+            continue
+
+        marker = boundary.group("marker")
+        rest = boundary.group("rest").strip()
+        if marker[0] == fence_marker and len(marker) >= fence_length and not rest:
+            if fence_info == "mermaid":
+                content = "\n".join(fence_content)
+                if not content.strip():
+                    issues.append(Issue("ERROR", path, "empty mermaid block"))
+                elif not fence_error:
+                    mermaid_blocks.append(content)
+            fence_marker = None
+            fence_length = 0
+            fence_info = ""
+            fence_content = []
+            fence_error = False
+            continue
+
+        issues.append(Issue("ERROR", path, "malformed or nested fence boundary"))
+        fence_error = True
+
+    if fence_marker is not None:
+        issues.append(Issue("ERROR", path, "unterminated fenced block"))
+
+    outside_text = "\n".join(outside_fence_lines)
+    headings = re.findall(r"^(#{1,6})[ \t]+\S", outside_text, flags=re.MULTILINE)
+    if headings.count("#") != 1:
+        issues.append(Issue("ERROR", path, "must contain exactly one Markdown h1"))
+    if any(level not in {"#", "##"} for level in headings):
+        issues.append(Issue("ERROR", path, "body sections must use h2 headings"))
+
+    allowlist = ", ".join(MERMAID_DIAGRAM_TYPES)
+    for content in mermaid_blocks:
+        declaration = next(
+            (line.strip().split()[0] for line in content.splitlines() if line.strip()),
+            "",
+        )
+        if declaration not in MERMAID_DIAGRAM_TYPES:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"unknown Mermaid diagram type {declaration!r}; allowed types: {allowlist}",
+                )
+            )
+        for match in re.finditer(r"""(?P<quote>["'])(?P<label>.*?)(?P=quote)""", content):
+            label = match.group("label")
+            if re.match(r"(?:\d+[.)](?:\s|$)|- |\* )", label):
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"quoted Mermaid label begins with a list marker: {label!r}",
+                    )
+                )
+
+    for pattern in (MARKDOWN_LINK_DESTINATION, MARKDOWN_REFERENCE_DESTINATION):
+        for match in pattern.finditer(outside_text):
+            destination = match.group("angle") or match.group("plain") or ""
+            if is_external_destination(destination):
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        f"external Markdown link destination: {destination}",
+                    )
+                )
+    for match in MARKDOWN_AUTOLINK_DESTINATION.finditer(outside_text):
+        destination = match.group("destination")
+        if is_external_destination(destination):
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"external Markdown link destination: {destination}",
+                )
+            )
+
+    raw_html = VisualArtifactParser()
+    try:
+        raw_html.feed(outside_text)
+        raw_html.close()
+    except Exception as exc:
+        issues.append(Issue("ERROR", path, f"cannot inspect raw HTML: {exc}"))
+        return
+    for _, attrs in raw_html.elements:
+        for name, value in attrs.items():
+            if name not in URL_ATTRIBUTES or value is None:
+                continue
+            destinations = value.split(",") if name == "srcset" else [value]
+            for destination in destinations:
+                target = destination.strip().split()[0] if destination.strip() else ""
+                if is_external_destination(target):
+                    issues.append(
+                        Issue(
+                            "ERROR",
+                            path,
+                            f"external raw HTML {name} destination: {target}",
+                        )
+                    )
+
+
+def validate_visual_artifact(
+    path: Path,
+    vault: Path,
+    issues: list[Issue],
+    visuals_root: Path | None = None,
+) -> None:
+    resolved = validate_visual_path(path, vault, issues, visuals_root)
+    if resolved is None:
+        return
+    resolved_vault, _ = resolved
 
     text = read_utf8(path, issues)
     if text is None:
@@ -1332,39 +1630,18 @@ def validate_visual_artifact(
         if not visual_meta(elements, field):
             issues.append(Issue("ERROR", path, f"missing {field} metadata"))
 
+    version = visual_meta(elements, "study-visual-version")
+    if version and version != "1":
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                "study-visual-version must be 1 for .html artifacts",
+            )
+        )
     source = visual_meta(elements, "study-source")
     if source:
-        relative_source = PurePosixPath(source)
-        raw_parts = source.split("/")
-        unsafe_source = (
-            source != source.strip()
-            or relative_source.is_absolute()
-            or any(part in {"", ".", ".."} for part in raw_parts)
-            or "\\" in source
-            or "://" in source
-            or re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", source) is not None
-        )
-        if unsafe_source:
-            issues.append(Issue("ERROR", path, f"unsafe study-source path: {source}"))
-        else:
-            source_path = resolved_vault.joinpath(*relative_source.parts)
-            try:
-                resolved_source = source_path.resolve()
-            except (OSError, RuntimeError) as exc:
-                issues.append(Issue("ERROR", path, f"study-source path is unsafe: {exc}"))
-            else:
-                if not resolved_source.is_relative_to(resolved_vault):
-                    issues.append(
-                        Issue("ERROR", path, f"study-source resolves outside vault: {source}")
-                    )
-                elif not source_path.is_file():
-                    issues.append(
-                        Issue(
-                            "ERROR",
-                            path,
-                            f"study-source is not an existing regular file: {source}",
-                        )
-                    )
+        validate_visual_study_source(path, source, resolved_vault, issues)
 
     csp = visual_csp(elements)
     required_csp = (
@@ -1551,8 +1828,13 @@ def validate_vault(vault: Path, notes_dir: Path) -> list[Issue]:
     elif visuals_dir.exists() and not visuals_dir.is_dir():
         issues.append(Issue("ERROR", visuals_dir, "visuals path is not a directory"))
     elif visuals_dir.is_dir():
-        for artifact in sorted(visuals_dir.glob("*.html")):
-            validate_visual_artifact(artifact, vault, issues, resolved_visuals)
+        for artifact in sorted(visuals_dir.iterdir()):
+            if artifact.suffix == ".html":
+                validate_visual_artifact(artifact, vault, issues, resolved_visuals)
+            elif artifact.suffix == ".md" and is_visual_artifact_name(artifact):
+                validate_markdown_visual_artifact(
+                    artifact, vault, issues, resolved_visuals
+                )
     return issues
 
 

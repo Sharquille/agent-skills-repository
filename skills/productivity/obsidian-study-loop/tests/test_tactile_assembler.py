@@ -1,3 +1,5 @@
+"""Legacy compatibility tests for the retired tactile HTML assembler."""
+
 from __future__ import annotations
 
 import copy
@@ -32,6 +34,8 @@ validator = load_script("obsidian_study_loop_tactile_validator", VALIDATOR_PATH)
 
 
 class TactileAssemblerTests(unittest.TestCase):
+    """Keep the retired HTML assembler compatible with existing artifacts."""
+
     def setUp(self) -> None:
         self.manifest = json.loads(EXAMPLE_PATH.read_text(encoding="utf-8"))
 

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Assemble a tactile study surface from a declarative JSON manifest.
+"""Legacy HTML compatibility assembler; no longer the active visual system.
+
+New visual review artifacts use Markdown and Mermaid. This module remains only
+to support existing HTML artifacts and compatibility tests.
 
 Usage: assemble.py --vault <vault> <content-manifest.json> <output.html>
 
@@ -145,7 +148,7 @@ PAGE = """<!doctype html>
     <div><strong>Scope</strong>{scope}</div>
     <div><strong>Generated</strong>{generated}</div>
     <div><strong>Contract</strong>study visual v1 · tactile surface v2</div>
-    <div class="boundary">Visual review only - not an assessment. Mastery evidence stays in the chat study loop.</div>
+    <div class="boundary">Visual review artifact - not an assessment. Mastery evidence stays in the chat study loop.</div>
   </footer>
 {script_block}
 </body>

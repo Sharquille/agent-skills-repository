@@ -91,8 +91,8 @@ any time you want this guide.
    the session log.
 
 Two optional layers sit alongside the phases: **deep dives** (mid-session
-tutoring or sourced research) and **visual review artifacts** (offline HTML
-study aids). Neither changes your grades.
+tutoring or sourced research) and **visual review artifacts** (Markdown and
+Mermaid study aids in Obsidian). Neither changes your grades.
 <!-- man:section-end id=phases -->
 
 <!-- man:section id=quiz aliases="quizzing,questions,hints,test me" -->
@@ -231,16 +231,16 @@ feedback → self-explanation or teach-back → a later fresh transfer check. An
 immediate teach-back helps learning but is not itself mastery evidence.
 <!-- man:section-end id=deep-dives -->
 
-<!-- man:section id=visuals aliases="visual,html,artifact,concept map,diagram" -->
+<!-- man:section id=visuals aliases="visual,mermaid,markdown,artifact,concept map,diagram" -->
 ## Visual review artifacts
 
 After a scope has been quizzed or written, ask for a visual review ("make me
-a visual review for 3.1"). You get a single web page that works completely
-offline — concept maps, comparison tables, flows, retrieval prompts — written to
-`_study/visuals/`. It's a study aid, labeled as such: no scoring, no answer
-collection, no network, and it never touches your assessments. When the source
-does not support honest retrieval cues, the page simply omits that deck and its
-script instead of inventing questions.
+a visual review for 3.1"). You get a Markdown note with Mermaid diagrams that
+opens directly in Obsidian on desktop and iPadOS — concept maps, comparison
+tables, flows, and foldable retrieval prompts — written to `_study/visuals/`.
+It is a study aid labeled `Visual review artifact - not an assessment`: no
+scoring, no answer collection, no remote dependencies, and no assessment
+changes.
 <!-- man:section-end id=visuals -->
 
 <!-- man:section id=layout aliases="files,disk,structure,vault,where,folders" -->
@@ -256,7 +256,7 @@ script instead of inventing questions.
     state.json           # which session is active
     sessions/            # one file per session: study content, quiz
                          #   progress, assessments, deep dives, review log
-    visuals/             # offline HTML study aids
+    visuals/             # Markdown and Mermaid study aids
     dives/               # teaching-dive notes (decoupled from Notes/)
     research/            # research-dive workspaces (sources, evidence,
                          #   synthesis, audit)
