@@ -93,28 +93,31 @@ resolve_timeout() {
 }
 
 # Bounded execution: a stalled Codex call fails fast instead of hanging the
-# conductor forever. Uses timeout(1)/gtimeout(1) when present, else a portable
-# watchdog (stock macOS has neither).
+# conductor forever. Uses timeout(1)/gtimeout(1) when present, else perl's
+# alarm(2) (stock macOS has neither timeout nor gtimeout, but always has perl).
+#
+# Every path execs in the FOREGROUND with stdin closed. Both matter:
+#   - Backgrounding the call breaks `codex exec`, which produced a silent
+#     zero-byte exit 1 on stock macOS.
+#   - `codex exec` treats a non-TTY stdin as extra prompt input, so an agent or
+#     CI caller hangs forever on "Reading additional input from stdin...".
+#     All three modes pass the prompt via argv, so nothing needs stdin.
 run_bounded() {
   local seconds="$1"
   shift
   if [ -z "$seconds" ] || [ "$seconds" = "0" ]; then
-    exec "$@"
+    exec "$@" </dev/null
   elif command -v timeout >/dev/null 2>&1; then
-    exec timeout "$seconds" "$@"
+    exec timeout "$seconds" "$@" </dev/null
   elif command -v gtimeout >/dev/null 2>&1; then
-    exec gtimeout "$seconds" "$@"
+    exec gtimeout "$seconds" "$@" </dev/null
+  elif command -v perl >/dev/null 2>&1; then
+    # alarm() fires SIGALRM, which terminates the exec'd process; exit 142.
+    exec perl -e 'my $t = shift; alarm $t; exec @ARGV or exit 127;' \
+      "$seconds" "$@" </dev/null
   else
-    "$@" &
-    local cmd_pid=$!
-    ( sleep "$seconds"; kill -TERM "$cmd_pid" 2>/dev/null ) &
-    local watch_pid=$!
-    local status=0
-    wait "$cmd_pid" || status=$?
-    kill "$watch_pid" 2>/dev/null || true
-    wait "$watch_pid" 2>/dev/null || true
-    [ "$status" -gt 128 ] && echo "error: codex call exceeded ${seconds}s and was terminated" >&2
-    exit "$status"
+    echo "warning: no timeout, gtimeout, or perl found; running unbounded" >&2
+    exec "$@" </dev/null
   fi
 }
 
@@ -137,14 +140,25 @@ validate_effort() {
 # Prints the override effort, or nothing when the config value stands.
 effort_override() {
   # effort_override <mode>
+  #
+  # Reads the configured effort so a max/ultra config can be clamped. TOML
+  # accepts single quotes, double quotes, or none, so capture the first
+  # alphabetic run after '=' rather than assuming one quote style — a
+  # double-quote-only pattern left `eff` holding the whole config line.
+  #
+  # Always returns 0. The `*)` branch used to end on a failed `[ ... ]` test,
+  # which returned 1 for every non-consult mode; under `set -euo pipefail` that
+  # killed the caller at `eff_ov="${effort:-$(effort_override implement)}"` with
+  # no output and exit 1.
   local cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
   local eff
-  eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[[:space:]]*"?([A-Za-z]+)"?.*/\1/')
+  eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[^A-Za-z]*([A-Za-z]+).*/\1/')
   case "$eff" in
     max|ultra) printf 'xhigh' ;;
     high|xhigh) : ;;
-    *) [ "$1" = "consult" ] && printf 'high' ;;
+    *) if [ "$1" = "consult" ]; then printf 'high'; fi ;;
   esac
+  return 0
 }
 
 run_consult() {

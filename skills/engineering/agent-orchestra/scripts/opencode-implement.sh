@@ -202,24 +202,26 @@ export OPENCODE_DISABLE_DEFAULT_PLUGINS=1
 export OPENCODE_DISABLE_AUTOUPDATE=1
 export OPENCODE_AUTO_SHARE=false
 
-# Bounded execution, then show what actually changed on disk.
+# Bounded execution, then show what actually changed on disk. This cannot exec:
+# the working-tree report below has to run afterwards. Each path still runs in
+# the FOREGROUND with stdin closed — backgrounding the call returned zero bytes
+# on stock macOS, which ships neither timeout(1) nor gtimeout(1), and an open
+# non-TTY stdin lets the provider block waiting for input it will never get.
 run_status=0
 if [ -z "$TIMEOUT" ] || [ "$TIMEOUT" = "0" ]; then
-  "${cmd[@]}" || run_status=$?
+  "${cmd[@]}" </dev/null || run_status=$?
 elif command -v timeout >/dev/null 2>&1; then
-  timeout "$TIMEOUT" "${cmd[@]}" || run_status=$?
+  timeout "$TIMEOUT" "${cmd[@]}" </dev/null || run_status=$?
 elif command -v gtimeout >/dev/null 2>&1; then
-  gtimeout "$TIMEOUT" "${cmd[@]}" || run_status=$?
-else
-  # Portable watchdog when no timeout(1) binary is present (stock macOS).
-  "${cmd[@]}" &
-  cmd_pid=$!
-  ( sleep "$TIMEOUT"; kill -TERM "$cmd_pid" 2>/dev/null ) &
-  watch_pid=$!
-  wait "$cmd_pid"; run_status=$?
-  kill "$watch_pid" 2>/dev/null
-  wait "$watch_pid" 2>/dev/null
+  gtimeout "$TIMEOUT" "${cmd[@]}" </dev/null || run_status=$?
+elif command -v perl >/dev/null 2>&1; then
+  # alarm() fires SIGALRM, which terminates the child; run_status becomes 142.
+  perl -e 'my $t = shift; alarm $t; exec @ARGV or exit 127;' \
+    "$TIMEOUT" "${cmd[@]}" </dev/null || run_status=$?
   [ "$run_status" -gt 128 ] && echo "error: implementation exceeded ${TIMEOUT}s and was terminated" >&2
+else
+  echo "warning: no timeout, gtimeout, or perl found; running unbounded" >&2
+  "${cmd[@]}" </dev/null || run_status=$?
 fi
 
 echo >&2

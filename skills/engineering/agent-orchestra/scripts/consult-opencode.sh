@@ -266,21 +266,22 @@ export OPENCODE_DISABLE_AUTOUPDATE=1
 export OPENCODE_AUTO_SHARE=false
 
 # Bounded execution: a stalled provider fails fast instead of hanging forever.
+# Every path execs in the FOREGROUND with stdin closed. Backgrounding the call
+# made a sealed consult return zero bytes on stock macOS, which has neither
+# timeout(1) nor gtimeout(1); perl is always present and alarm(2) bounds the
+# call without giving up the foreground. The prompt travels in argv, so nothing
+# here needs stdin, and leaving it open lets a non-TTY caller hang.
 if [ -z "$TIMEOUT" ] || [ "$TIMEOUT" = "0" ]; then
-  exec "${cmd[@]}"
+  exec "${cmd[@]}" </dev/null
 elif command -v timeout >/dev/null 2>&1; then
-  exec timeout "$TIMEOUT" "${cmd[@]}"
+  exec timeout "$TIMEOUT" "${cmd[@]}" </dev/null
 elif command -v gtimeout >/dev/null 2>&1; then
-  exec gtimeout "$TIMEOUT" "${cmd[@]}"
+  exec gtimeout "$TIMEOUT" "${cmd[@]}" </dev/null
+elif command -v perl >/dev/null 2>&1; then
+  # alarm() fires SIGALRM, which terminates the exec'd process; exit 142.
+  exec perl -e 'my $t = shift; alarm $t; exec @ARGV or exit 127;' \
+    "$TIMEOUT" "${cmd[@]}" </dev/null
 else
-  # Portable watchdog when no timeout(1) binary is present (stock macOS).
-  "${cmd[@]}" &
-  cmd_pid=$!
-  ( sleep "$TIMEOUT"; kill -TERM "$cmd_pid" 2>/dev/null ) &
-  watch_pid=$!
-  wait "$cmd_pid"; status=$?
-  kill "$watch_pid" 2>/dev/null
-  wait "$watch_pid" 2>/dev/null
-  [ "$status" -gt 128 ] && echo "error: consult exceeded ${TIMEOUT}s and was terminated" >&2
-  exit "$status"
+  echo "warning: no timeout, gtimeout, or perl found; running unbounded" >&2
+  exec "${cmd[@]}" </dev/null
 fi
