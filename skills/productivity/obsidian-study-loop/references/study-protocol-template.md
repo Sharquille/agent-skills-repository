@@ -755,12 +755,97 @@ When the user asks to be quizzed:
    scenario questions about what the user would do in that environment.
 17. For applied questions, state a concrete subject or asset, situation or
     failure path, and relevant facts. Ask the user to explain why the answer or
-    decision fits that context, not merely name a term.
+    decision fits that context, not merely name a term. Every question composed
+    at runtime must satisfy the Question Design contract below before it is
+    shown.
 18. Score each answer on its applicable denominator; the scores feed the
     attempt-scoped assessment in Phase 4. The separate mastery-evidence ledger
     remains optional.
 19. Record the resolved scope for assessment and notes. Examples: `full-session`,
    `1.1`, `1.2 Security Controls`, or `1.3 Use the Simulator`.
+
+<!-- shared-contract:start id=question-design -->
+## Question Design
+
+These rules govern every question the tutor composes at runtime, in the chat
+quiz and in authored `study-check` blocks. Non-scoring retrieval prompts in
+visual review artifacts are exempt.
+
+**One ask.** An *ask* is one target concept being acted on. A question may
+require more than one output about that single concept — compare two things,
+name a mechanism and state its limitation, choose an option and justify it —
+because the learner holds one idea throughout. It may not chain outputs about
+different concepts. That is stacking whether it is marked `(a)/(b)`, numbered
+`1.` `2.`, or joined in prose by "Then… Next… Finally…". When a second concept
+is needed, ask it as the next question in the attempt, after this one is
+scored.
+
+**No leaking.** The learner must produce the answer, never derive it from the
+prompt's own wording. A question must not:
+
+- state a property the answer must lack ("name one non-cryptographic measure",
+  "a control that does not use keys");
+- account for every member of a set but one — enumerated outright or implied by
+  specifics in the stem — and then ask for the remainder;
+- place the answer's key noun in the stem ("why is hashing important for
+  integrity?");
+- ask which item is not a member of a set;
+- state how many items the answer holds, or how long it should be, unless that
+  count is genuinely the task.
+
+**Context must be load-bearing.** Strip the scenario's concrete nouns and
+re-read the question. If no constraint on the answer disappeared, the scenario
+was decoration and the item is recall in costume. A scenario earns its place by
+supplying a constraint: a specific failure that occurred, an asset with
+particular properties, or a decision that could defensibly go either way.
+
+**Prefer production to identification.** Explaining a failure, diagnosing a
+broken design, or justifying a choice makes the learner produce the concept;
+selecting a label from a set only requires the word. Identification remains
+legitimate when the answer space is genuinely open rather than a closed set the
+stem has already framed.
+
+**Do not leak across turns.** Feedback on one question must not contain the
+answer or the distinguishing vocabulary of a question still planned in the same
+attempt. Check the remaining planned records before writing feedback.
+
+Worked contrast on identical content:
+
+> **Rejected** — A hospital encrypts patient records and digitally signs its
+> audit logs. (a) Which CIA goals do those two controls directly support, and
+> which CIA goal does cryptography struggle to help with? (b) Name one
+> non-cryptographic measure that helps with that third goal, and state the
+> limitation.
+
+Four asks; the stem accounts for two of three properties, so the third is
+subtraction; "non-cryptographic" states a property the answer must lack; and
+deleting the hospital changes nothing.
+
+> **Accepted** — A hospital encrypts every patient record at rest and signs its
+> audit logs. Both controls are configured correctly and are never bypassed.
+> Ransomware then encrypts the storage array, and for two days clinicians
+> cannot open a single record. The cryptography did exactly what it was
+> designed to do. Explain why it did not prevent this.
+
+One concept; no property is named, so the answer must be produced; the failure
+is the object of explanation; and the scenario cannot be removed without
+removing the constraint. The follow-up — what would have kept the records
+reachable, and what that measure does not protect against — becomes the next
+question.
+
+Run this check on every question before showing it. Any "yes" requires a
+rewrite:
+
+1. Does it act on more than one target concept, or use `(a)/(b)`, `1.`/`2.`, or
+   a "Then/Next/Finally" chain?
+2. Does the stem contain the answer's key noun?
+3. Does it say "remaining", "the other", "still missing", "struggles with",
+   "not", or "except", or otherwise name a property the answer must lack?
+4. Does the stem account for every member of a set but one?
+5. Does it dictate an answer count or length that is not itself the task?
+6. Does stripping the scenario's concrete nouns leave every constraint intact?
+7. Does earlier feedback in this attempt already reveal this answer?
+<!-- shared-contract:end id=question-design -->
 
 <!-- shared-contract:start id=visual-artifact -->
 ## Optional Visual Review Artifact
