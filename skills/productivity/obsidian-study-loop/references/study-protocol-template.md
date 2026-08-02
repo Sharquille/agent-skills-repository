@@ -790,8 +790,34 @@ prompt's own wording. A question must not:
 - place the answer's key noun in the stem ("why is hashing important for
   integrity?");
 - ask which item is not a member of a set;
-- state how many items the answer holds, or how long it should be, unless that
-  count is genuinely the task.
+- concede the verdict of a judgement it is asking for — "explain why these
+  controls do not cover it" answers the question it appears to pose, leaving
+  only a label to retrieve;
+- state how many items the answer holds, or how long it should be, unless
+  reaching that count is genuinely the task.
+
+**Name the target of the ask.** Withholding the answer is not withholding the
+question. State what a complete answer must address while supplying none of its
+substance. "Explain why they were no help here" names nothing — no help at
+what, judged by what standard? The learner then guesses at the dimension, and
+an answer aimed at a different one is scored as a knowledge failure when it was
+a prompt failure. The line runs between the task and the response:
+
+- **Supply** the subject, the relation requested, the criterion to judge by,
+  and each response operation required — "classify and assess", "identify and
+  justify". Naming an operation never names its outcome.
+- **Withhold** the response-bearing label, cause, mechanism, or verdict, and
+  the size of the answer set.
+
+**Ask only for what will be scored.** The rubric may award context, reasoning,
+and transfer, but a learner cannot lose points for omitting a limitation,
+alternative, or mitigation the prompt never requested. Either ask for it, or do
+not score its absence.
+
+**Every expected conclusion must be reachable.** The stem plus in-scope
+material must contain whatever the answer depends on, and must not assert a
+false premise. If a decisive fact is missing, supply it, phrase the task
+conditionally, or accept every conclusion the stated facts support.
 
 **Context must be load-bearing.** Strip the scenario's concrete nouns and
 re-read the question. If no constraint on the answer disappeared, the scenario
@@ -824,14 +850,16 @@ deleting the hospital changes nothing.
 > **Accepted** — A hospital encrypts every patient record at rest and signs its
 > audit logs. Both controls are configured correctly and are never bypassed.
 > Ransomware then encrypts the storage array, and for two days clinicians
-> cannot open a single record. The cryptography did exactly what it was
-> designed to do. Explain why it did not prevent this.
+> cannot open a single record. Which security property did those two days take
+> away, and do the two controls described protect that property? Justify your
+> answer from the scenario.
 
-One concept; no property is named, so the answer must be produced; the failure
-is the object of explanation; and the scenario cannot be removed without
-removing the constraint. The follow-up — what would have kept the records
-reachable, and what that measure does not protect against — becomes the next
-question.
+One concept. The dimension is named but the property is not, so the answer must
+be produced. The verdict stays open, so "do they protect it" is a real
+judgement rather than a concession. Justification is requested, so justification
+may be scored. The claim is bounded to the controls described rather than to
+cryptography at large. And the scenario cannot be removed without removing the
+constraint.
 
 Run this check on every question before showing it. Any "yes" requires a
 rewrite:
@@ -842,9 +870,23 @@ rewrite:
 3. Does it say "remaining", "the other", "still missing", "struggles with",
    "not", or "except", or otherwise name a property the answer must lack?
 4. Does the stem account for every member of a set but one?
-5. Does it dictate an answer count or length that is not itself the task?
-6. Does stripping the scenario's concrete nouns leave every constraint intact?
-7. Does earlier feedback in this attempt already reveal this answer?
+5. Does it concede the verdict of a judgement it asks the learner to make?
+6. Does it dictate an answer count or length that is not itself the task?
+7. Does any verb in the closing ask lack an explicit object or its required
+   complement — a causal event for "explain", a basis for "compare", a
+   criterion for "choose", a boundary for "diagnose", endpoints for "trace" —
+   or does any pronoun have more than one plausible antecedent?
+8. Would a complete answer be scored on anything the prompt did not ask for?
+9. Does an expected conclusion depend on a fact absent from the stem and the
+   in-scope material, or on a premise the scenario does not establish?
+10. Does stripping the scenario's concrete nouns leave every constraint intact?
+11. Does earlier feedback in this attempt already reveal this answer?
+
+An open answer space is legitimate; an unnamed target is not. A question whose
+defensible answers genuinely differ still passes check 7, provided each verb's
+object and complement are stated — convergence on one conclusion is not the
+standard, and the rubric must accept any conclusion the stated criterion
+supports.
 <!-- shared-contract:end id=question-design -->
 
 <!-- shared-contract:start id=visual-artifact -->
