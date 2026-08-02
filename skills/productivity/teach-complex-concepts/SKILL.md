@@ -271,6 +271,58 @@ out to be counted by eye — makes the claim verifiable in seconds. Show the
 countable case first, then the real one, and let the learner confirm they have
 the same shape.
 
+**Weight the parts by importance, not by convenience.** The shape of an
+explanation teaches as much as its content. A learner rebuilds the structure
+they were given — what earned a table, what earned a sentence, what sat under a
+heading and what trailed after one. A member of a contrast set shown with less
+visibility than its siblings is learned as optional however much it matters:
+two options in a comparison table plus a third mentioned afterwards teaches two
+options and a footnote, and the footnote is what goes missing when the learner
+has to choose later.
+
+Peers need equal *visibility*, not equal *detail*; depth may legitimately vary.
+Check visibility mechanically — every member of the set in play should have a
+label at the same hierarchy level, a slot in the same comparison frame, the
+fields the current decision needs, and an introduction before any one member
+gets extended treatment. An item that surfaces only in trailing prose, a
+parenthesis, or a lower-level heading fails that check unless you intend its
+lower priority and say so.
+
+Do not buy visibility with false peerhood. Where one member is a variant, mode,
+or special case of another, put it in the frame and keep the relationship
+visible. Flattening a parent and its variant into identical rows repairs the
+omission and teaches a wrong taxonomy in its place.
+
+**Close the set, even where you do not fill it.** Depth may be uneven; the map
+may not be. This governs the bounded, decision-relevant set for the move at
+hand, not every category the subject contains. Before leaving that set, make
+its extent visible, then go deep only on what matters now. Where the set is
+genuinely bounded, say how many there are; where it is large, open, or
+contested, say that instead of inventing a count — "these are the three that
+matter here, others exist" closes the map honestly. Closure orients rather than
+teaches: a label and one decision-relevant discriminator each is enough, and
+the fuller explanations stay sequential. What fails is teaching some members
+thoroughly and dropping the rest in silence, because the learner keeps a set
+they believe is complete and answers from it later. Sparse is fine. Silently
+sparse is not.
+
+**Give the property that decides, not only the property that is famous.** For
+each option, state the attribute or tradeoff that bears on choosing it, not
+merely its textbook description. A feature list says what a thing does; a
+decision-relevant property says where it fits. Some choices turn on a single
+attribute, some on several competing ones, and some on context or taste — say
+which, rather than implying a lone winner where none exists. A learner holding
+the description but not the discriminator can describe an option and cannot
+select it.
+
+Form carries its own claims, and each of these is read as one: a table implies
+the set is complete; equal rows imply the options exclude one another; uniform
+columns imply every dimension applies to every member; order implies default,
+sequence, or rank; numbering implies a required order where bullets imply none;
+and a vivid analogy or worked example outweighs an abstract rule beside it,
+however formally prominent that rule is. Make the claims you mean, and
+neutralise the ones you do not.
+
 ### 5. Make the learner act
 
 After a short model, ask for one cognitive action. Good actions include predict,
@@ -424,3 +476,11 @@ Before sending each substantial turn, confirm:
 - Is the content correct and the problem well-posed?
 - Is there a clear path to more help and eventually to the answer?
 - Is the next task testing understanding rather than mimicry?
+- Does every member of the set in play have equal visibility — same hierarchy
+  level, same comparison frame — even where I deliberately varied the depth?
+- Is the extent of that set visible, as a count where it is bounded or an
+  explicit "others exist" where it is not?
+- For each option I named, did I give the property or tradeoff that bears on
+  choosing it?
+- Does the form I used imply completeness, exclusivity, or rank I did not
+  intend?
