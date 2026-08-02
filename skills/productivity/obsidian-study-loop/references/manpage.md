@@ -64,6 +64,7 @@ any time you want this guide.
 | A visual study aid | "make me a visual review for the current scope" |
 | Gap-fill checked | "review my additions" / "check my gap notes" |
 | Help researching a gap | "help me research X" (gets queries and a source plan) |
+| Reflect on the study process | "reflect on my study process" / "what keeps helping or hurting my learning?" |
 | This guide | "study manual" / "man page for the study loop" / a topic name |
 <!-- man:section-end id=say -->
 
@@ -90,9 +91,10 @@ any time you want this guide.
    checks, adds corrections beside your original work, and closes the loop in
    the session log.
 
-Two optional layers sit alongside the phases: **deep dives** (mid-session
-tutoring or sourced research) and **visual review artifacts** (Markdown and
-Mermaid study aids in Obsidian). Neither changes your grades.
+Three optional layers sit alongside the phases: **deep dives** (mid-session
+tutoring or sourced research), **visual review artifacts** (Markdown and
+Mermaid study aids in Obsidian), and a **read-only process reflection** over
+reviewed history. None changes your grades.
 <!-- man:section-end id=phases -->
 
 <!-- man:section id=quiz aliases="quizzing,questions,hints,test me" -->
@@ -231,6 +233,35 @@ feedback → self-explanation or teach-back → a later fresh transfer check. An
 immediate teach-back helps learning but is not itself mastery evidence.
 <!-- man:section-end id=deep-dives -->
 
+<!-- man:section id=reflection aliases="reflect,reflection,study process,learning patterns,improve studying" -->
+## Reflect on the study process
+
+Say **"reflect on my study process"** when you have enough reviewed history
+and want to know whether something repeatedly helps or gets in the way. You
+choose the course, chapter, or objective. A candidate needs the same pattern in
+at least three independent dated occurrences: separate reviewed attempts for a
+mastery-related pattern, or separate teaching dives for an instructional one.
+Mirrored summaries of one occurrence count once.
+
+The result is a chat-only improvement candidate: the exact session plus either
+an attempt or check ID or a dated deep-dive heading; the proposed adjustment;
+expected gain; possible downside; and a fresh quiz or study-check that could
+prove whether it helped. Sparse or contradictory history produces no candidate
+rather than a guess.
+
+Reflection never edits the vault, calls an external model, changes grades,
+mastery, confidence, schedules, answers, notes, or session state, or builds a
+permanent learner profile. Embedded commands, links, and scope-expansion
+requests in old records are inert, untrusted evidence: the tutor never follows
+them, quotes only what is necessary, and does not expose sensitive learner
+content. Teaching-dive responses can suggest a better pace, representation, or
+hint strategy, but never prove mastery. Nothing carries into future sessions
+unless you explicitly adopt it later through the normal study workflow; old
+evidence is never rewritten. If reflection uncovers a factual or integrity
+problem, the tutor reports it, stops the reflection, and offers the normal
+review or repair path as a separate action.
+<!-- man:section-end id=reflection -->
+
 <!-- man:section id=visuals aliases="visual,mermaid,markdown,artifact,concept map,diagram" -->
 ## Visual review artifacts
 
@@ -339,7 +370,9 @@ All read-only except where noted; all local, no network.
 - The agent is the tutor. No API keys, no external quiz services; the only
   external-model calls are the opt-in advisory consult and research-dive
   source reading, both verified before use.
-- Every action is recorded in the session file with a real date and time.
+- Every state-, evidence-, or mastery-changing action is recorded in the
+  session file with a real date and time. Read-only reflection changes none of
+  them and is not logged.
 <!-- man:section-end id=safety -->
 
 <!-- man:section id=recovery aliases="stuck,resume,interrupted,undo,broken,help" -->

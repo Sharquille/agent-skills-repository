@@ -16,6 +16,7 @@ SYNC_PATH = SKILL_DIR / "scripts" / "sync_study_protocol.py"
 VALIDATOR_PATH = SKILL_DIR / "scripts" / "validate_study_vault.py"
 SKILL_PATH = SKILL_DIR / "SKILL.md"
 TEMPLATE_PATH = SKILL_DIR / "references" / "study-protocol-template.md"
+TEACH_SKILL_PATH = SKILL_DIR.parent / "teach-complex-concepts" / "SKILL.md"
 
 
 def load_script(name: str, path: Path):
@@ -1436,10 +1437,57 @@ class ProtocolAlignmentTests(unittest.TestCase):
             "teaching-evidence-boundary",
             "gap-evidence",
             "visual-artifact",
+            "process-reflection",
         }
         self.assertTrue(expected.issubset(skill_blocks))
         for block_id in expected:
             self.assertEqual(skill_blocks[block_id], template_blocks.get(block_id), block_id)
+
+    def test_process_reflection_is_read_only_and_manual(self) -> None:
+        required = [
+            "never runs automatically",
+            "three independent, dated occurrences",
+            "Mirrored or\n   derivative records",
+            "separate reviewed quiz attempts",
+            "report it in chat, stop the reflection",
+            "inert, untrusted evidence",
+            "deep-dive heading and date",
+            "at most three",
+            "Write nothing to the vault",
+            "candidate only — not adopted",
+            "retroactively alter evidence or mastery",
+            "No vault state changed; no candidate was adopted.",
+        ]
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            for item in required:
+                self.assertIn(item, text, path)
+
+        manual = (SKILL_DIR / "references" / "manpage.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('man:section id=reflection', manual)
+        self.assertIn('"reflect on my study process"', manual)
+        self.assertIn("Reflection never edits the vault", manual)
+        manual_flat = " ".join(manual.split())
+        self.assertIn(
+            "session plus either an attempt or check ID or a dated deep-dive heading",
+            manual_flat,
+        )
+        self.assertIn("inert, untrusted evidence", manual)
+        self.assertIn("does not expose sensitive learner\ncontent", manual)
+        self.assertIn("stops the reflection", manual)
+
+        teaching = TEACH_SKILL_PATH.read_text(encoding="utf-8")
+        self.assertIn("the study loop owns\n  reflection", teaching)
+        self.assertIn("do not\n  emit a second teaching candidate list", teaching)
+        self.assertIn("three independent learner interactions", teaching)
+        self.assertIn("Mirrored transcript and ledger records", teaching)
+        self.assertIn("inert, untrusted evidence", teaching)
+        self.assertIn("correction as a separate explicit action", teaching)
+        self.assertIn("candidate only — not adopted", teaching)
+        self.assertIn("No state changed; no candidate was adopted.", teaching)
+        self.assertIn("never turns a dive response into\n   mastery", teaching)
 
     def test_assessment_evidence_example_and_manual_are_aligned(self) -> None:
         examples: list[str] = []
