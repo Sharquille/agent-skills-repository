@@ -13,15 +13,15 @@ Claude-to-Codex/OpenCode orchestration is wrapper-only (no plugins). The purpose
 Claude is the intelligence of this system, not a dispatcher. Delegation replaces Claude's typing and reading, never its thinking: Claude decomposes the task, writes sharp self-contained briefs, cross-examines consultant output against the repo, adjudicates disagreements between lanes with evidence, synthesizes one coherent solution, and keeps work where the analysis IS the deliverable (design decisions, subtle bugs, small precise edits). Forwarding prompts and pasting back answers is a failure mode. The conductor role is agent-agnostic: when Claude is unavailable and another agent (OpenCode, Gemini) leads the session, the same conductor duties and wrapper paths apply to it.
 
 ```text
-{{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/codex-agent.sh consult --cd <repo> -- "<brief>"
+{{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/orchestra-agent.sh consult --cd <repo> --role planner -- "<brief>"
 {{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/codex-agent.sh review --uncommitted
 {{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/orchestra-agent.sh implement --allow-write --cd <repo> --scope <path> --no-plan-gate -- "<task>"
 {{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/consult-opencode.sh --lane code|reasoning|context|prose --sealed -- "<brief>"
 ```
 
-OpenCode Go's latest DeepSeek V4 Flash at `max` is the default guarded implementation worker; Luna at `max` independently critiques; Sol at `xhigh` performs the final overview. `--lane context` selects Go Flash. `--lane code` and `--lane reasoning` select Go Kimi K3 only when a distinct alternate specialist is needed. The pinned OpenRouter Flash 0731 route remains an explicit fallback. Run OpenCode lanes sequentially and never use the same model to review its own work.
+An unqualified consult uses two independent read-only consultants: Sol at `xhigh` for primary strategic judgment and Kimi K3 for the technical specialist view. OpenCode Go's latest DeepSeek V4 Flash at `max` is the default guarded implementation and bulk/context worker; Luna at `max` supervises and critiques its work; Sol at `xhigh` performs the final overview. Explicit `--backend`, `--model`, or `--lane` requests one targeted consultant; `--lane context` selects Go Flash and `--lane code|reasoning` selects Kimi alone. The pinned OpenRouter Flash 0731 route remains an explicit fallback. Run OpenCode lanes sequentially and never use the same model to review its own work.
 
-Use Sol through Codex CLI for the final engineering overview and hard independent judgment; use Luna/max for critique. For user-facing UI, copy, API design, or product polish, require taste >= 7. Never use Haiku.
+Use Sol through Codex CLI for primary consultation, final engineering overview, and hard independent judgment; use Luna/max for supervision and critique. For user-facing UI, copy, API design, or product polish, require taste >= 7. Never use Haiku.
 
 Run the wrappers directly with Bash from the conductor — do not spawn a Claude subagent just to make a wrapper call. Only when a Claude subagent must own the call, spawn a thin `sonnet-5` low-effort wrapper whose job is only to write a self-contained Codex prompt, run `codex-agent.sh`, and return Codex output or the changed-file summary. The conductor verifies the output and owns final edits, tests, commits, and judgment.
 

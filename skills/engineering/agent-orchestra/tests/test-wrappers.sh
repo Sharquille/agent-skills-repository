@@ -193,6 +193,25 @@ case "${1:-}" in
     fi
     exit "${FAKE_DELEGATE_STATUS:-0}"
     ;;
+  review)
+    shift
+    target_seen=0
+    prompt_seen=0
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --uncommitted) target_seen=1; shift ;;
+        --base|--commit) target_seen=1; shift 2 ;;
+        --title|-c|--config) shift 2 ;;
+        -*) shift ;;
+        *) prompt_seen=1; shift ;;
+      esac
+    done
+    if [ "$target_seen" -eq 1 ] && [ "$prompt_seen" -eq 1 ]; then
+      echo "fake codex: review target cannot be combined with prompt" >&2
+      exit 64
+    fi
+    exit "${FAKE_DELEGATE_STATUS:-0}"
+    ;;
   *) exit 0 ;;
 esac
 EOF
@@ -372,6 +391,9 @@ assert_contains "$inspection_output" "could not inspect repository" "scope inspe
 # --- Unified selector: routing, effort, independence, and three-stage defaults ---
 selector="$SCRIPTS_DIR/orchestra-agent.sh"
 selector_list="$($selector --list)"
+assert_contains "$selector_list" "read-only Sol + Kimi panel" "selector presents the default consult panel"
+assert_contains "$selector_list" "gpt-5.6-sol  reasoning=xhigh" "selector presents Sol/xhigh as the primary consultant"
+assert_contains "$selector_list" "opencode-go/kimi-k3  reasoning=provider-default" "selector presents Kimi K3 as the independent consultant"
 assert_contains "$selector_list" "latest Go DeepSeek V4 Flash" "selector presents the latest Go worker route"
 assert_contains "$selector_list" "reasoning=max" "selector presents max reasoning for the worker"
 assert_contains "$selector_list" "gpt-5.6-luna  reasoning=max" "selector presents Luna/max critique"
@@ -388,16 +410,56 @@ assert_contains "$selector_dry" "model=gpt-5.6-luna reasoning=max" "dry-run reso
 assert_contains "$selector_dry" "model=gpt-5.6-sol reasoning=xhigh" "dry-run resolves Sol/xhigh overview"
 [ ! -s "$selector_log" ] && pass "selector dry-run makes no provider invocation" || fail "selector dry-run invoked a provider"
 
+: >"$selector_log"
+consult_dry="$(PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
+  "$selector" consult --role planner --dry-run -- "plan the architecture")"
+assert_contains "$consult_dry" "topology=consult-panel" "default consult resolves the two-model panel"
+assert_contains "$consult_dry" "model=gpt-5.6-sol reasoning=xhigh" "default consult resolves Sol/xhigh primary"
+assert_contains "$consult_dry" "model=opencode-go/kimi-k3 reasoning=provider-default" "default consult resolves Kimi specialist"
+[ ! -s "$selector_log" ] && pass "consult panel dry-run makes no provider invocation" || fail "consult panel dry-run invoked a provider"
+
+consult_effort_dry="$("$selector" consult --role planner --reasoning high --dry-run -- "plan the architecture")"
+assert_contains "$consult_effort_dry" "model=gpt-5.6-sol reasoning=high" "panel reasoning override steers the Sol consultant"
+assert_contains "$consult_effort_dry" "model=opencode-go/kimi-k3 reasoning=provider-default" "panel reasoning override does not invent a Kimi variant"
+
+consult_alias_dry="$(ORCHESTRA_CONSULT_MODEL=sol "$selector" consult --role planner --dry-run -- "plan")"
+assert_contains "$consult_alias_dry" "model=gpt-5.6-sol" "consult panel normalizes the Sol environment alias"
+
+set +e
+invalid_specialist_output="$(ORCHESTRA_SPECIALIST_MODEL=kimi "$selector" consult --role planner --dry-run -- "plan" 2>&1)"
+invalid_specialist_status=$?
+set -e
+assert_status "$invalid_specialist_status" 2 "consult panel rejects a malformed specialist route"
+assert_contains "$invalid_specialist_output" "provider/model form" "malformed specialist error explains the required form"
+
+: >"$selector_log"
+PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
+  "$selector" consult --role planner --timeout 0 -- "plan the architecture" >/dev/null 2>&1 || fail "default consult panel failed"
+consult_calls="$(grep -E '^(opencode|codex) ' "$selector_log")"
+assert_contains "$consult_calls" "-m gpt-5.6-sol" "consult panel calls Sol primary"
+assert_contains "$consult_calls" "--model opencode-go/kimi-k3" "consult panel calls Kimi specialist"
+
+: >"$selector_log"
+PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
+  "$selector" consult --lane reasoning --timeout 0 -- "targeted check" >/dev/null 2>&1 || fail "targeted Kimi consult failed"
+targeted_consult_calls="$(grep -E '^(opencode|codex) ' "$selector_log")"
+assert_contains "$targeted_consult_calls" "--model opencode-go/kimi-k3" "explicit lane targets Kimi"
+assert_not_contains "$targeted_consult_calls" "codex " "explicit consult route does not also call Sol"
+
 set +e
 duplicate_output="$("$selector" implement --dry-run --backend codex --model luna --allow-write --scope allowed --no-plan-gate -- "bounded edit" 2>&1)"
 duplicate_status=$?
 caller_duplicate_output="$("$selector" review --dry-run --current-model luna -- "review" 2>&1)"
 caller_duplicate_status=$?
+consult_caller_duplicate_output="$("$selector" consult --role planner --dry-run --current-model sol -- "plan" 2>&1)"
+consult_caller_duplicate_status=$?
 set -e
 assert_status "$duplicate_status" 2 "selector rejects duplicate worker and critic models"
 assert_contains "$duplicate_output" "choose independent models" "duplicate-stage error is actionable"
 assert_status "$caller_duplicate_status" 2 "selector rejects self-review by the caller model"
 assert_contains "$caller_duplicate_output" "caller and primary-stage" "self-review error identifies the collision"
+assert_status "$consult_caller_duplicate_status" 2 "consult panel rejects a caller-identical Sol consultant"
+assert_contains "$consult_caller_duplicate_output" "caller and primary-consultant" "consult collision identifies the Sol role"
 
 : >"$selector_log"
 PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
@@ -405,6 +467,20 @@ PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_lo
 review_call="$(sed -n '1p' "$selector_log")"
 assert_contains "$review_call" 'model="gpt-5.6-luna"' "direct critique defaults to Luna"
 assert_contains "$review_call" 'model_reasoning_effort="max"' "direct critique defaults to max reasoning"
+
+: >"$selector_log"
+PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
+  "$SCRIPTS_DIR/codex-agent.sh" review --cd "$wrapper_repo" --uncommitted --prompt "focus on routing" --timeout 0 >/dev/null 2>&1 || fail "custom uncommitted review failed"
+custom_review_call="$(sed -n '1p' "$selector_log")"
+assert_contains "$custom_review_call" "Review all staged, unstaged, and untracked changes" "custom review carries its target as instructions"
+assert_not_contains "$custom_review_call" "--uncommitted" "custom review avoids the Codex target/prompt conflict"
+
+set +e
+duplicate_review_target_output="$("$SCRIPTS_DIR/codex-agent.sh" review --cd "$wrapper_repo" --uncommitted --base main 2>&1)"
+duplicate_review_target_status=$?
+set -e
+assert_status "$duplicate_review_target_status" 2 "review rejects multiple target selectors"
+assert_contains "$duplicate_review_target_output" "choose exactly one review target" "review target collision is actionable"
 
 set +e
 ultra_output="$(PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" \

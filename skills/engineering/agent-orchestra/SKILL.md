@@ -16,9 +16,10 @@ way when Claude is unavailable.
 The point is Claude-usage economics: Claude subscriptions rate-limit fast when
 Claude reads whole repos, writes bulk code, or chews through long diffs.
 Delegating that work to the default three-stage pipeline — OpenCode Go's latest
-DeepSeek V4 Flash at `max` implements, `gpt-5.6-luna` at `max` critiques, and
-`gpt-5.6-sol` at `xhigh`
-overviews — plus the other OpenCode specialist lanes
+DeepSeek V4 Flash at `max` implements, `gpt-5.6-luna` at `max` supervises and
+critiques, and `gpt-5.6-sol` at `xhigh` overviews — plus the default consult
+panel, where Sol is the primary strategic consultant and Kimi K3 supplies an
+independent technical view,
 moves the token burn onto Codex/OpenCode Go quota instead, while Claude — the
 conductor — spends its limited budget on what actually needs it: scoping,
 verification, taste, and final judgment. When a selected stage is
@@ -215,14 +216,26 @@ model with `--current-model` when known so the selector can reject self-review.
 
 ```text
 scripts/orchestra-agent.sh --list
+scripts/orchestra-agent.sh consult --role planner -- "<architecture brief>"
 scripts/orchestra-agent.sh implement --dry-run --allow-write --scope <path> --no-plan-gate -- "<task>"
 scripts/orchestra-agent.sh implement --allow-write --scope <path> --no-plan-gate -- "<task>"
 ```
 
+With no explicit `--backend`, `--model`, or `--lane`, `consult` runs two
+independent read-only consultants sequentially: Sol at `xhigh` supplies the
+primary strategic/architecture judgment and Kimi K3 supplies the distinct
+technical specialist view. The conductor receives both labeled outputs and
+synthesizes them; neither consultant sees the other's answer. An explicit
+route requests one targeted consultant instead. For bulk repository reading,
+use the explicit DeepSeek `--lane context` route rather than spending the
+consult panel on volume. On the implicit panel, `--reasoning` overrides Sol's
+effort; Kimi stays at its provider default unless selected directly with an
+explicit OpenCode route/variant.
+
 The implementation selector runs three independent stages by default:
 
 1. Worker: OpenCode Go / latest DeepSeek V4 Flash / `max` reasoning.
-2. Critiquer: Codex / Luna / `max`.
+2. Supervisor/critiquer: Codex / Luna / `max`.
 3. Overviewer: Codex / Sol / `xhigh`, with the Luna critique included as
    untrusted evidence to verify.
 
@@ -254,8 +267,10 @@ Lane defaults (override with `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
 
 - `code` → `opencode-go/kimi-k3`
 - `reasoning` → `opencode-go/kimi-k3` — a compatibility task-shape alias for
-  the same alternate specialist. Use Kimi when a distinct non-DeepSeek view is
-  needed; do not add it automatically to the default three-stage pipeline.
+  the same alternate specialist. A direct lane call deliberately selects Kimi
+  alone; for normal architecture/design consultation use the unified selector's
+  Sol + Kimi panel. Do not add Kimi automatically to the implementation
+  pipeline.
 - `context` → `opencode-go/deepseek-v4-flash` — OpenCode Go's rolling latest
   Flash route and default implementation worker at `max`; inexpensive and
   suited to ~1M-context sweeps. Read-only context consults do not force an
@@ -372,13 +387,18 @@ When the user does not specify a model, apply their defaults:
 
 - Bulk/mechanical implementation and migrations: OpenCode Go DeepSeek V4 Flash worker
   at `max`.
-- Implementation critique: Luna at `max`. Final overview/adjudication: Sol at
-  `xhigh`.
+- Strategic consultation, architecture, and planning: Sol at `xhigh` as the
+  primary consultant plus Kimi K3 as the independent specialist. Use a
+  targeted single consultant only when explicitly selected or when the task
+  is too small to justify the panel.
+- Implementation supervision and critique: Luna at `max`. Final
+  overview/adjudication: Sol at `xhigh`.
 - Repo investigation and hard debugging: select by task shape; use Codex for
   deep engineering judgment or DeepSeek context for volume.
 - Technical second opinions and security framing: `--lane code` (Kimi K3).
-  Deep reasoning or architecture/plan critique: `--lane reasoning`
-  (Go Kimi K3). Huge-context sweeps and bulk summarization:
+  The default architecture/plan consult is the Sol + Kimi panel; direct
+  `--lane reasoning` deliberately requests only the Kimi specialist.
+  Huge-context sweeps and bulk summarization:
   `--lane context` (Go DeepSeek V4 Flash). Prose and docs polish: `--lane prose`
   (MiMo v2.5 Pro).
 - User-facing UI, copy, API design, and product polish: require taste >= 7;
@@ -402,9 +422,10 @@ quota.
    If a plan gate is selected, record this as immutable `Plan P1`.
 2. Preflight the brief for secrets and secret-bearing file paths.
 3. If the user requests selection, present `orchestra-agent.sh --list` and use
-   their job/model/reasoning choices. Otherwise use Go DeepSeek worker → Luna/max
-   critique → Sol/xhigh overview. Reject duplicate/caller-identical review
-   models rather than silently reducing independence.
+   their job/model/reasoning choices. Otherwise use Sol/xhigh + Kimi for
+   strategic consultation, or Go DeepSeek worker → Luna/max supervision and
+   critique → Sol/xhigh overview for implementation. Reject duplicate or
+   caller-identical stages rather than silently reducing independence.
 4. For a selected plan gate, obtain an independent read-only review, assign
    stable finding IDs, and manually accept one exact plan version before any
    Executor receives write scope. Stop after the bounded protocol; do not treat

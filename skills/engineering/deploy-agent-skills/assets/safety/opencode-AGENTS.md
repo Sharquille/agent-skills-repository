@@ -65,15 +65,15 @@ Treat both locations as protected user data.
 Prefer the repo-managed wrappers for cross-agent orchestration:
 
 ```text
-{{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/codex-agent.sh consult --cd <repo> -- "<brief>"
+{{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/orchestra-agent.sh consult --cd <repo> --role planner -- "<brief>"
 {{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/codex-agent.sh review --uncommitted
 {{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/orchestra-agent.sh implement --allow-write --cd <repo> --scope <path> --no-plan-gate -- "<task>"
 {{REPO_DIR}}/skills/engineering/agent-orchestra/scripts/consult-opencode.sh --lane code|reasoning|context|prose --sealed -- "<brief>"
 ```
 
-OpenCode Go's latest DeepSeek V4 Flash at `max` is the default guarded implementation worker; Luna at `max` independently critiques; Sol at `xhigh` performs the final overview. `--lane context` selects Go Flash. `--lane code` and `--lane reasoning` select Go Kimi K3 only when a distinct alternate specialist is needed. The pinned OpenRouter Flash 0731 route remains an explicit fallback. Run OpenCode lanes sequentially and never use the same model to review its own work.
+An unqualified consult uses two independent read-only consultants: Sol at `xhigh` for primary strategic judgment and Kimi K3 for the technical specialist view. OpenCode Go's latest DeepSeek V4 Flash at `max` is the default guarded implementation and bulk/context worker; Luna at `max` supervises and critiques its work; Sol at `xhigh` performs the final overview. Explicit `--backend`, `--model`, or `--lane` requests one targeted consultant; `--lane context` selects Go Flash and `--lane code|reasoning` selects Kimi alone. The pinned OpenRouter Flash 0731 route remains an explicit fallback. Run OpenCode lanes sequentially and never use the same model to review its own work.
 
-Use Sol through Codex CLI for the final engineering overview and hard independent judgment; use Luna/max for critique. User-facing UI, copy, API design, or product polish needs taste >= 7. Never use Haiku.
+Use Sol through Codex CLI for primary consultation, final engineering overview, and hard independent judgment; use Luna/max for supervision and critique. User-facing UI, copy, API design, or product polish needs taste >= 7. Never use Haiku.
 
 When OpenCode leads the session (for example because Claude is unavailable), OpenCode IS the conductor and the intelligence — not a dispatcher: decompose the task, write sharp self-contained briefs, cross-examine consultant output against the repo, adjudicate disagreements between lanes with evidence, synthesize one coherent solution, keep insight-heavy work (design, subtle bugs, precise edits) yourself, and own final edits, tests, and git. Drive the same wrappers (`codex-agent.sh`, `consult-opencode.sh`, `opencode-implement.sh`). Independence rule: never use your own driving model as your second-opinion lane — cross-check with a different lane or the Codex flagship (gpt-5.6-sol).
 

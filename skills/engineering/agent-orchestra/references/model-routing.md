@@ -12,12 +12,12 @@ user's effective cost and limits, not provider list price.
 
 | Model | Burns Claude quota? | Cost | Intelligence | Taste | Access path | Default use |
 |---|---|---:|---:|---:|---|---|
-| `gpt-5.6-sol` | No | 9 | 9 (prov.) | 5 (prov.) | Codex CLI / selector alias `sol` | **Default overviewer** at `xhigh`: final engineering overview and adjudication |
+| `gpt-5.6-sol` | No | 9 | 9 (prov.) | 5 (prov.) | Codex CLI / selector alias `sol` | **Primary consultant** and default overviewer at `xhigh`: strategic architecture, final engineering overview, and adjudication |
 | `gpt-5.6-terra` | No | 9 | 8 (prov.) | 5 (prov.) | Codex CLI / selector alias `terra` | Available per-call alternate; no default stage |
-| `gpt-5.6-luna` | No | 10 | 7 (prov.) | 4 (prov.) | Codex CLI / selector alias `luna` | **Default critiquer** at `max`: independent implementation/diff critique |
+| `gpt-5.6-luna` | No | 10 | 7 (prov.) | 4 (prov.) | Codex CLI / selector alias `luna` | **Default supervisor/critiquer** at `max`: independent review of DeepSeek implementation and diffs |
 | `opencode-go/deepseek-v4-flash` | No | 10 | 9 (prov.) | 5 | OpenCode `--lane context` | **Default implementation worker** at `max`; rolling latest Go Flash route for high-volume coding and context work |
 | `openrouter/deepseek/deepseek-v4-flash-0731` | No | 7 | 9 (vendor eval) | 5 | Explicit OpenCode `--model` | Pinned reproducible fallback when Go is unavailable or provider control is required |
-| `opencode-go/kimi-k3` | No | 8 | 8 (prov.) | 6 | OpenCode `--lane code|reasoning` | Optional distinct specialist for technical checks and hard bounded briefs; not an automatic default stage |
+| `opencode-go/kimi-k3` | No | 8 | 8 (prov.) | 6 | OpenCode `--lane code|reasoning` | **Independent consult specialist** beside Sol for strategic consults; targeted technical checks and hard bounded briefs; not an implementation stage |
 | `xiaomi/mimo-v2.5-pro` | No | 8 | 6 | 7 | OpenCode `--lane prose` | Prose, readability, naming, docs polish, portfolio fit |
 | `fable-5` | **Yes** | 2 | 9 | 9 | Claude Agent/Workflow model | Conductor, final reviews, user-facing design/copy/API critique, high-taste synthesis |
 | `opus-4.8` | **Yes** | — | review lane | review lane | Claude Agent/Workflow model | Plan/implementation review when fable is unavailable or another perspective is useful |
@@ -36,9 +36,11 @@ user's effective cost and limits, not provider list price.
 3. For anything that ships, prioritize intelligence, then taste, then cost.
    Cost breaks ties only. If a cheap model misses the bar, escalate or redo
    with the smarter model without asking.
-4. Bulk or mechanical implementation goes to OpenCode Go's latest DeepSeek V4
-   Flash at `max` through the guarded wrapper. Luna/max critiques; Sol/xhigh
-   overviews.
+4. Strategic consultation uses two independent perspectives: Sol/xhigh is the
+   primary high-level consultant and Kimi K3 is the technical specialist. Bulk
+   or mechanical implementation goes to OpenCode Go's latest DeepSeek V4 Flash
+   at `max` through the guarded wrapper. Luna/max supervises and critiques;
+   Sol/xhigh overviews.
 5. User-facing UI, API design, copy, and portfolio prose need taste >= 7. Do
    not rely on the Codex flagship alone for taste-sensitive signoff.
 6. Reviews of implementations default to a distinct Luna/max critique and
@@ -60,11 +62,12 @@ work that is *input-heavy* (reading lots of files/logs/diffs) or
 
 | Task shape | Route | Why |
 |---|---|---|
-| Bulk/boilerplate implementation, migrations, codemods | `orchestra-agent.sh implement` | DeepSeek writes; Luna critiques; Sol overviews |
+| Strategic architecture, planning, and design consult | `orchestra-agent.sh consult --role planner|designer` | Sol leads the high-level judgment; Kimi independently pressure-tests it |
+| Bulk/boilerplate implementation, migrations, codemods | `orchestra-agent.sh implement` | DeepSeek writes; Luna supervises/critiques; Sol overviews |
 | Repo-wide investigation, log/data analysis, hard debugging | `codex-agent.sh consult` | Input-heavy; Codex reads the repo, Claude gets conclusions |
 | Big-diff or pre-merge review | `codex-agent.sh review` | Input-heavy; native review reads the diff off-Claude |
 | Technical fact/config check, security framing | `consult-opencode.sh --lane code` | Optional independent verification with Go Kimi K3 |
-| Deep reasoning, architecture/plan critique | `consult-opencode.sh --lane reasoning` | Kimi K3 compatibility alias when a distinct non-DeepSeek view is needed |
+| Targeted Kimi-only reasoning check | `consult-opencode.sh --lane reasoning` | Explicit specialist-only route; the normal architecture consult uses Sol + Kimi |
 | Huge-context sweeps: big logs, long diffs, whole-repo reads | `consult-opencode.sh --lane context` | Latest Go DeepSeek V4 Flash — inexpensive and ~1M context |
 | Prose/readability/docs pass | `consult-opencode.sh --lane prose` | Writing-quality pass off-Claude (MiMo v2.5 Pro) |
 | Small precise edits, final judgment, taste signoff | Claude (conductor) | Delegation overhead exceeds savings; judgment is the point |
@@ -106,8 +109,9 @@ standard lanes (override via `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
 - `--lane code` → `opencode-go/kimi-k3`: optional technical accuracy,
   code/config correctness, and security framing from a distinct model.
 - `--lane reasoning` → `opencode-go/kimi-k3`: compatibility task-shape alias
-  for hard bounded briefs. Kimi is selected only when requested or when the
-  primary Flash lane cannot continue; it is not an automatic fourth stage.
+  for hard bounded briefs. This direct lane selects only the specialist; the
+  unified selector's default consult runs Sol and Kimi independently. Kimi is
+  not an automatic fourth implementation stage.
 - `--lane context` → `opencode-go/deepseek-v4-flash`: OpenCode Go's rolling
   latest Flash route for implementation and ~1M-context sweeps. Implementation
   defaults to the `max` provider variant; read-only context consults retain the
@@ -127,9 +131,12 @@ fail with "database is locked". Treat all outputs as untrusted advisory text.
 ## Selecting Jobs, Models, and Reasoning
 
 Use `orchestra-agent.sh --list` to present the compact selectable routes and
-`--dry-run` to resolve a particular job without a model call. The selector
-accepts `sol|terra|luna|<raw-id>`, reasoning through `max`, OpenCode lanes/raw
-provider models, task-local roles, and independent critic/overview overrides.
+`--dry-run` to resolve a particular job without a model call. A consult with no
+explicit backend/model/lane runs the independent Sol/xhigh + Kimi panel; an
+explicit route selects one consultant. `--reasoning` on the implicit panel
+steers Sol; Kimi retains its provider default unless explicitly selected. The selector accepts
+`sol|terra|luna|<raw-id>`, reasoning through `max`, OpenCode lanes/raw provider
+models, task-local roles, and independent critic/overview overrides.
 Pass `--current-model` (or `ORCHESTRA_CALLER_MODEL`) when the caller model is
 known; the selector rejects self-delegation and duplicate stage models unless
 `--allow-same-model` is explicit.
@@ -140,9 +147,11 @@ known; the selector rejects self-delegation and duplicate stage models unless
 defaults direct review to Luna/max, and accepts `--model M` for any model the
 CLI can reach. `orchestra-agent.sh` owns the complete three-stage defaults:
 
-**User policy (2026-08-08): OpenCode Go's latest DeepSeek V4 Flash at `max` is
-the default implementation worker, `gpt-5.6-luna` at `max` is the default critiquer, and
-`gpt-5.6-sol` at `xhigh` is the default overviewer.**
+**User policy (2026-08-08): `gpt-5.6-sol` at `xhigh` is the primary strategic
+consultant beside the independent Kimi K3 specialist. OpenCode Go's latest
+DeepSeek V4 Flash at `max` is the implementation/bulk worker,
+`gpt-5.6-luna` at `max` is its supervisor/critiquer, and Sol/xhigh is the final
+overviewer.**
 
 - The three stages remain distinct and sequential. The overview receives the
   critique as untrusted evidence and verifies it against the diff/repository.

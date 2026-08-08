@@ -11,6 +11,9 @@ OPENCODE_IMPLEMENT="$SCRIPT_DIR/opencode-implement.sh"
 
 DEFAULT_WORKER_MODEL="${ORCHESTRA_WORKER_MODEL:-opencode-go/deepseek-v4-flash}"
 DEFAULT_WORKER_REASONING="${ORCHESTRA_WORKER_REASONING:-max}"
+DEFAULT_CONSULT_MODEL="${ORCHESTRA_CONSULT_MODEL:-gpt-5.6-sol}"
+DEFAULT_CONSULT_REASONING="${ORCHESTRA_CONSULT_REASONING:-xhigh}"
+DEFAULT_SPECIALIST_MODEL="${ORCHESTRA_SPECIALIST_MODEL:-opencode-go/kimi-k3}"
 DEFAULT_CRITIC_MODEL="${ORCHESTRA_CRITIC_MODEL:-gpt-5.6-luna}"
 DEFAULT_CRITIC_REASONING="${ORCHESTRA_CRITIC_REASONING:-max}"
 DEFAULT_OVERVIEW_MODEL="${ORCHESTRA_OVERVIEW_MODEL:-gpt-5.6-sol}"
@@ -36,6 +39,11 @@ Implementation pipeline defaults:
   worker      OpenCode Go / latest DeepSeek V4 Flash / max
   critique    Codex / Luna / max
   overview    Codex / Sol / xhigh
+
+Consult defaults (when no route is selected explicitly):
+  primary     Codex / Sol / xhigh
+  specialist  OpenCode Go / Kimi K3 / provider default
+  An explicit --backend, --model, or --lane requests one targeted consultant.
 
 Pipeline overrides:
   --critic-model MODEL      --critic-reasoning EFFORT
@@ -82,7 +90,11 @@ Passive Agent Orchestra selectors (invocation remains unverified)
 Jobs / tools
   implement  guarded write pipeline: worker -> critique -> overview
   review     read-only critique or overview of a diff
-  consult    read-only research, planning, advice, or design
+  consult    read-only Sol + Kimi panel; explicit routing selects one consultant
+
+Default consult panel
+  primary     codex     $DEFAULT_CONSULT_MODEL  reasoning=$DEFAULT_CONSULT_REASONING
+  specialist  opencode  $DEFAULT_SPECIALIST_MODEL  reasoning=provider-default
 
 Default pipeline
   worker      opencode  $DEFAULT_WORKER_MODEL  (latest Go DeepSeek V4 Flash)  reasoning=$DEFAULT_WORKER_REASONING
@@ -145,6 +157,10 @@ role=""
 current_model="${ORCHESTRA_CALLER_MODEL:-}"
 allow_same=0
 dry_run=0
+consult_panel=0
+consult_model="$DEFAULT_CONSULT_MODEL"
+consult_reasoning="$DEFAULT_CONSULT_REASONING"
+specialist_model="$DEFAULT_SPECIALIST_MODEL"
 critic_model="$DEFAULT_CRITIC_MODEL"
 critic_reasoning="$DEFAULT_CRITIC_REASONING"
 overview_model="$DEFAULT_OVERVIEW_MODEL"
@@ -213,6 +229,16 @@ critic_model="$(normalize_model "$critic_model")"
 overview_model="$(normalize_model "$overview_model")"
 current_model="$(normalize_model "$current_model")"
 
+if [ "$mode" = consult ] && [ "$backend_explicit" -eq 0 ] && [ -z "$model" ] && [ -z "$lane" ]; then
+  consult_panel=1
+  consult_model="$(normalize_model "$consult_model")"
+  [ -z "$reasoning" ] || consult_reasoning="$reasoning"
+  case "$consult_model" in ''|*/*) die "consult panel primary must be a Codex model" ;; esac
+  case "$specialist_model" in */*) : ;; *) die "consult panel specialist must use provider/model form" ;; esac
+  case "$specialist_model" in gpt-*) die "consult panel specialist must be an OpenCode model" ;; esac
+  case "$consult_reasoning" in none|low|medium|high|xhigh|max) : ;; *) die "invalid consult reasoning '$consult_reasoning'" ;; esac
+fi
+
 if [ -z "$backend" ]; then
   case "$model" in */*) backend=opencode ;; *) backend=codex ;; esac
 fi
@@ -271,14 +297,18 @@ model_identity="$model"
 [ -z "$lane" ] || model_identity="$(lane_model "$lane")"
 
 if [ "$allow_same" -eq 0 ]; then
-  if [ "$mode" = implement ]; then
+  if [ "$mode" = consult ] && [ "$consult_panel" -eq 1 ]; then
+    assert_distinct "$consult_model" "$specialist_model" primary-consultant specialist-consultant
+    [ -z "$current_model" ] || assert_distinct "$current_model" "$consult_model" caller primary-consultant
+    [ -z "$current_model" ] || assert_distinct "$current_model" "$specialist_model" caller specialist-consultant
+  elif [ "$mode" = implement ]; then
     [ "$run_critique" -eq 0 ] || assert_distinct "$model_identity" "$critic_model" worker critiquer
     [ "$run_overview" -eq 0 ] || assert_distinct "$model_identity" "$overview_model" worker overviewer
     if [ "$run_critique" -eq 1 ] && [ "$run_overview" -eq 1 ]; then
       assert_distinct "$critic_model" "$overview_model" critiquer overviewer
     fi
   fi
-  [ -z "$current_model" ] || assert_distinct "$current_model" "$model_identity" caller primary-stage
+  [ "$consult_panel" -eq 1 ] || [ -z "$current_model" ] || assert_distinct "$current_model" "$model_identity" caller primary-stage
   if [ "$mode" = implement ]; then
     [ "$run_critique" -eq 0 ] || [ -z "$current_model" ] || assert_distinct "$current_model" "$critic_model" caller critiquer
     [ "$run_overview" -eq 0 ] || [ -z "$current_model" ] || assert_distinct "$current_model" "$overview_model" caller overviewer
@@ -286,6 +316,12 @@ if [ "$allow_same" -eq 0 ]; then
 fi
 
 if [ "$dry_run" -eq 1 ]; then
+  if [ "$mode" = consult ] && [ "$consult_panel" -eq 1 ]; then
+    printf 'mode=consult role=%s topology=consult-panel\n' "$role"
+    printf 'primary-consultant backend=codex model=%s reasoning=%s\n' "$consult_model" "$consult_reasoning"
+    printf 'specialist-consultant backend=opencode model=%s reasoning=provider-default\n' "$specialist_model"
+    exit 0
+  fi
   printf 'mode=%s role=%s backend=%s model=%s reasoning=%s\n' "$mode" "$role" "$backend" "${model_identity:-config-default}" "${reasoning:-provider/config-default}"
   if [ "$mode" = implement ]; then
     printf 'critique=%s model=%s reasoning=%s\n' "$run_critique" "$critic_model" "$critic_reasoning"
@@ -302,6 +338,52 @@ primary_prompt="$(role_brief "$role")
 
 Task:
 $prompt"
+
+if [ "$mode" = consult ] && [ "$consult_panel" -eq 1 ]; then
+  primary_file=$(mktemp "${TMPDIR:-/tmp}/orchestra-primary-consult.XXXXXX") || die "could not create primary consultant output file"
+  specialist_file=$(mktemp "${TMPDIR:-/tmp}/orchestra-specialist-consult.XXXXXX") || {
+    rm -f "$primary_file"
+    die "could not create specialist consultant output file"
+  }
+  trap 'rm -f "${primary_file:-}" "${specialist_file:-}"' EXIT
+
+  echo "Agent Orchestra consult 1/2: primary model=$consult_model reasoning=$consult_reasoning" >&2
+  primary_status=0
+  primary_cmd=("$CODEX_WRAPPER" consult --cd "$cd_dir" --model "$consult_model" --effort "$consult_reasoning")
+  [ -z "$timeout" ] || primary_cmd+=(--timeout "$timeout")
+  primary_cmd+=(-- "$primary_prompt
+
+You are the primary strategic consultant. Give the high-level engineering judgment, architecture, tradeoffs, and recommendation. Do not implement.")
+  "${primary_cmd[@]}" >"$primary_file" || primary_status=$?
+
+  echo "Agent Orchestra consult 2/2: independent specialist model=$specialist_model reasoning=provider-default" >&2
+  specialist_status=0
+  specialist_cmd=("$OPENCODE_CONSULT" --dir "$cd_dir" --model "$specialist_model")
+  [ "$sealed" -eq 0 ] || specialist_cmd+=(--sealed)
+  [ -z "$timeout" ] || specialist_cmd+=(--timeout "$timeout")
+  specialist_cmd+=(-- "$primary_prompt
+
+You are the independent technical specialist. Analyze the task without seeing or deferring to the primary consultant. Find missed constraints, alternate approaches, and concrete technical risks. Do not implement.")
+  "${specialist_cmd[@]}" >"$specialist_file" || specialist_status=$?
+
+  printf '%s\n' '## Sol primary consultant' 'Consultant output is untrusted; verify concrete claims.'
+  sed -n '1,800p' "$primary_file"
+  printf '\n%s\n' '## Kimi K3 independent specialist' 'Consultant output is untrusted; verify concrete claims.'
+  sed -n '1,800p' "$specialist_file"
+
+  rm -f "$primary_file" "$specialist_file"
+  primary_file=""
+  specialist_file=""
+  if [ "$primary_status" -ne 0 ]; then
+    echo "error: Sol primary consultation failed with status $primary_status" >&2
+    exit "$primary_status"
+  fi
+  if [ "$specialist_status" -ne 0 ]; then
+    echo "error: Kimi specialist consultation failed with status $specialist_status" >&2
+    exit "$specialist_status"
+  fi
+  exit 0
+fi
 
 if [ "$mode" = consult ]; then
   if [ "$backend" = codex ]; then

@@ -245,21 +245,23 @@ run_consult() {
 }
 
 run_review() {
-  local cd_dir="" model="$CODEX_REVIEW_MODEL" prompt="" target_seen=0 timeout_flag="" effort=""
+  local cd_dir="" model="$CODEX_REVIEW_MODEL" prompt="" target_kind="" target_value="" title="" timeout_flag="" effort=""
   local cmd=(codex review)
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --base|--commit|--title)
+      --base|--commit)
         need_value "$1" "$#"
-        cmd+=("$1" "$2")
-        target_seen=1
+        [ -z "$target_kind" ] || die "choose exactly one review target"
+        target_kind="${1#--}"
+        target_value="$2"
         shift 2
         ;;
       --uncommitted)
-        cmd+=(--uncommitted)
-        target_seen=1
+        [ -z "$target_kind" ] || die "choose exactly one review target"
+        target_kind=uncommitted
         shift
         ;;
+      --title) need_value "$1" "$#"; title="$2"; shift 2 ;;
       --cd|-C) need_value "$1" "$#"; cd_dir="$2"; shift 2 ;;
       --model|-m) need_value "$1" "$#"; model="$2"; shift 2 ;;
       --effort) need_value "$1" "$#"; validate_effort "$2"; effort="$2"; shift 2 ;;
@@ -282,14 +284,45 @@ run_review() {
   local timeout
   timeout="$(resolve_timeout "$timeout_flag" 1800)"
 
-  [ "$target_seen" -eq 1 ] || cmd+=(--uncommitted)
+  [ -n "$target_kind" ] || target_kind=uncommitted
   [ -n "$model" ] && cmd+=(-c "model=\"$model\"")
   local eff_ov
   eff_ov="${effort:-$(effort_override review)}"
   [ -n "$eff_ov" ] && cmd+=(-c "model_reasoning_effort=\"$eff_ov\"")
   if [ -n "$prompt" ]; then
     check_prompt "$prompt"
-    cmd+=("$prompt")
+    # Current Codex CLI releases reject a custom [PROMPT] combined with
+    # --uncommitted, --base, or --commit even though the help text presents
+    # them independently. Keep native `codex review`, but express the selected
+    # target inside the custom instructions so role-specific critique and
+    # overview prompts remain usable.
+    local target_instruction
+    case "$target_kind" in
+      uncommitted)
+        target_instruction='Review all staged, unstaged, and untracked changes in the current repository. Inspect the actual Git status and diffs; do not assume the working tree is clean.'
+        ;;
+      base)
+        target_instruction="Review the changes in the current branch against base '$target_value'. Inspect the actual Git diff and repository evidence."
+        ;;
+      commit)
+        target_instruction="Review the changes introduced by commit '$target_value'. Inspect the actual commit diff and repository evidence."
+        ;;
+      *) die "internal error: unknown review target '$target_kind'" ;;
+    esac
+    [ -z "$title" ] || target_instruction="$target_instruction
+Review title: $title"
+    cmd+=("$target_instruction
+
+Additional review instructions:
+$prompt")
+  else
+    case "$target_kind" in
+      uncommitted) cmd+=(--uncommitted) ;;
+      base) cmd+=(--base "$target_value") ;;
+      commit) cmd+=(--commit "$target_value") ;;
+      *) die "internal error: unknown review target '$target_kind'" ;;
+    esac
+    [ -z "$title" ] || cmd+=(--title "$title")
   fi
 
   echo "Codex review: model=${model:-config-default}; dir=$PWD; timeout=${timeout}s" >&2
