@@ -36,6 +36,8 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [evidence-research-loop](skills/productivity/evidence-research-loop/) | productivity | Sharquille Andrew (self-authored on top of agent-orchestra) | this repo | MIT | 2026-07-06 |
 | [task-steps-ledger](skills/productivity/task-steps-ledger/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-28 |
 | [teach-complex-concepts](skills/productivity/teach-complex-concepts/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
+| [reasoning-moves](skills/productivity/reasoning-moves/) | productivity | Sharquille Andrew (self-authored on top of teach-complex-concepts) | this repo | MIT | 2026-08-08 |
+| [reasoning-gym](skills/productivity/reasoning-gym/) | productivity | Sharquille Andrew (self-authored on top of reasoning-moves and teach-complex-concepts) | this repo | MIT | 2026-08-08 |
 | [undo-obsidian-study-loop](skills/productivity/undo-obsidian-study-loop/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
 | [vet-skill](skills/engineering/vet-skill/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-13 |
 | [security-best-practices](skills/engineering/security-best-practices/) | engineering | OpenAI (openai/skills) | [github.com/openai/skills](https://github.com/openai/skills/tree/main/skills/.curated/security-best-practices) | Apache-2.0 | 2026-06-13 |
