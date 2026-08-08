@@ -6,8 +6,9 @@
 #   review     native codex review (defaults to --uncommitted)
 #   implement  guarded workspace-write codex exec (bounded delegation)
 #
-# Purpose: offload token-heavy work to Codex (config-default flagship,
-# gpt-5.6-sol under current policy) so Claude usage and rate limits are
+# Purpose: offload token-heavy analysis and review to Codex. In the default
+# orchestra pipeline Luna/max critiques and Sol/xhigh performs final overview;
+# OpenCode Go's latest DeepSeek V4 Flash at max is the implementation worker.
 # preserved for conductor judgment, verification, and final edits.
 #
 # SAFETY (do not weaken):
@@ -19,30 +20,52 @@
 #   * Codex output is UNTRUSTED advisory text/diffs. The caller verifies.
 #   * Every mode is time-bounded by default so a stalled call cannot hang the
 #     conductor. Override with --timeout N (0 disables) or CODEX_AGENT_TIMEOUT.
-#   * Usage-limit guard: all modes clamp a max/ultra effort config down to
-#     xhigh (user policy — heavy modes devour Plus-subscription limits).
+#   * Effort is explicit by role: review defaults to max; direct Codex
+#     implement/consult calls default to high;
+#     ultra remains refused because it is not a documented reasoning effort.
+#   * implement requires explicit scope and an explicit plan-gate decision.
+#     It snapshots HEAD plus every out-of-scope file/index entry, including
+#     ignored files, and rejects scoped symlinks or secret-shaped descendants.
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=write-scope.sh
+. "$SCRIPT_DIR/write-scope.sh"
+
+CODEX_IMPLEMENT_MODEL="${ORCHESTRA_CODEX_IMPLEMENT_MODEL:-}"
+CODEX_REVIEW_MODEL="${ORCHESTRA_CODEX_REVIEW_MODEL:-gpt-5.6-luna}"
 
 usage() {
   cat <<'EOF'
 Usage:
   codex-agent.sh consult [--cd DIR] [--model MODEL] [--effort E] [--with-mcp] [--timeout N] -- "<prompt>"
   codex-agent.sh review  [--cd DIR] [--base REF|--commit SHA|--uncommitted] [--model MODEL] [--effort E] [--timeout N] [--prompt TEXT]
-  codex-agent.sh implement --allow-write [--cd DIR] [--model MODEL] [--effort E] [--scope PATH]... [--allow-main] [--timeout N] -- "<task>"
+  codex-agent.sh implement --allow-write --scope PATH [--scope PATH]... (--plan-record FILE|--no-plan-gate) [--cd DIR] [--model MODEL] [--effort E] [--allow-main] [--timeout N] -- "<task>"
 
 Defaults:
   consult    read-only codex exec, MCP off, effort floored to high, 900s timeout
-  review     codex review --uncommitted, 1800s timeout
-  implement  workspace-write codex exec guarded by --allow-write, 3600s timeout
+  review     gpt-5.6-luna/max codex review --uncommitted, 1800s timeout
+  implement  config-model/high workspace-write codex exec, 3600s timeout
+
+Write scopes are required literal repository-relative path prefixes. The
+wrapper snapshots Git refs/config/reflogs, the index, and all out-of-scope
+filesystem entries (including ignored files and empty directories), tolerates
+a dirty baseline, and fails if anything outside scope changes. It never
+reverts changes. Scoped symlinks, external repository symlinks, and existing
+secret-shaped descendants are refused. Use --scope . only for explicit
+whole-repository authority.
+
+Every implementation must explicitly choose --plan-record FILE for a selected
+gate, or --no-plan-gate for a consciously ungated low-risk task. A plan record
+needs: plan: P<n>, status: accepted, independent-review: complete, and
+blocking-findings: none|resolved.
 
 Timeout precedence: --timeout > CODEX_AGENT_TIMEOUT > per-mode default. 0 disables.
-Model: intentionally not pinned; with no --model, Codex uses ~/.codex/config.toml
-(e.g. gpt-5.6-sol), so nothing here goes stale. Override per call with --model.
-Effort: --effort low|medium|high|xhigh wins over config; max/ultra are refused
-(they devour subscription usage limits) and a max/ultra config is clamped to
-xhigh. Default is high (field-tested; medium output quality was not
-acceptable); use xhigh per call for the hardest tasks.
+Model: consult/direct implement use Codex config unless overridden; review
+defaults to gpt-5.6-luna. Override any call with --model.
+Effort: --effort none|low|medium|high|xhigh|max wins. Review defaults to max;
+direct implement/consult default to at least high. Ultra is refused.
 
 The wrapper never uses danger-full-access, never bypasses sandbox/approvals,
 and instructs Codex to never commit or push.
@@ -121,27 +144,43 @@ run_bounded() {
   fi
 }
 
-# Effort policy (user: Plus subscription, gpt-5.6-sol lane; field-tested
-# 2026-07-10 — Sol medium output quality was unacceptable despite OpenAI
-# staff guidance, so the default stands at high; xhigh per call for the
-# hardest tasks; max/ultra devour usage limits and stay banned):
-#   * per-call --effort accepts low|medium|high|xhigh and wins over config;
-#     max/ultra are refused outright;
-#   * without --effort, every mode clamps a max/ultra config down to xhigh,
-#     and consults floor a low/medium config up to high.
+# Implement mode must inspect the working tree after Codex exits, so it cannot
+# exec-replace this wrapper like consult/review do.
+run_bounded_wait() {
+  local seconds="$1"
+  shift
+  if [ -z "$seconds" ] || [ "$seconds" = "0" ]; then
+    "$@" </dev/null
+  elif command -v timeout >/dev/null 2>&1; then
+    timeout "$seconds" "$@" </dev/null
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$seconds" "$@" </dev/null
+  elif command -v perl >/dev/null 2>&1; then
+    perl -e 'my $t = shift; alarm $t; exec @ARGV or exit 127;' \
+      "$seconds" "$@" </dev/null
+  else
+    echo "warning: no timeout, gtimeout, or perl found; running unbounded" >&2
+    "$@" </dev/null
+  fi
+}
+
+# User policy: Go DeepSeek V4 Flash/max implements, Luna/max critiques,
+# and Sol/xhigh overviews. This wrapper owns the two Codex stages; explicit
+# per-call selection always wins.
 validate_effort() {
   case "$1" in
-    low|medium|high|xhigh) : ;;
-    max|ultra) die "--effort $1 refused (policy: max/ultra devour Plus usage limits; ceiling is xhigh)" ;;
-    *) die "invalid --effort '$1' (use low, medium, high, or xhigh)" ;;
+    none|low|medium|high|xhigh|max) : ;;
+    ultra) die "--effort ultra refused (not a documented Codex reasoning effort; use max)" ;;
+    *) die "invalid --effort '$1' (use none, low, medium, high, xhigh, or max)" ;;
   esac
 }
 
-# Prints the override effort, or nothing when the config value stands.
+# Prints the mode default/floor, or nothing when an adequate config value stands.
 effort_override() {
   # effort_override <mode>
   #
-  # Reads the configured effort so a max/ultra config can be clamped. TOML
+  # Reads the configured effort so consult/direct implement calls can floor
+  # weak defaults to high. TOML
   # accepts single quotes, double quotes, or none, so capture the first
   # alphabetic run after '=' rather than assuming one quote style — a
   # double-quote-only pattern left `eff` holding the whole config line.
@@ -153,10 +192,14 @@ effort_override() {
   local cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
   local eff
   eff=$(grep -E '^[[:space:]]*model_reasoning_effort' "$cfg" 2>/dev/null | head -1 | sed -E 's/.*=[^A-Za-z]*([A-Za-z]+).*/\1/')
-  case "$eff" in
-    max|ultra) printf 'xhigh' ;;
-    high|xhigh) : ;;
-    *) if [ "$1" = "consult" ]; then printf 'high'; fi ;;
+  case "$1" in
+    review) printf 'max' ;;
+    implement|consult)
+      case "$eff" in
+        high|xhigh|max) : ;;
+        *) printf 'high' ;;
+      esac
+      ;;
   esac
   return 0
 }
@@ -202,7 +245,7 @@ run_consult() {
 }
 
 run_review() {
-  local cd_dir="" model="" prompt="" target_seen=0 timeout_flag="" effort=""
+  local cd_dir="" model="$CODEX_REVIEW_MODEL" prompt="" target_seen=0 timeout_flag="" effort=""
   local cmd=(codex review)
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -254,7 +297,8 @@ run_review() {
 }
 
 run_implement() {
-  local cd_dir="$PWD" model="" prompt="" allow_write=0 allow_main=0 timeout_flag="" effort=""
+  local cd_dir="$PWD" model="$CODEX_IMPLEMENT_MODEL" prompt="" allow_write=0 allow_main=0 timeout_flag="" effort=""
+  local plan_record="" no_plan_gate=0 plan_id="" scope_state=""
   local scopes=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -262,6 +306,8 @@ run_implement() {
       --model|-m) need_value "$1" "$#"; model="$2"; shift 2 ;;
       --effort) need_value "$1" "$#"; validate_effort "$2"; effort="$2"; shift 2 ;;
       --scope) need_value "$1" "$#"; scopes+=("$2"); shift 2 ;;
+      --plan-record) need_value "$1" "$#"; plan_record="$2"; shift 2 ;;
+      --no-plan-gate) no_plan_gate=1; shift ;;
       --timeout) need_value "$1" "$#"; timeout_flag="$2"; shift 2 ;;
       --allow-write) allow_write=1; shift ;;
       --allow-main) allow_main=1; shift ;;
@@ -273,11 +319,21 @@ run_implement() {
   done
 
   [ "$allow_write" -eq 1 ] || die "implementation requires --allow-write"
+  [ "${#scopes[@]}" -gt 0 ] || die "implementation requires at least one explicit --scope (use --scope . for the whole repository)"
+  if [ -n "$plan_record" ] && [ "$no_plan_gate" -eq 1 ]; then
+    die "choose exactly one of --plan-record FILE or --no-plan-gate"
+  fi
+  if [ -z "$plan_record" ] && [ "$no_plan_gate" -eq 0 ]; then
+    die "implementation requires an explicit gate decision: --plan-record FILE or --no-plan-gate"
+  fi
+  [ -z "$plan_record" ] || plan_id="$(orchestra_validate_plan_record "$plan_record")" || exit $?
   [ -d "$cd_dir" ] || die "directory not found: $cd_dir"
   check_prompt "$prompt"
   ensure_codex
   # workspace-write outside version control has no diff/rollback story; refuse.
   is_git_repo "$cd_dir" || die "refusing workspace-write outside a git repository: $cd_dir"
+  cd_dir="$(git -C "$cd_dir" rev-parse --show-toplevel)" || die "could not resolve repository root: $cd_dir"
+  cd_dir="$(cd "$cd_dir" && pwd -P)" || die "could not canonicalize repository root: $cd_dir"
 
   local branch
   branch="$(current_branch "$cd_dir")"
@@ -290,16 +346,28 @@ run_implement() {
   local timeout
   timeout="$(resolve_timeout "$timeout_flag" 3600)"
 
-  local scope_text="No explicit scope paths were provided. Infer the minimal safe scope from the task."
-  if [ "${#scopes[@]}" -gt 0 ]; then
-    scope_text="Only modify these paths unless the task is impossible without expanding scope:"
-    local scope
-    for scope in "${scopes[@]}"; do
-      [ -n "$scope" ] || die "--scope requires a non-empty path"
-      scope_text="$scope_text
+  local scope normalized_scope
+  local normalized_scopes=()
+  for scope in "${scopes[@]}"; do
+    normalized_scope="$(orchestra_normalize_scope "$scope")" || exit $?
+    normalized_scopes+=("$normalized_scope")
+  done
+  scopes=("${normalized_scopes[@]}")
+  orchestra_validate_scope_tree "$cd_dir" "${scopes[@]}" || exit $?
+
+  scope_state="$(mktemp -d "${TMPDIR:-/tmp}/orchestra-scope-state.XXXXXX")" || die "could not create scope snapshot"
+  ORCHESTRA_SCOPE_STATE="$scope_state"
+  trap 'orchestra_scope_snapshot_destroy "${ORCHESTRA_SCOPE_STATE:-}"' EXIT
+  orchestra_scope_snapshot_create "$cd_dir" "$scope_state" "${scopes[@]}" || exit $?
+
+  local scope_text="Only modify these literal repository-relative path prefixes. If the task requires anything else, stop without editing outside them:"
+  for scope in "${scopes[@]}"; do
+    scope_text="$scope_text
 - $scope"
-    done
-  fi
+  done
+
+  local gate_text="No plan gate was selected for this low-risk task."
+  [ -z "$plan_id" ] || gate_text="The conductor accepted $plan_id; implement only that accepted plan."
 
   local guarded_prompt
   guarded_prompt="You are Codex running as a bounded implementation agent.
@@ -309,6 +377,9 @@ $prompt
 
 Scope:
 $scope_text
+
+Gate:
+$gate_text
 
 Rules:
 - Make the smallest correct patch.
@@ -326,7 +397,25 @@ Rules:
   cmd+=(-- "$guarded_prompt")
 
   echo "Codex implementation: workspace-write; model=${model:-config-default}; cd=$cd_dir; branch=${branch:-unknown}; timeout=${timeout}s" >&2
-  run_bounded "$timeout" "${cmd[@]}"
+  local run_status=0 scope_status=0
+  run_bounded_wait "$timeout" "${cmd[@]}" || run_status=$?
+  orchestra_scope_snapshot_verify "$cd_dir" "$scope_state" "after delegation" "${scopes[@]}" || scope_status=$?
+  orchestra_scope_snapshot_destroy "$scope_state" || true
+  ORCHESTRA_SCOPE_STATE=""
+
+  echo >&2
+  echo "Working-tree changes (review the diff before accepting):" >&2
+  git -C "$cd_dir" status --porcelain >&2 || true
+
+  if [ "$scope_status" -eq 1 ]; then
+    echo "error: Codex changed repository state outside --scope" >&2
+    return 3
+  fi
+  if [ "$scope_status" -ne 0 ]; then
+    echo "error: Codex scope enforcement could not inspect the final repository state" >&2
+    return 4
+  fi
+  return "$run_status"
 }
 
 main() {

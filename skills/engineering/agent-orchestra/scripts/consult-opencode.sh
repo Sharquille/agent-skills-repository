@@ -4,16 +4,16 @@
 #
 # Usage: consult-opencode.sh (--lane LANE | --model provider/model) [options] "<prompt>"
 #   --lane LANE         Shortcut for the standard delegation lanes:
-#                         code      -> openrouter/moonshotai/kimi-k2.7-code
-#                         reasoning -> openrouter/minimax/minimax-m3 (high reasoning)
-#                         context   -> openrouter/deepseek/deepseek-v4-flash (cheap, ~1M ctx)
+#                         code      -> opencode-go/kimi-k3
+#                         reasoning -> opencode-go/kimi-k3 (task-shape alias)
+#                         context   -> opencode-go/deepseek-v4-flash (~1M ctx)
 #                         prose     -> openrouter/xiaomi/mimo-v2.5-pro
 #                       Override per-lane via ORCHESTRA_LANE_CODE / _REASONING /
 #                       _CONTEXT / _PROSE.
 #   --model M           Explicit provider/model (wins if given after --lane).
-#   --reasoning EFFORT  OpenRouter reasoning effort: low|medium|high. Defaults to
-#                       high for the reasoning lane, unset otherwise. OpenRouter
-#                       models only; ignored for other providers.
+#   --reasoning EFFORT  Reasoning selection: none|low|medium|high|xhigh|max.
+#                       OpenRouter receives an API effort; Go DeepSeek maps
+#                       supported efforts to provider-specific OpenCode variants.
 #   --sealed            Deny file access too (read/glob/grep/list). Use when all
 #                       context is inline; removes exploratory tool round-trips.
 #   --timeout SECONDS   Fail fast if the provider stalls (default 240; 0 = none).
@@ -41,10 +41,10 @@
 
 set -uo pipefail
 
-LANE_CODE="${ORCHESTRA_LANE_CODE:-openrouter/moonshotai/kimi-k2.7-code}"
+LANE_CODE="${ORCHESTRA_LANE_CODE:-opencode-go/kimi-k3}"
 LANE_PROSE="${ORCHESTRA_LANE_PROSE:-openrouter/xiaomi/mimo-v2.5-pro}"
-LANE_REASONING="${ORCHESTRA_LANE_REASONING:-openrouter/minimax/minimax-m3}"
-LANE_CONTEXT="${ORCHESTRA_LANE_CONTEXT:-openrouter/deepseek/deepseek-v4-flash}"
+LANE_REASONING="${ORCHESTRA_LANE_REASONING:-opencode-go/kimi-k3}"
+LANE_CONTEXT="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4-flash}"
 
 MODEL="${OPENCODE_CONSULT_MODEL:-}"
 REASONING=""
@@ -95,17 +95,17 @@ while [ "$#" -gt 0 ]; do
       case "$2" in
         code) MODEL="$LANE_CODE" ;;
         prose|writing) MODEL="$LANE_PROSE" ;;
-        reasoning|architecture) MODEL="$LANE_REASONING"; REASONING_DEFAULT="high" ;;
+        reasoning|architecture) MODEL="$LANE_REASONING" ;;
         context|longcontext) MODEL="$LANE_CONTEXT" ;;
         *) die "unknown lane '$2' (use code, reasoning, context, or prose)" ;;
       esac
       shift 2
       ;;
     --reasoning)
-      [ "$#" -ge 2 ] || die "--reasoning requires low, medium, or high"
+      [ "$#" -ge 2 ] || die "--reasoning requires none, low, medium, high, xhigh, or max"
       case "$2" in
-        low|medium|high) REASONING="$2" ;;
-        *) die "invalid reasoning effort '$2' (use low, medium, or high)" ;;
+        none|low|medium|high|xhigh|max) REASONING="$2" ;;
+        *) die "invalid reasoning effort '$2' (use none, low, medium, high, xhigh, or max)" ;;
       esac
       shift 2
       ;;
@@ -173,12 +173,25 @@ done
 [ -n "$MODEL" ] || die "no model given; pass --lane code|reasoning|context|prose, --model provider/model, or set OPENCODE_CONSULT_MODEL"
 case "$MODEL" in
   */*) : ;;
-  *) die "model must use OpenCode provider/model form, for example openrouter/moonshotai/kimi-k2.7-code" ;;
+  *) die "model must use OpenCode provider/model form, for example opencode-go/kimi-k3" ;;
 esac
 
-# Reasoning effort: explicit --reasoning wins; otherwise the lane default
-# (high for the MiniMax reasoning lane). Only applied to OpenRouter models.
+# Reasoning effort: explicit --reasoning wins; otherwise the lane default.
 REASONING="${REASONING:-$REASONING_DEFAULT}"
+
+# OpenCode expresses reasoning for Go models as a model variant. Keep an
+# explicit --variant authoritative; otherwise map DeepSeek's native efforts.
+if [ -n "$VARIANT" ] && [ -n "$REASONING" ]; then
+  die "choose --reasoning or --variant, not both"
+fi
+if [ -z "$VARIANT" ] && [ "$MODEL" = "opencode-go/deepseek-v4-flash" ]; then
+  case "$REASONING" in
+    low|high|max) VARIANT="$REASONING" ;;
+    xhigh) VARIANT="max" ;;
+    ''|none) : ;;
+    *) die "Go DeepSeek V4 supports low, high, or max reasoning" ;;
+  esac
+fi
 
 [ -n "$DIR" ] || DIR="$PWD"
 [ -d "$DIR" ] || die "directory not found: $DIR"
@@ -234,6 +247,9 @@ case "$MODEL" in
       routing="$routing,\"quantizations\":[$qjson]"
     fi
     optbody="\"provider\":{$routing}"
+    if [ "$model_id" = "deepseek/deepseek-v4-flash-0731" ]; then
+      optbody="$optbody,\"temperature\":1,\"top_p\":0.95"
+    fi
     [ -n "$MAX_TOKENS" ] && optbody="$optbody,\"max_tokens\":$MAX_TOKENS"
     [ -n "$REASONING" ] && optbody="$optbody,\"reasoning\":{\"effort\":\"$REASONING\"}"
     provider_block=",\"provider\":{\"openrouter\":{\"models\":{\"$model_id\":{\"options\":{$optbody}}}}}"

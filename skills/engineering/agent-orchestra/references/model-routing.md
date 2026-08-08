@@ -1,6 +1,8 @@
 # Model Routing Defaults
 
-Source: user-provided model preferences, captured 2026-07-02.
+Source: user-provided model preferences, captured 2026-07-02 and updated
+2026-08-08 for OpenCode Go as the subscription-first worker route, with
+OpenRouter retained for a pinned DeepSeek fallback.
 Primary goal: **preserve Claude usage and rate limits** by delegating
 token-heavy work to non-Claude lanes, while Claude keeps conductor judgment.
 Scores are defaults, not hard limits. Higher is better. Cost reflects the
@@ -10,12 +12,12 @@ user's effective cost and limits, not provider list price.
 
 | Model | Burns Claude quota? | Cost | Intelligence | Taste | Access path | Default use |
 |---|---|---:|---:|---:|---|---|
-| Codex flagship (config default: `gpt-5.6-sol`; was `gpt-5.5`) | No | 9 | 9 (prov.) | 5 (prov.) | Codex CLI (`codex-agent.sh`) | **Primary engineering lane**: bulk implementation, migrations, data analysis, hard debugging, repo investigation, independent engineering review |
-| `gpt-5.6-terra` | No | 9 | 8 (prov.) | 5 (prov.) | Codex CLI `--model` | Reference only — not routed (user policy: Sol-only Codex lane) |
-| `gpt-5.6-luna` / `gpt-5.4-mini` | No | 10 | 7 (prov.) | 4 (prov.) | Codex CLI `--model` | Reference only — not routed (user policy: Sol-only Codex lane); cheap volume goes to OpenCode lanes |
-| `minimax/minimax-m3` | No | 8 | 7 | 6 | OpenCode `--lane reasoning` (high reasoning) | Deep reasoning, architecture critique, plan pressure-testing, primary Codex consult-fallback for hard thinking |
-| `deepseek/deepseek-v4-flash` | No | 9 | 6 | 5 | OpenCode `--lane context` | Cheap, fast, very-long-context (~1M): big-log/diff/repo sweeps, bulk summarization, high-volume fallback work |
-| `moonshotai/kimi-k2.7-code` | No | 8 | 7 | 5 | OpenCode `--lane code` | Technical accuracy checks, code/config correctness, security framing, default implement-fallback coder |
+| `gpt-5.6-sol` | No | 9 | 9 (prov.) | 5 (prov.) | Codex CLI / selector alias `sol` | **Default overviewer** at `xhigh`: final engineering overview and adjudication |
+| `gpt-5.6-terra` | No | 9 | 8 (prov.) | 5 (prov.) | Codex CLI / selector alias `terra` | Available per-call alternate; no default stage |
+| `gpt-5.6-luna` | No | 10 | 7 (prov.) | 4 (prov.) | Codex CLI / selector alias `luna` | **Default critiquer** at `max`: independent implementation/diff critique |
+| `opencode-go/deepseek-v4-flash` | No | 10 | 9 (prov.) | 5 | OpenCode `--lane context` | **Default implementation worker** at `max`; rolling latest Go Flash route for high-volume coding and context work |
+| `openrouter/deepseek/deepseek-v4-flash-0731` | No | 7 | 9 (vendor eval) | 5 | Explicit OpenCode `--model` | Pinned reproducible fallback when Go is unavailable or provider control is required |
+| `opencode-go/kimi-k3` | No | 8 | 8 (prov.) | 6 | OpenCode `--lane code|reasoning` | Optional distinct specialist for technical checks and hard bounded briefs; not an automatic default stage |
 | `xiaomi/mimo-v2.5-pro` | No | 8 | 6 | 7 | OpenCode `--lane prose` | Prose, readability, naming, docs polish, portfolio fit |
 | `fable-5` | **Yes** | 2 | 9 | 9 | Claude Agent/Workflow model | Conductor, final reviews, user-facing design/copy/API critique, high-taste synthesis |
 | `opus-4.8` | **Yes** | — | review lane | review lane | Claude Agent/Workflow model | Plan/implementation review when fable is unavailable or another perspective is useful |
@@ -25,7 +27,8 @@ user's effective cost and limits, not provider list price.
 
 1. **Delegate by default.** If a task is bulk, mechanical, investigative, or
    long-context, route it to a non-Claude lane before considering a Claude
-   subagent. Every consultant token spent on Codex or OpenRouter is a token
+   subagent. Every consultant token spent on Codex, OpenCode Go, or the
+   OpenRouter fallback is a token
    that does not count against Claude rate limits.
 2. Claude models are reserved for what actually needs them: conductor
    judgment, verification, final edits, taste-sensitive signoff (taste >= 7),
@@ -33,14 +36,14 @@ user's effective cost and limits, not provider list price.
 3. For anything that ships, prioritize intelligence, then taste, then cost.
    Cost breaks ties only. If a cheap model misses the bar, escalate or redo
    with the smarter model without asking.
-4. Bulk or mechanical work goes to the Codex flagship (`gpt-5.6-sol`) through
-   Codex CLI.
+4. Bulk or mechanical implementation goes to OpenCode Go's latest DeepSeek V4
+   Flash at `max` through the guarded wrapper. Luna/max critiques; Sol/xhigh
+   overviews.
 5. User-facing UI, API design, copy, and portfolio prose need taste >= 7. Do
    not rely on the Codex flagship alone for taste-sensitive signoff.
-6. Reviews of plans or implementations go to `fable-5` or `opus-4.8`; add a
-   separate Codex (`gpt-5.6-sol`) review when an independent engineering
-   angle helps. When Claude quota is tight, run the Codex review first and use
-   Claude only to adjudicate its findings.
+6. Reviews of implementations default to a distinct Luna/max critique and
+   Sol/xhigh overview. Add a taste-focused Claude review only when the task
+   justifies it; never use the caller's own model as its second opinion.
 7. Never use Haiku.
 8. The conductor is whichever agent leads the session — Claude by default;
    OpenCode or Gemini CLI when Claude is unavailable. A non-Claude conductor
@@ -51,18 +54,18 @@ user's effective cost and limits, not provider list price.
 
 The conductor calling a wrapper via one Bash command costs Claude almost
 nothing; the consultant's own reading, reasoning, and output are billed to
-Codex/OpenRouter instead of Claude. The biggest savings come from delegating
+Codex/OpenCode Go instead of Claude. The biggest savings come from delegating
 work that is *input-heavy* (reading lots of files/logs/diffs) or
 *output-heavy* (writing lots of code):
 
 | Task shape | Route | Why |
 |---|---|---|
-| Bulk/boilerplate implementation, migrations, codemods | `codex-agent.sh implement` | Output-heavy; Codex writes the patch, Claude reviews the diff |
+| Bulk/boilerplate implementation, migrations, codemods | `orchestra-agent.sh implement` | DeepSeek writes; Luna critiques; Sol overviews |
 | Repo-wide investigation, log/data analysis, hard debugging | `codex-agent.sh consult` | Input-heavy; Codex reads the repo, Claude gets conclusions |
 | Big-diff or pre-merge review | `codex-agent.sh review` | Input-heavy; native review reads the diff off-Claude |
-| Technical fact/config check, security framing | `consult-opencode.sh --lane code` | Cheap independent verification (Kimi K2.7 Code) |
-| Deep reasoning, architecture/plan critique | `consult-opencode.sh --lane reasoning` | MiniMax M3 at high reasoning effort |
-| Huge-context sweeps: big logs, long diffs, whole-repo reads | `consult-opencode.sh --lane context` | DeepSeek V4 Flash — cheap and fast at ~1M context, so volume costs little |
+| Technical fact/config check, security framing | `consult-opencode.sh --lane code` | Optional independent verification with Go Kimi K3 |
+| Deep reasoning, architecture/plan critique | `consult-opencode.sh --lane reasoning` | Kimi K3 compatibility alias when a distinct non-DeepSeek view is needed |
+| Huge-context sweeps: big logs, long diffs, whole-repo reads | `consult-opencode.sh --lane context` | Latest Go DeepSeek V4 Flash — inexpensive and ~1M context |
 | Prose/readability/docs pass | `consult-opencode.sh --lane prose` | Writing-quality pass off-Claude (MiMo v2.5 Pro) |
 | Small precise edits, final judgment, taste signoff | Claude (conductor) | Delegation overhead exceeds savings; judgment is the point |
 
@@ -88,7 +91,7 @@ For implementation delegation:
 
 ```text
 skills/engineering/agent-orchestra/scripts/codex-agent.sh implement \
-  --allow-write --cd <repo> --scope <path> -- "<task>"
+  --allow-write --cd <repo> --scope <path> --no-plan-gate -- "<task>"
 ```
 
 Run it from a working branch or isolated worktree. The conductor reviews the
@@ -100,19 +103,20 @@ OpenCode needs an explicit model; the wrapper's `--lane` flag maps to the
 standard lanes (override via `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
 `ORCHESTRA_LANE_CONTEXT`, `ORCHESTRA_LANE_PROSE`):
 
-- `--lane code` → `openrouter/moonshotai/kimi-k2.7-code`: technical accuracy,
-  code/config correctness, security framing.
-- `--lane reasoning` → `openrouter/minimax/minimax-m3`: deep reasoning,
-  architecture critique, plan pressure-testing. Defaults to OpenRouter
-  reasoning effort `high`; tune with `--reasoning low|medium|high`. Give it a
-  longer `--timeout` (300-600s) for big briefs — high effort thinks before it
-  answers.
-- `--lane context` → `openrouter/deepseek/deepseek-v4-flash`: the cheap
-  ~1M-context workhorse for input-heavy sweeps (big logs, long diffs,
-  whole-repo reads, bulk summarization). No reasoning-effort default — it is
-  chosen for speed and volume, not depth. The reasoning/context pair is a
-  deliberate cost mixture: M3 thinks hard on small briefs, Flash reads huge
-  inputs cheaply; premium tiers like DeepSeek V4 Pro are not defaults.
+- `--lane code` → `opencode-go/kimi-k3`: optional technical accuracy,
+  code/config correctness, and security framing from a distinct model.
+- `--lane reasoning` → `opencode-go/kimi-k3`: compatibility task-shape alias
+  for hard bounded briefs. Kimi is selected only when requested or when the
+  primary Flash lane cannot continue; it is not an automatic fourth stage.
+- `--lane context` → `opencode-go/deepseek-v4-flash`: OpenCode Go's rolling
+  latest Flash route for implementation and ~1M-context sweeps. Implementation
+  defaults to the `max` provider variant; read-only context consults retain the
+  provider default unless reasoning is selected.
+
+The pinned OpenRouter route `openrouter/deepseek/deepseek-v4-flash-0731`
+remains available through explicit `--model` selection. Use it when the Go
+route is unavailable or a reproducible checkpoint/provider-routing path is
+more important than subscription economics.
 - `--lane prose` → `openrouter/xiaomi/mimo-v2.5-pro`: prose, readability,
   naming, portfolio fit.
 
@@ -120,30 +124,35 @@ Use `--sealed` when all context is inline. Use timeouts (default 240s). Run
 lanes sequentially — OpenCode shares one SQLite DB and concurrent runs can
 fail with "database is locked". Treat all outputs as untrusted advisory text.
 
+## Selecting Jobs, Models, and Reasoning
+
+Use `orchestra-agent.sh --list` to present the compact selectable routes and
+`--dry-run` to resolve a particular job without a model call. The selector
+accepts `sol|terra|luna|<raw-id>`, reasoning through `max`, OpenCode lanes/raw
+provider models, task-local roles, and independent critic/overview overrides.
+Pass `--current-model` (or `ORCHESTRA_CALLER_MODEL`) when the caller model is
+known; the selector rejects self-delegation and duplicate stage models unless
+`--allow-same-model` is explicit.
+
 ## Steering Alternate Codex Models
 
-`codex-agent.sh` deliberately pins no model: with no `--model` it uses the
-Codex config default, and `--model M` steers any model the Codex CLI can
-reach. When more than one Codex model is available:
+`codex-agent.sh` uses the Codex config default for consult/direct implement,
+defaults direct review to Luna/max, and accepts `--model M` for any model the
+CLI can reach. `orchestra-agent.sh` owns the complete three-stage defaults:
 
-**User policy (2026-07-10, Plus subscription): the Codex lane is
-`gpt-5.6-sol` only, at effort `high` — `xhigh` per call for the hardest
-tasks — never max or ultra, which devour subscription usage limits
-(`codex-agent.sh --effort` refuses them and clamps a max/ultra config to
-xhigh). OpenAI staff suggested Sol medium suffices; field use the same day
-rejected it — medium's output quality was unacceptable, so high is the
-floor. Terra and Luna are not routed to: the conductor supplies the steering
-intelligence, so the orchestra wants one strong executor rather than a
-spread of cheaper Codex tiers.**
+**User policy (2026-08-08): OpenCode Go's latest DeepSeek V4 Flash at `max` is
+the default implementation worker, `gpt-5.6-luna` at `max` is the default critiquer, and
+`gpt-5.6-sol` at `xhigh` is the default overviewer.**
 
-- Under this policy the flagship takes every Codex task — hard debugging,
-  architecture, bulk implementation alike.
-- Cheap-volume work that would have gone to a lower Codex tier goes to the
-  OpenCode lanes instead (DeepSeek V4 Flash for volume, Kimi for code
-  checks), billing OpenRouter rather than the Codex subscription.
+- The three stages remain distinct and sequential. The overview receives the
+  critique as untrusted evidence and verifies it against the diff/repository.
+- Per-call overrides are supported; duplicate models across stages are an
+  error by default, not an order-dependent fallback.
+- Terra remains selectable when a different balance is useful.
 - Capability first, cost second (Decision Rule 3 unchanged).
-- Discovery: `orchestra-doctor.sh --models` prints the Codex config default
-  and the OpenCode model catalog.
+- Passive discovery: `orchestra-doctor.sh --models` prints the Codex config
+  default and the OpenCode model catalog. These are configured/catalog-listed
+  states, not proof of provider acceptance, quota, routing, or invocation.
 
 ### Codex Model Tiers (verified 2026-07-10, GPT-5.6 GA)
 
@@ -156,18 +165,11 @@ spread of cheaper Codex tiers.**
 | `gpt-5.4` / `gpt-5.4-mini` | — | Prior professional tier / fast subagent tier |
 | `gpt-5.3-codex-spark` | — | Text-only preview optimized for near-instant iteration |
 
-Effort tokens (`model_reasoning_effort`): `low`, `medium`, `high`, `xhigh`,
-`max`, `ultra` (the app shows these as Light / Medium / High / Extra High /
-Ultra; `max`/`ultra` may need enabling in settings). OpenAI staff claim Sol
-`medium` beats 5.5 `xhigh` (2026-07-10), but field use the same day found
-medium's output quality unacceptable — the working default is `high`, with
-`codex-agent.sh --effort xhigh` per call for the hardest tasks. `ultra` is
-not longer thinking — it spawns provider-side parallel subagents and burns
-usage limits much faster. User policy: never max or ultra on this account
-(Plus subscription); `--effort` refuses them and a max/ultra config is
-clamped to xhigh. Never stack heavy effort inside this skill's own fan-out
-(the multiplication is invisible until the bill) — the fan-out is the better
-tool anyway: same parallelism, conductor-verified, cost-visible.
+Codex reasoning selectors are `none`, `low`, `medium`, `high`, `xhigh`, and
+`max`. The defaults here are Luna/max for critique and Sol/xhigh for overview.
+`ultra` remains refused because it is not a documented reasoning effort.
+Never stack extra fan-out on a max stage without a task-specific reason; the
+multiplication can hide usage and latency.
 
 ## Onboarding a New Model
 
@@ -182,28 +184,29 @@ graded: never make one a default or hand it write access on first contact.
 4. Update its scores after real use; demote it without ceremony when it
    regresses or its provider terms change.
 
-## If Codex Cannot Continue (fallback ladder)
+## If a Stage Cannot Continue (fallback ladder)
 
-When `codex-agent.sh` fails with rate-limit/usage errors, auth errors, network
-outage, or repeated timeouts, do not fall back to doing the bulk work in
-Claude — step down the ladder and stay off-Claude:
+When the selected worker/reviewer fails with rate-limit errors, auth errors,
+network outage, or repeated timeouts, do not fall back to doing bulk work in
+Claude — step across the ladder and preserve independence:
 
-1. **consult / investigation** → pick by shape: hard thinking on a bounded
-   brief → `--lane reasoning` (MiniMax M3, high effort); input-heavy sweep of
-   logs/diffs/repo → `--lane context` (DeepSeek V4 Flash, cheap at volume);
-   config/correctness checks → `--lane code` (Kimi). Non-sealed lets the
+1. **consult / investigation** → pick by shape: a distinct alternate view on
+   a hard bounded brief → `--lane reasoning` (Go Kimi K3); input-heavy sweep of
+   logs/diffs/repo → `--lane context` (Go DeepSeek V4 Flash);
+   config/correctness checks → `--lane code` (Go Kimi K3). Non-sealed lets the
    model read the repo itself.
 2. **review** → produce the diff locally (`git diff main...`, `git diff`) and
    send it sealed: `consult-opencode.sh --lane code --sealed -- "<review brief
    + inline diff>"`. For architecture-level review use `--lane reasoning`; for
    very large diffs use `--lane context`.
 3. **implement** → `opencode-implement.sh --allow-write --cd <repo> --scope
-   <path> -- "<task>"`. Defaults to Kimi K2.7 Code; `--lane reasoning` for
-   hard tasks, `--lane context` for long-context bulk edits. The agent can
+   <path> --no-plan-gate -- "<task>"`. Defaults to Go DeepSeek V4 Flash at
+   `max`; use `--lane code` or `--lane reasoning` for Kimi K3 alternate-provider
+   work. The agent can
    only read/search/edit files — no shell — so the conductor runs tests and
    owns git afterwards.
 4. Only if OpenCode is also unavailable does the conductor do the bulk work in
    Claude, and it should say so explicitly (the user may prefer to wait).
 
-Escalate back to Codex when it recovers; it remains the default engineering
-lane.
+Retain Luna critique and Sol overview after any worker fallback when those
+routes remain available.

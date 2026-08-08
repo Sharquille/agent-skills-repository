@@ -1,6 +1,6 @@
 ---
 name: agent-orchestra
-description: "Wrapper-only agentic CLI orchestration, conductor-agnostic: whichever agent invokes it (Claude Code by default; OpenCode or Gemini CLI otherwise) is the intelligence and delegates token-heavy work to non-Claude lanes to preserve usage and rate limits, with an OpenCode fallback when Codex is rate-limited or down. Use when the user asks for an orchestra/orchestrator, wants to offload work to save Claude usage or avoid rate limits, asks any agent to access Codex, wants gpt-5.6 through Codex for consult/review/implementation, wants OpenCode specialist lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo), runs OpenCode as conductor, mentions replacing codex-consult/opencode-consult/consult-orchestrator, wants Codex without a plugin, needs multi-model review, wants parallel lanes with a run ledger, or needs cost-steered model routing (gpt-5.6 Sol/Terra/Luna, sonnet-5, opus-4.8, fable-5). Do not use for routine one-agent edits, secret-bearing prompts, or unrestricted autonomous writes."
+description: "Wrapper-only agentic CLI orchestration, conductor-agnostic: whichever agent invokes it (Claude Code by default; OpenCode or Gemini CLI otherwise) is the intelligence and delegates token-heavy work to non-Claude lanes to preserve usage and rate limits, with an OpenCode fallback when Codex is rate-limited or down. Use when the user asks for an orchestra/orchestrator, wants to offload work to save Claude usage or avoid rate limits, asks any agent to access Codex, wants gpt-5.6 through Codex for consult/review/implementation, wants OpenCode specialist lanes (Kimi K3, DeepSeek V4 Flash, MiMo), runs OpenCode as conductor, mentions replacing codex-consult/opencode-consult/consult-orchestrator, wants Codex without a plugin, needs multi-model review, wants parallel lanes with a run ledger, or needs cost-steered model routing (gpt-5.6 Sol/Terra/Luna, sonnet-5, opus-4.8, fable-5). Do not use for routine one-agent edits, secret-bearing prompts, or unrestricted autonomous writes."
 ---
 
 # Agent Orchestra
@@ -15,16 +15,18 @@ way when Claude is unavailable.
 
 The point is Claude-usage economics: Claude subscriptions rate-limit fast when
 Claude reads whole repos, writes bulk code, or chews through long diffs.
-Delegating that work to Codex (its config-default flagship tier — the
-`gpt-5.6-sol` class — is the primary engineering lane) and
-OpenCode lanes (Kimi K2.7 Code, MiniMax M3, DeepSeek V4 Flash, MiMo v2.5 Pro)
-moves the token burn onto Codex/OpenRouter quota instead, while Claude — the
+Delegating that work to the default three-stage pipeline — OpenCode Go's latest
+DeepSeek V4 Flash at `max` implements, `gpt-5.6-luna` at `max` critiques, and
+`gpt-5.6-sol` at `xhigh`
+overviews — plus the other OpenCode specialist lanes
+moves the token burn onto Codex/OpenCode Go quota instead, while Claude — the
 conductor — spends its limited budget on what actually needs it: scoping,
-verification, taste, and final judgment. When Codex itself is rate-limited,
-times out, or is down, the OpenCode lanes take over (see "If Codex Cannot
-Continue") so bulk work still stays off-Claude. The OpenCode lanes are
-themselves cost-tiered: MiniMax M3 thinks hard on small briefs, DeepSeek V4
-Flash reads huge inputs cheaply — premium API tiers are not defaults.
+verification, taste, and final judgment. When a selected stage is
+rate-limited, times out, or is down, the remaining distinct lanes provide the
+fallback ladder (see "If a Stage Cannot Continue") so bulk work still stays
+off-Claude. The OpenCode lanes are
+themselves cost-tiered: DeepSeek V4 Flash handles the high-volume work while
+Kimi K3 is available only when a distinct alternate specialist is useful.
 
 Use this as the canonical replacement for the old `codex-consult`,
 `opencode-consult`, and `consult-orchestrator` entry points. Those skills are
@@ -34,10 +36,20 @@ now thin forwarders into this one.
 
 - For model choice, delegation economics, and "never Haiku" rules, read
   `references/model-routing.md`.
-- To check local readiness (CLIs, auth, lanes) without changing anything, run
+- To present the selectable jobs/models or resolve a call without spending
+  quota, run `scripts/orchestra-agent.sh --list` or use `--dry-run`.
+- For task-local role contracts and the optional risk-gated plan review, read
+  `references/task-local-roles.md` when the task is complex, high-risk, or
+  explicitly requires plan approval.
+- To inspect passive local prerequisites (CLI versions, reported credentials,
+  configured routes, and catalog membership) without a model call, run
   `scripts/orchestra-doctor.sh`.
-- To list the models reachable for steering (Codex config default plus the
-  OpenCode catalog), run `scripts/orchestra-doctor.sh --models`.
+- For automation that must fail on degraded local readiness, run
+  `scripts/orchestra-doctor.sh --require-ready`. The doctor never makes a model
+  call, so it reports live callability as unverified.
+- To list Codex configuration and the passive OpenCode catalog, run
+  `scripts/orchestra-doctor.sh --models`; catalog membership is not proof of
+  provider acceptance, quota, routing, or a successful invocation.
 
 ## The Conductor Is the Intelligence, Not a Dispatcher
 
@@ -108,10 +120,20 @@ ships their mistakes.
 6. Never use Haiku. If a cheaper model misses the bar, rerun or redo with the
    smarter/tastier model without asking.
 
+## Task-Local Roles and Optional Plan Gates
+
+Roles are temporary responsibilities, not new agent identities, routes,
+credentials, or persistent configuration; the existing wrappers remain the
+only integration surface. For complex or risk-gated work, use
+`references/task-local-roles.md`. When a plan gate is selected, a guarded
+Executor may write only after the conductor manually accepts a specific plan
+version; absent, weak, or unresolved gate evidence is not approval.
+
 ## Delegation Economics
 
 One Bash call to a wrapper costs the conductor a few hundred tokens; the
-consultant's reading, reasoning, and output are billed to Codex or OpenRouter,
+consultant's reading, reasoning, and output are billed to Codex, OpenCode Go,
+or the explicit OpenRouter fallback,
 not Claude. Rules of thumb:
 
 - Delegate when the consultant must read a lot (investigation, log analysis,
@@ -130,13 +152,15 @@ not Claude. Rules of thumb:
 
 ### Codex CLI From Any Agent
 
-Use `scripts/codex-agent.sh` as the single Codex entry point:
+Use `scripts/orchestra-agent.sh` as the preferred selector and
+`scripts/codex-agent.sh` as the hardened direct Codex entry point:
 
 ```text
 scripts/codex-agent.sh consult --cd <repo> -- "<brief>"
 scripts/codex-agent.sh review --uncommitted
 scripts/codex-agent.sh review --base main --prompt "<focus>"
-scripts/codex-agent.sh implement --allow-write --cd <repo> --scope <path> -- "<task>"
+scripts/codex-agent.sh implement --allow-write --cd <repo> --scope <path> --no-plan-gate -- "<task>"
+scripts/orchestra-agent.sh implement --allow-write --cd <repo> --scope <path> --no-plan-gate -- "<task>"
 ```
 
 Modes:
@@ -144,11 +168,21 @@ Modes:
 - `consult`: read-only `codex exec`; use for investigation, data analysis,
   second opinions, and design critique. MCP off by default; reasoning effort
   floored to high; works on non-git directories.
-- `review`: native `codex review`; defaults to `--uncommitted`; accepts `--cd`.
+- `review`: native `codex review`; defaults to Luna at `max` on
+  `--uncommitted`; accepts `--cd`. The selector's final overview is a separate
+  Sol `xhigh` review.
 - `implement`: guarded `codex exec --sandbox workspace-write`; requires
-  `--allow-write`, requires a git repo, refuses `main`/`master` unless
+  `--allow-write`, at least one explicit `--scope`, a git repo, and either
+  `--plan-record <file>` or `--no-plan-gate`; refuses `main`/`master` unless
   `--allow-main` is explicit, disables MCP, and instructs Codex not to commit
-  or push.
+  or push. Scopes are validated literal repository-relative prefixes; scoped
+  symlinks, repository symlinks resolving outside the root, and existing
+  secret-shaped descendants are refused. The wrapper snapshots HEAD,
+  refs/config/reflogs, the index, and every out-of-scope filesystem entry
+  (including ignored files and empty directories), tolerates a dirty baseline,
+  and fails if any of that state changes.
+  It reports violations without reverting anything. Use `--scope .` only for
+  explicit whole-repository authority.
 
 All modes are time-bounded (consult 900s, review 1800s, implement 3600s;
 override with `--timeout N` or `CODEX_AGENT_TIMEOUT`, 0 disables) so a stalled
@@ -158,27 +192,43 @@ Only use `implement` when the user clearly wants Codex to make changes. Prefer
 a working branch or isolated worktree. The wrapper never uses
 `danger-full-access` or `--dangerously-bypass-approvals-and-sandbox`.
 
-The wrapper pins no model: with no `--model`, Codex uses its config default,
-and `--model M` can steer any model the Codex CLI reaches. **User policy
-(Plus subscription): the Codex lane is `gpt-5.6-sol` only, at effort `high`
-— `xhigh` per call for the hardest tasks — never `max` or `ultra`.** OpenAI
-staff suggested Sol `medium` suffices (2026-07-10); field use the same day
-found medium's output quality unacceptable, so the default stands at high.
-The conductor supplies all steering intelligence — decomposition, tight
-briefs, verification — so the orchestra wants one strong executor, not a
-spread of cheaper Codex tiers; Terra and Luna exist (see "Codex Model Tiers"
-in `references/model-routing.md`) but are not routed to. Cheap-volume work
-goes to the OpenCode lanes instead, which bill OpenRouter rather than the
-Codex subscription. Never route work to a model you have not onboarded
-("Onboarding a New Model", same file).
+Codex selection is per call. Aliases `sol`, `terra`, and `luna` are resolved
+by `orchestra-agent.sh`; raw IDs remain available. User defaults are Luna
+`max` for critique and Sol `xhigh` for final overview. Direct consult and
+direct Codex implementation use config/default model selection unless the
+caller passes `--model`.
 
-Effort is steered per call with `--effort low|medium|high|xhigh` (wins over
-config; `max`/`ultra` are refused outright). Without `--effort`, the wrapper
-enforces the policy from config: consults floor a `low`/`medium` config up to
-`high`, and every mode clamps a `max`/`ultra` config down to `xhigh` —
-`ultra` is not longer thinking but a provider-side parallel-subagent mode
-that devours subscription usage limits. This skill's own fan-out gives the
-same parallelism, conductor-verified and cost-visible.
+Effort is steered per call with
+`--effort none|low|medium|high|xhigh|max`; explicit selection wins. `ultra`
+remains refused because it is not a documented Codex reasoning effort. Never
+route work to a model that has not been onboarded and pass the current caller
+model with `--current-model` when known so the selector can reject self-review.
+
+### Unified Selection and Default Pipeline
+
+```text
+scripts/orchestra-agent.sh --list
+scripts/orchestra-agent.sh implement --dry-run --allow-write --scope <path> --no-plan-gate -- "<task>"
+scripts/orchestra-agent.sh implement --allow-write --scope <path> --no-plan-gate -- "<task>"
+```
+
+The implementation selector runs three independent stages by default:
+
+1. Worker: OpenCode Go / latest DeepSeek V4 Flash / `max` reasoning.
+2. Critiquer: Codex / Luna / `max`.
+3. Overviewer: Codex / Sol / `xhigh`, with the Luna critique included as
+   untrusted evidence to verify.
+
+Override with `--model`, `--reasoning`, `--critic-model`,
+`--critic-reasoning`, `--overview-model`, or `--overview-reasoning`.
+`--dry-run` prints the resolved topology without calling a provider. The
+selector rejects duplicate stage models and a known caller/model collision
+unless the user explicitly passes `--allow-same-model`.
+
+When the user asks to choose, run `--list`, present the compact jobs/models/
+reasoning choices, and wait for their selection. Do not dump the raw provider
+catalog unless requested. When the user does not ask to choose, use the
+three-stage defaults without adding a confirmation round trip.
 
 ### OpenCode Specialist Lanes From Any Agent
 
@@ -195,14 +245,15 @@ scripts/consult-opencode.sh --model provider/model --sealed --timeout 240 -- "<i
 Lane defaults (override with `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
 `ORCHESTRA_LANE_CONTEXT`, `ORCHESTRA_LANE_PROSE`):
 
-- `code` → `openrouter/moonshotai/kimi-k2.7-code`
-- `reasoning` → `openrouter/minimax/minimax-m3` — the thinking lane: defaults
-  to OpenRouter reasoning effort `high` (`--reasoning low|medium|high` to
-  tune). Give it a longer timeout on big briefs; high effort thinks before it
-  answers.
-- `context` → `openrouter/deepseek/deepseek-v4-flash` — the cheap ~1M-context
-  workhorse for input-heavy sweeps (big logs, long diffs, whole-repo reads).
-  Chosen for speed and volume, not depth; no reasoning-effort default.
+- `code` → `opencode-go/kimi-k3`
+- `reasoning` → `opencode-go/kimi-k3` — a compatibility task-shape alias for
+  the same alternate specialist. Use Kimi when a distinct non-DeepSeek view is
+  needed; do not add it automatically to the default three-stage pipeline.
+- `context` → `opencode-go/deepseek-v4-flash` — OpenCode Go's rolling latest
+  Flash route and default implementation worker at `max`; inexpensive and
+  suited to ~1M-context sweeps. Read-only context consults do not force an
+  effort unless selected. Use the pinned OpenRouter 0731 route explicitly
+  when reproducibility or provider control matters more than subscription cost.
 - `prose` → `openrouter/xiaomi/mimo-v2.5-pro`
 
 Sealed vs non-sealed is a containment choice, not just an ergonomic one. Use
@@ -219,32 +270,34 @@ exit (`wrapper ... > out.md 2> err.log`; progress lines go to stderr). Never
 pipe a backgrounded wrapper through `tail`/`head` — the pipe can stall the
 call at zero bytes. The wrappers' own timeouts already bound a stalled run.
 
-### If Codex Cannot Continue
+### If a Stage Cannot Continue
 
-The Codex flagship (`gpt-5.6-sol`) is the main implementor and investigator. Only when Codex
+OpenCode Go DeepSeek V4 Flash at `max` is the default implementation worker. If that lane
 fails — rate-limit/usage errors, auth errors, outage, or repeated timeouts —
-step down to OpenCode instead of pulling the work back into Claude, and pick
-the lane by task shape:
+pick another OpenCode lane by task shape or explicitly choose a Codex worker;
+do not silently pull bulk work back into Claude:
 
-1. `consult` → hard thinking on a bounded brief: `--lane reasoning` (MiniMax
-   M3, high effort). Input-heavy sweep of logs/diffs/repo: `--lane context`
-   (DeepSeek V4 Flash — cheap at volume). Config/correctness checks:
+1. `consult` → hard thinking or a distinct alternate view on a bounded brief:
+   `--lane reasoning` (Go Kimi K3). Input-heavy sweep of logs/diffs/repo:
+   `--lane context` (Go DeepSeek V4 Flash). Config/correctness checks:
    `--lane code` (Kimi). Non-sealed lets the model read the repo itself.
 2. `review` → generate the diff locally (`git diff`), send it sealed to
    `--lane code`; `--lane reasoning` for architecture-level review;
    `--lane context` for very large diffs.
 3. `implement` → `scripts/opencode-implement.sh --allow-write --cd <repo>
-   --scope <path> -- "<task>"`. Guarded like Codex implement (git repo
-   required, refuses main/master, secret guard, bounded timeout), but the
+   --scope <path> --no-plan-gate -- "<task>"`. Guarded like Codex implement (git repo
+   required, refuses main/master, secret guard, bounded timeout, and the same
+   filesystem/index snapshot enforcement), but the
    agent gets file read/search/edit tools only — no shell — so it structurally
-   cannot commit, push, or run commands. Defaults to Kimi K2.7 Code;
+   cannot commit, push, or run commands. Defaults to Go DeepSeek V4 Flash at `max`;
    `--lane reasoning` for hard tasks, `--lane context` for long-context bulk
    edits. The conductor reviews the printed working-tree changes, runs tests,
    and owns git.
 4. Only when OpenCode is also down does the conductor do bulk work in Claude —
    and it should tell the user, who may prefer to wait.
 
-Return to Codex when it recovers; it stays the default engineering lane.
+After fallback implementation, retain independent Luna critique and Sol
+overview whenever those Codex routes are available.
 
 ## Parallel Fan-Out (Split, Mark, Join)
 
@@ -266,7 +319,9 @@ The conductor verifies findings before a fixer applies them. Start with one
 reviewer; use two orthogonal reviews only when blast radius or semantic risk
 justifies the extra cost. If a defect class repeats, stop the affected wave,
 repair and version the shared brief/contract/rubric, then rescan units produced
-under the older version before launching more work.
+under the older version before launching more work. When a plan gate is
+selected, apply the independent-review and fail-closed protocol in
+`references/task-local-roles.md` before any writer starts.
 
 1. **Split.** Decompose into sub-tasks that do not overlap: if two sub-tasks
    would touch the same files or depend on each other's output, they are not
@@ -308,19 +363,22 @@ cleanly split should stay serial rather than gain a coordination bug.
 
 When the user does not specify a model, apply their defaults:
 
-- Bulk/mechanical implementation, migrations, data analysis, repo
-  investigation, and hard debugging: the Codex flagship through Codex CLI
-  defaults.
-- Technical second opinions and security framing: `--lane code` (Kimi K2.7
-  Code). Deep reasoning, architecture/plan critique: `--lane reasoning`
-  (MiniMax M3, high reasoning). Huge-context sweeps and bulk summarization:
-  `--lane context` (DeepSeek V4 Flash). Prose and docs polish: `--lane prose`
+- Bulk/mechanical implementation and migrations: OpenCode Go DeepSeek V4 Flash worker
+  at `max`.
+- Implementation critique: Luna at `max`. Final overview/adjudication: Sol at
+  `xhigh`.
+- Repo investigation and hard debugging: select by task shape; use Codex for
+  deep engineering judgment or DeepSeek context for volume.
+- Technical second opinions and security framing: `--lane code` (Kimi K3).
+  Deep reasoning or architecture/plan critique: `--lane reasoning`
+  (Go Kimi K3). Huge-context sweeps and bulk summarization:
+  `--lane context` (Go DeepSeek V4 Flash). Prose and docs polish: `--lane prose`
   (MiMo v2.5 Pro).
 - User-facing UI, copy, API design, and product polish: require taste >= 7;
   use `fable-5` when available, otherwise `sonnet-5` or another taste-suitable
   lane.
-- Plan and implementation reviews: `fable-5` or `opus-4.8`, optionally plus a
-  separate Codex flagship review.
+- Plan and implementation reviews: default to Luna/max critique followed by
+  Sol/xhigh overview; add a taste-focused Claude review only when justified.
 - Thin Claude wrapper subagents (only when a subagent must own the call): use
   `sonnet-5` with low effort; the wrapper writes a self-contained Codex prompt,
   runs `scripts/codex-agent.sh`, and returns the output.
@@ -334,14 +392,22 @@ quota.
 
 1. Frame one shared brief: objective, repo path, exact files/diff/snippets,
    constraints, allowed write scope, expected output, and evidence requirements.
+   If a plan gate is selected, record this as immutable `Plan P1`.
 2. Preflight the brief for secrets and secret-bearing file paths.
-3. Choose the minimum useful lanes: Codex for implementation/diff/correctness,
-   OpenCode lanes for provider diversity, technical checks, reasoning, or prose.
-4. Invoke each lane through `scripts/codex-agent.sh` or
-   `scripts/consult-opencode.sh` directly with Bash.
-5. Build a claim ledger with source, evidence checked, and status:
+3. If the user requests selection, present `orchestra-agent.sh --list` and use
+   their job/model/reasoning choices. Otherwise use Go DeepSeek worker → Luna/max
+   critique → Sol/xhigh overview. Reject duplicate/caller-identical review
+   models rather than silently reducing independence.
+4. For a selected plan gate, obtain an independent read-only review, assign
+   stable finding IDs, and manually accept one exact plan version before any
+   Executor receives write scope. Stop after the bounded protocol; do not treat
+   a missing or weak review as approval.
+5. Prefer `scripts/orchestra-agent.sh` for selectable jobs and the default
+   worker/critique/overview chain. Use the underlying wrappers directly for a
+   deliberately single-stage call.
+6. Build a claim ledger with source, evidence checked, and status:
    `verified`, `weak`, or `rejected`.
-6. Synthesize the decision. Report verified findings first, then unresolved
+7. Synthesize the decision. Report verified findings first, then unresolved
    disagreements or weak claims. The conductor performs any edits and tests.
 
 ## Compatibility
@@ -351,16 +417,31 @@ Legacy prompts may still mention `codex-consult`, `opencode-consult`, or
 scripts now forward to the canonical wrappers here, so existing project and
 study panels keep working with a single underlying implementation.
 
+## Maintainer Verification
+
+After changing a wrapper or readiness rule, run:
+
+```text
+bash -n scripts/*.sh tests/test-wrappers.sh
+tests/test-wrappers.sh
+```
+
+The tests use temporary repositories and fake CLIs. They make no model calls,
+spend no provider quota, and verify that scope failures never trigger rollback.
+
 ## Done Checklist
 
 - [ ] Delegated input/output-heavy work off-Claude instead of running it in
       Claude or a Claude subagent.
-- [ ] Used `scripts/codex-agent.sh` or `scripts/consult-opencode.sh` directly.
+- [ ] Used `scripts/orchestra-agent.sh` or a hardened direct wrapper.
 - [ ] Used OpenCode only with an explicit `--lane` or `--model`.
 - [ ] Sent no secrets or secret-bearing paths.
 - [ ] Kept review/gate loops manual and monitored.
+- [ ] If a plan gate was used, recorded the accepted plan version and stable
+      finding dispositions; no Executor started with an unresolved gate.
 - [ ] Verified consultant claims before acting.
-- [ ] For implementation, used `--allow-write`, scoped paths, and a non-main
+- [ ] For implementation, used `--allow-write`, required scoped paths, an
+      explicit `--plan-record` or `--no-plan-gate`, and a non-main
       branch/worktree unless explicitly overridden.
 - [ ] For fan-outs, gave every brief the shared alignment preamble, kept one
       writer per worktree, and joined through the run ledger before merging.

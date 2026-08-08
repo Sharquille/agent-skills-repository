@@ -67,10 +67,9 @@ The safety installer:
 - Adds Agent Orchestra defaults to the Claude, Gemini, and OpenCode managed
   blocks: wrapper-only Codex and OpenCode calls (no plugins), delegation of
   token-heavy work off-Claude to preserve Claude usage and rate limits,
-  `gpt-5.6-sol` via Codex CLI for bulk work, OpenCode `--lane code|reasoning|context|prose`
-  shortcuts (Kimi K2.7 Code / MiMo v2.5 Pro / MiniMax M3), taste-aware model
-  routing, no Haiku, and guarded Codex implementation through
-  `codex-agent.sh --allow-write --scope`.
+  OpenCode Go DeepSeek V4 Flash/max implementation, Luna/max critique,
+  Sol/xhigh overview, optional Kimi K3 specialist routing, no Haiku, and
+  guarded implementation through `orchestra-agent.sh --allow-write --scope`.
 - Keeps Codex's own `AGENTS.md` safety-only so invoked Codex workers do not
   recursively route back through Agent Orchestra.
 
