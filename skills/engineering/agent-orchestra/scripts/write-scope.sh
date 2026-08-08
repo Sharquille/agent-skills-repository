@@ -262,14 +262,14 @@ orchestra_scope_snapshot_create() {
 }
 
 orchestra_compare_snapshot_bucket() {
-  local before="$1" after="$2" label="$3" file key path violation_ref="$4"
+  local before="$1" after="$2" label="$3" file key path found=0
   for file in "$before"/*.state; do
     [ -e "$file" ] || continue
     key="${file##*/}"; key="${key%.state}"
     if [ ! -f "$after/$key.state" ] || ! cmp -s "$file" "$after/$key.state"; then
       path=$(<"$before/$key.path")
       printf '  %s (%s changed or removed)\n' "$path" "$label" >&2
-      eval "$violation_ref=1"
+      found=1
     fi
   done
   for file in "$after"/*.state; do
@@ -278,9 +278,10 @@ orchestra_compare_snapshot_bucket() {
     if [ ! -f "$before/$key.state" ]; then
       path=$(<"$after/$key.path")
       printf '  %s (%s added)\n' "$path" "$label" >&2
-      eval "$violation_ref=1"
+      found=1
     fi
   done
+  return "$found"
 }
 
 orchestra_scope_snapshot_verify() {
@@ -308,8 +309,8 @@ orchestra_scope_snapshot_verify() {
     echo "error: Git refs, local config, or reflogs changed during delegation" >&2
     violation=1
   fi
-  orchestra_compare_snapshot_bucket "$baseline/fs" "$current/fs" "filesystem" violation
-  orchestra_compare_snapshot_bucket "$baseline/index" "$current/index" "index" violation
+  orchestra_compare_snapshot_bucket "$baseline/fs" "$current/fs" "filesystem" || violation=1
+  orchestra_compare_snapshot_bucket "$baseline/index" "$current/index" "index" || violation=1
   rm -rf "$current"
 
   if [ "$violation" -ne 0 ]; then

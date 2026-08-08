@@ -87,6 +87,21 @@ lane_prose="${ORCHESTRA_LANE_PROSE:-openrouter/xiaomi/mimo-v2.5-pro}"
 lane_reasoning="${ORCHESTRA_LANE_REASONING:-opencode-go/kimi-k3}"
 lane_context="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4-flash}"
 
+codex_agents_block() {
+  [ -f "$codex_cfg" ] || return 0
+  awk '
+    /^[[:space:]]*\[agents\][[:space:]]*$/ { inside=1; next }
+    /^[[:space:]]*\[/ { inside=0 }
+    inside { print }
+  ' "$codex_cfg"
+}
+
+config_value() {
+  local text="$1" key="$2"
+  printf '%s\n' "$text" | grep -E "^[[:space:]]*${key}[[:space:]]*=" | head -1 | \
+    sed -E "s/^[^=]*=[[:space:]]*['\"]?([^'\"[:space:]#]+).*/\1/"
+}
+
 if [ "$show_models" -eq 1 ]; then
   printf 'Codex configuration (steer per call: orchestra-agent.sh <mode> --model M):\n'
   if have codex; then
@@ -96,6 +111,13 @@ if [ "$show_models" -eq 1 ]; then
         printf '%s\n' "$model_lines"
       else
         printf '  (no model pinned; Codex uses its built-in default)\n'
+      fi
+      agents_block="$(codex_agents_block)"
+      agents_lines="$(printf '%s\n' "$agents_block" | grep -E '^[[:space:]]*(enabled|max_concurrent_threads_per_session|default_subagent_model|default_subagent_reasoning_effort)[[:space:]]*=' | sed 's/^[[:space:]]*/  /')"
+      if [ -n "$agents_lines" ]; then
+        printf '  [agents]\n%s\n' "$agents_lines"
+      else
+        printf '  [agents] (native subagent defaults not configured)\n'
       fi
     else
       printf '  (no config.toml at %s)\n' "$codex_cfg"
@@ -130,6 +152,10 @@ codex_installed=no
 codex_authenticated=no
 codex_model=unset
 codex_effort=unset
+codex_subagents_enabled=not-configured
+codex_subagent_model=not-configured
+codex_subagent_effort=not-configured
+codex_subagent_concurrency=not-configured
 if have codex; then
   if codex_version="$(version_of codex --version)"; then
     codex_installed=yes
@@ -145,12 +171,22 @@ if have codex; then
   fi
   codex_model="$(grep -E '^[[:space:]]*model[[:space:]]*=' "$codex_cfg" 2>/dev/null | head -1 | sed -E "s/^[^=]*=[[:space:]]*['\"]?([^'\"[:space:]#]+).*/\1/")"
   codex_effort="$(grep -E '^[[:space:]]*model_reasoning_effort' "$codex_cfg" 2>/dev/null | head -1 | sed -E "s/^[^=]*=[[:space:]]*['\"]?([^'\"[:space:]#]+).*/\1/")"
+  agents_block="$(codex_agents_block)"
+  codex_subagents_enabled="$(config_value "$agents_block" enabled)"
+  codex_subagent_model="$(config_value "$agents_block" default_subagent_model)"
+  codex_subagent_effort="$(config_value "$agents_block" default_subagent_reasoning_effort)"
+  codex_subagent_concurrency="$(config_value "$agents_block" max_concurrent_threads_per_session)"
   codex_model="${codex_model:-unset}"
   codex_effort="${codex_effort:-unset}"
+  codex_subagents_enabled="${codex_subagents_enabled:-not-configured}"
+  codex_subagent_model="${codex_subagent_model:-not-configured}"
+  codex_subagent_effort="${codex_subagent_effort:-not-configured}"
+  codex_subagent_concurrency="${codex_subagent_concurrency:-not-configured}"
 else
   warn "codex CLI is not installed (install @openai/codex, then authenticate)"
 fi
 state_line "codex installed=$codex_installed authenticated=$codex_authenticated configured-model=$codex_model model-listed=unknown reasoning=$codex_effort invocation=unverified"
+state_line "codex-native-subagents enabled=$codex_subagents_enabled default-model=$codex_subagent_model reasoning=$codex_subagent_effort max-concurrency=$codex_subagent_concurrency invocation=unverified"
 
 echo
 

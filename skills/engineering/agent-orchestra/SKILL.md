@@ -36,6 +36,8 @@ now thin forwarders into this one.
 
 - For model choice, delegation economics, and "never Haiku" rules, read
   `references/model-routing.md`.
+- For the user's native Codex Luna/max subagent defaults and runtime caveats,
+  read `references/native-codex-subagents.md`.
 - To present the selectable jobs/models or resolve a call without spending
   quota, run `scripts/orchestra-agent.sh --list` or use `--dry-run`.
 - For task-local role contracts and the optional risk-gated plan review, read
@@ -197,6 +199,11 @@ by `orchestra-agent.sh`; raw IDs remain available. User defaults are Luna
 `max` for critique and Sol `xhigh` for final overview. Direct consult and
 direct Codex implementation use config/default model selection unless the
 caller passes `--model`.
+
+Native Codex-spawned subagents are a separate layer from these explicit
+pipeline stages. The user's configured native default is Luna at `max`; the
+doctor reports that preference, while `references/native-codex-subagents.md`
+documents reload and runtime-allowlist limits.
 
 Effort is steered per call with
 `--effort none|low|medium|high|xhigh|max`; explicit selection wins. `ultra`

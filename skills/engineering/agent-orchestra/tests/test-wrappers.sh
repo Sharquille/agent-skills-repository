@@ -166,7 +166,7 @@ pass "accepted plan records are validated"
 fake_bin="$TMP_ROOT/fake-bin"
 fake_codex_home="$TMP_ROOT/codex-home"
 mkdir -p "$fake_bin" "$fake_codex_home"
-printf 'model = "gpt-5.6-sol"\nmodel_reasoning_effort = "high"\n' >"$fake_codex_home/config.toml"
+printf 'model = "gpt-5.6-sol"\nmodel_reasoning_effort = "high"\n\n[agents]\nenabled = true\nmax_concurrent_threads_per_session = 100\ndefault_subagent_model = "gpt-5.6-luna"\ndefault_subagent_reasoning_effort = "max"\n' >"$fake_codex_home/config.toml"
 
 cat >"$fake_bin/codex" <<'EOF'
 #!/usr/bin/env bash
@@ -244,6 +244,7 @@ doctor_log="$TMP_ROOT/doctor-calls.log"
 doctor_output="$(PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$doctor_log" "$SCRIPTS_DIR/orchestra-doctor.sh" --require-ready 2>&1)" || fail "green doctor preflight failed"
 assert_contains "$doctor_output" "model-listed" "doctor distinguishes catalog membership"
 assert_contains "$doctor_output" "invocation=unverified" "doctor never claims live callability"
+assert_contains "$doctor_output" "codex-native-subagents enabled=true default-model=gpt-5.6-luna reasoning=max max-concurrency=100" "doctor reports native Luna/max subagent defaults"
 doctor_calls="$(sed -n '1,20p' "$doctor_log")"
 assert_contains "$doctor_calls" "opencode --pure auth list" "doctor inspects the plugin-disabled credential inventory"
 assert_contains "$doctor_calls" "opencode --pure models" "doctor inspects the plugin-disabled model catalog"
@@ -256,6 +257,7 @@ printf "model = 'gpt-5.6-sol'\nmodel_reasoning_effort = high\n" >"$fake_codex_ho
 single_quote_output="$(PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" "$SCRIPTS_DIR/orchestra-doctor.sh" --require-ready 2>&1)" || fail "single-quoted config preflight failed"
 assert_contains "$single_quote_output" "configured-model=gpt-5.6-sol" "doctor parses single-quoted Codex model values"
 assert_contains "$single_quote_output" "reasoning=high" "doctor parses unquoted Codex effort values"
+assert_contains "$single_quote_output" "codex-native-subagents enabled=not-configured" "doctor distinguishes missing native subagent defaults"
 
 set +e
 broken_version_output="$(PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CODEX_VERSION_STATUS=5 "$SCRIPTS_DIR/orchestra-doctor.sh" --require-ready 2>&1)"
