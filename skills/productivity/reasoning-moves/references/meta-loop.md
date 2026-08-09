@@ -61,6 +61,13 @@ through TRACE catches this:
   Express, or worse, letting an invented explanation enter at Record instead
   of Apply. Naming the exact step where the slip happened is more useful
   feedback than a general "not quite."
+- When moving from a TRACE analysis into a sentence frame, do not assume the
+  learner can see which loop step supplies each clause. Build Express from
+  visible inputs one part at a time: Record supplies what was observed; Check
+  supplies what remains unsupported; then the learner combines them into the
+  final calibrated conclusion. Name those sources in the prompt. If the
+  learner asks whether a blank still refers to the preceding explanation,
+  repair the prompt's orientation before reteaching the reasoning move.
 - A precision failure specific to Express: overclaiming certainty language
   ("must," "proves," "establishes") when the evidence only supports weaker
   language ("suggests," "is consistent with," "may indicate"). See the

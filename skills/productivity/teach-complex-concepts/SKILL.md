@@ -337,6 +337,42 @@ place, rank, trace, complete, debug, compare, construct, vary, or explain.
 Prefer prompts with informative wrong answers. A useful question distinguishes
 between likely misconceptions instead of merely checking recall.
 
+#### Keep prompts connected as support fades
+
+Count cognitive actions, not sentences or visible questions. A single sentence
+frame with several blanks, a confidence judgment, and a separate test request is
+several actions. Split it unless the learner has already shown they can coordinate
+those parts.
+
+When a prompt depends on the immediately preceding explanation or on the
+learner's earlier answer, make that relationship explicit. Name the source and
+the purpose: "Using your previous answer about the audit logs, fill the observed-
+fact clause below." Restate or quote the exact source when finding it in the
+scrollback would itself consume working memory. A prompt should test the target
+reasoning move, not whether the learner can infer which earlier sentence the
+tutor meant.
+
+For completion prompts:
+
+- label blanks by their logical role, not only by number;
+- when blanks have different roles, ask for one at a time, give feedback, and
+  combine them only after each part is understood;
+- keep the relevant rule, example, or learner statement visible until the
+  learner has used the mapping successfully;
+- fade one meaningful support at a time when practical, and say what is being
+  removed; never fade the task's referent, goal, or response format.
+
+For example, replace an initially opaque contrast such as `The data establish
+___, but do not establish ___` with: "Using the audit-log case above, fill only
+the observed-fact clause: `The logs establish ___`. After that, we will use the
+Check step for what the logs do not establish." Once both clauses work
+separately, ask the learner to combine them.
+
+If the learner asks whether a blank or question is related to the preceding
+material, treat that as evidence of a prompt-orientation failure before treating
+it as a content misconception. Re-anchor the task, map the first required part
+to its source, and preserve the learner's responsibility for completing it.
+
 ### 6. Respond to evidence
 
 Classify the response:
