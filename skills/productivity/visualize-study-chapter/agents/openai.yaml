@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visualize Study Chapter"
+  short_description: "Turn study chapters into visual-first surfaces"
+  default_prompt: "Use $visualize-study-chapter to turn the current study chapter into a compact interactive visual."
