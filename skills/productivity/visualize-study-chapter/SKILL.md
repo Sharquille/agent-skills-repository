@@ -128,6 +128,10 @@ swaps note panels is not a visualization and must be redesigned.
 - Text serves as labels, annotations, and a linear fallback reading layer. If
   hiding paragraph text leaves no visible relationship, the surface is still
   decorated notes and fails the quality gate.
+- On narrow screens, keep the relationship scene primary. A complete reference
+  layer may be progressively disclosed with native HTML when the visible scene
+  already carries the chapter model; do not force the learner through a long
+  open prose ledger before the visual can be revisited.
 
 ## Generate and verify
 
@@ -143,10 +147,14 @@ swaps note panels is not a visualization and must be redesigned.
    reference; outside a vault, give a plain, copy-pasteable local path to the
    written fragment. Do not describe implementation details or add decorative
    prose around it.
-3. Verify the primary section-selection interaction, keyboard access, concise
-   labels, and source fidelity.
-4. Verify light and dark themes and layouts at 736 px and 360 px. Use wide mode
-   only when direct side-by-side comparison genuinely requires it.
+3. Verify every section-selection state, not only the first: keyboard access,
+   concise labels, source fidelity, cause-to-consequence continuity, and a
+   visible change to at least two represented properties.
+4. Verify light and dark themes and deliberate layouts at 736 px and 360 px.
+   Measure actual rendered SVG text after viewBox scaling and keep it at least
+   11 screen pixels; a uniformly shrunken desktop scene is not a mobile pass.
+   Use wide mode only when direct side-by-side comparison genuinely requires
+   it.
 5. Confirm that no source facts, sections, limitations, or distinctions were
    dropped during compression and that no future-scope material was added.
 6. Keep the site navigable: when a vault `Visuals/` folder exists, refresh or
@@ -155,6 +163,9 @@ swaps note panels is not a visualization and must be redesigned.
 7. Apply the hard gates and acceptance checks in
    `references/visual-quality-gate.md`; regenerate rather than releasing a
    box-note surface that merely satisfies HTML validity.
+8. If a source generator owns the surfaces, edit it first and regenerate all
+   affected chapter files plus the index. Never release a hand-patched output
+   that a later build will overwrite.
 
 ## Handle multi-chapter requests
 

@@ -21,6 +21,12 @@ Release fails when any of these are true:
   evidence, requires a network connection, or changes mastery state.
 - At 360 CSS pixels the learner must accept clipped labels, unreadable scaling,
   overlapping controls, or mandatory whole-scene horizontal panning.
+- A desktop SVG is merely scaled down until its labels pass below 11 actual
+  screen pixels. Computed CSS font size is not enough; transforms and the SVG
+  viewBox affect what the learner can really read.
+- The complete reference layer is expanded by default on a narrow screen and
+  turns the chapter back into a long prose scroll even though the scene already
+  carries the essential relationships.
 
 ## Minimum explanatory floor
 
@@ -38,6 +44,19 @@ One chapter surface must contain:
    accessible description, reduced-motion behavior, and deliberate 736px and
    360px compositions.
 
+The selected state should normally form a closed explanatory trace: a cause or
+starting condition, the affected object or boundary, and the visible
+consequence. Highlighting an isolated path fragment or floating label does not
+meet this floor.
+
+At 360px, recompose the scene: change the viewBox, reflow the geometry, shorten
+or relocate annotations, or remove nonessential decoration. Do not treat a
+uniformly shrunken desktop scene as responsive design. Keep every visible SVG
+label at least 11 actual screen pixels after scaling. The linear reference
+layer may use a native `details` disclosure on narrow screens when the closed
+state still contains exact definitions and the primary scene remains complete
+without opening it.
+
 Ask one release question: **if the prose boxes disappeared, could the learner
 still see what changed and why?** If not, redesign the scene.
 
@@ -53,6 +72,21 @@ still see what changed and why?** If not, redesign the scene.
   scanning lines, particles, parallax, flashing, or motion-only meaning.
 - Reduced motion replaces travel with immediate state changes or ordered
   emphasis. Focus must not move when the scene changes.
+
+## State-by-state release pass
+
+- Inspect every selectable state, not only the initial screenshot. Include the
+  longest label, densest state, destructive consequence, and recovery or
+  verification state when present.
+- At both 736px and 360px, check document overflow, control wrapping, label-to-
+  object anchoring, label-to-line collisions, scene contrast, and actual
+  screen-space text bounds. Repeat one dense state in light and dark themes.
+- A selected action must visibly alter at least two properties and leave the
+  system's unchanged context legible enough to explain what moved, stopped,
+  crossed, transformed, or became contained.
+- When pages are generator-backed, edit the generator first, regenerate every
+  affected page and the index, then test the generated files. A hand-patched
+  output that the next build will erase fails release.
 
 ## Optional sourced imagery
 
