@@ -1941,6 +1941,18 @@ Trigger examples: "review my additions", "check my gap notes".
     Reconstruct the missing session-side records from the evidence in the note
     (scores, dates, callouts) before doing new review work, and log the repair
     in the session log.
+17. **Chapter endpoint — build the visual surface automatically.** When the
+    ordered pass sets a scope's `## Unit progress` Review column to `reviewed`,
+    that completion is also the trigger for the chapter's visual study surface.
+    Hand off to `visualize-study-chapter` without waiting for the learner to
+    ask: the scope is completed (quiz consumed, notes written, review
+    recorded), so the surface is the closing step of the chapter cycle, and
+    the endpoint response must include a clickable way for the learner to open
+    it for review or study. If the scope's notes are not yet assessable or a
+    fresh active/paused quiz attempt or unanswered study-check overlaps the
+    surface, defer the handoff and say why, under `visualize-study-chapter`'s
+    evidence gate — never build a surface that leaks a live answer. The
+    surface never changes mastery; it is a study aid.
 
 <!-- shared-contract:start id=process-reflection -->
 ## Optional Read-Only Study-Process Reflection

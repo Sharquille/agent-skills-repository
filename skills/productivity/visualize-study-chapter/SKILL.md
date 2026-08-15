@@ -1,6 +1,6 @@
 ---
 name: visualize-study-chapter
-description: "Turn an existing study chapter or section into a compact, interactive, visual-first study surface using the Visualize plugin. Use when a learner asks to visualize a chapter, make dense notes easier to digest, replace long scrolling with concept maps, flows, comparisons, trust boundaries, or timelines, or create one visual surface per chapter from material already present in an obsidian-study-loop vault. Scope-locks every visual to real source notes, protects active quiz and study-check evidence, and never changes mastery. Do not use to invent course content, grade the learner, make generic data charts, or create persistent Obsidian Canvas maps."
+description: "Turn an existing study chapter or section into a compact, interactive, visual-first study surface using the Visualize plugin. Use when a learner asks to visualize a chapter, when a chapter's review completes and its visual surface should build automatically as the chapter's closing step, to make dense notes easier to digest, replace long scrolling with concept maps, flows, comparisons, trust boundaries, or timelines, or create one visual surface per chapter from material already present in an obsidian-study-loop vault. Scope-locks every visual to real source notes, protects active quiz and study-check evidence, and never changes mastery. Do not use to invent course content, grade the learner, make generic data charts, or create persistent Obsidian Canvas maps."
 ---
 
 # Visualize Study Chapter
@@ -121,8 +121,11 @@ concept without displaying grades or inventing progress metrics.
 1. Use `visualize:visualize` to write an HTML fragment in the thread-scoped
    writable visualization directory, never in the checked-out repository or
    the Obsidian vault.
-2. Use the plugin's content reference in the same final response. Do not add a
-   Markdown link to the fragment or describe implementation details.
+2. Give the learner a clickable way to open the surface — this is the review
+   or study entry point, and it is required at the chapter endpoint. Use the
+   plugin's content reference when the environment renders it; otherwise give
+   a plain, copy-pasteable local path or file link to the written fragment.
+   Do not describe implementation details or add decorative prose around it.
 3. Verify the primary section-selection interaction, keyboard access, concise
    labels, and source fidelity.
 4. Verify light and dark themes and layouts at 736 px and 360 px. Use wide mode
@@ -144,6 +147,29 @@ When the learner asks to visualize every chapter:
 
 Do not create an all-course mega-surface. Cross-chapter navigation belongs to
 `study-map`; focused comprehension belongs here.
+
+## Chapter endpoint — build after review, no request needed
+
+The visual surface is the closing step of a completed chapter, not an optional
+follow-up the learner must request. When a scope completes — quiz consumed,
+`## Notes written` recorded, and the review marked `reviewed` in the active
+session's `## Unit progress` — build its surface automatically as the final
+action of that chapter's cycle. Do not wait for the learner to say
+"visualize it" as the last step.
+
+- **Trigger:** the scope's completion record itself. If the learner asks for a
+  visual at any point during the chapter, build it then too; the endpoint only
+  guarantees the build happens even when they do not ask.
+- **Gate first, always:** run "Protect evidence before visualizing" before the
+  build. If a fresh active/paused quiz attempt or an unanswered study-check
+  overlaps the scope, the endpoint reports the collision under the gate rules
+  and defers the build — it never leaks an answer through a diagram.
+- **Rebuild when the source changed:** regenerate a chapter's surface when its
+  source note changed since the last surface; keep one surface per chapter and
+  reuse the established visual grammar for that chapter.
+- **Close with a link:** every endpoint build finishes by giving the learner a
+  clickable way to open the surface to review or study (see Generate and
+  verify, step 2). The link is the last thing the learner sees in that step.
 
 ## Persistence boundary
 
@@ -167,3 +193,7 @@ Do not create an all-course mega-surface. Cross-chapter navigation belongs to
 - [ ] Essential distinctions and limitations survived compression.
 - [ ] Visualize interaction, accessibility, themes, and narrow layout verified.
 - [ ] No vault, session, note, or mastery state changed during inline generation.
+- [ ] At the chapter endpoint, the surface was built automatically from the
+      completion record — no "visualize it" request was required.
+- [ ] The final response gives the learner a clickable way to open the surface
+      for review or study.
