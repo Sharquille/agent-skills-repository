@@ -1948,11 +1948,15 @@ Trigger examples: "review my additions", "check my gap notes".
     ask: the scope is completed (quiz consumed, notes written, review
     recorded), so the surface is the closing step of the chapter cycle, and
     the endpoint response must include a clickable way for the learner to open
-    it for review or study. If the scope's notes are not yet assessable or a
-    fresh active/paused quiz attempt or unanswered study-check overlaps the
-    surface, defer the handoff and say why, under `visualize-study-chapter`'s
-    evidence gate — never build a surface that leaks a live answer. The
-    surface never changes mastery; it is a study aid.
+    it for review or study, and the surface is persisted to the vault's
+    `Visuals/` folder so that link stays valid across sessions. The handoff must
+    pass `visualize-study-chapter`'s visual-quality gate; a card grid or
+    prose-panel swap is not an acceptable chapter endpoint. If the scope's
+    notes are not yet assessable or a fresh active/paused quiz attempt or
+    unanswered study-check overlaps the surface, defer the handoff and say
+    why, under `visualize-study-chapter`'s evidence gate — never build a
+    surface that leaks a live answer. The surface never changes mastery; it is
+    a study aid.
 
 <!-- shared-contract:start id=process-reflection -->
 ## Optional Read-Only Study-Process Reflection

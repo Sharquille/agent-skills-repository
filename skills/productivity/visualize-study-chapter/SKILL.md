@@ -93,6 +93,11 @@ concept without displaying grades or inventing progress metrics.
 
 ## Compose a visual-first surface
 
+Read `references/visual-quality-gate.md` before composing or regenerating a
+chapter surface. Its hard gates are release blockers, not aesthetic advice.
+A primary scene made from repeated prose boxes or an interaction that only
+swaps note panels is not a visualization and must be redesigned.
+
 - Create one visualization file per chapter surface. Keep a chapter in one file
   when it fits; use numbered companion surfaces when its real structure exceeds
   the section limit. Never combine the entire course into one dashboard.
@@ -115,23 +120,41 @@ concept without displaying grades or inventing progress metrics.
   section, and source heading in that prompt.
 - Avoid dashboard chrome, KPI cards, progress rings, decorative statistics,
   and repeated prose panels. The relationship diagram is the product.
+- Reuse navigation, accessibility, theme, and source-traceability
+  infrastructure across chapters; do not reuse one generic scene geometry.
+  Each chapter needs a concept-native silhouette and a primary interaction that
+  visibly changes at least two model properties, such as path and boundary,
+  position and connection, or state and consequence.
+- Text serves as labels, annotations, and a linear fallback reading layer. If
+  hiding paragraph text leaves no visible relationship, the surface is still
+  decorated notes and fails the quality gate.
 
 ## Generate and verify
 
-1. Use `visualize:visualize` to write an HTML fragment in the thread-scoped
-   writable visualization directory, never in the checked-out repository or
-   the Obsidian vault.
+1. At the chapter endpoint, write the HTML surface to the vault's study-site
+   folder (`<vault>/Visuals/`) so the learner's link stays clickable across
+   sessions — the surface is the durable output of the chapter, not a scratch
+   file. Use the thread-scoped writable directory only for in-conversation
+   previews when no vault is active.
 2. Give the learner a clickable way to open the surface — this is the review
-   or study entry point, and it is required at the chapter endpoint. Use the
-   plugin's content reference when the environment renders it; otherwise give
-   a plain, copy-pasteable local path or file link to the written fragment.
-   Do not describe implementation details or add decorative prose around it.
+   or study entry point, and it is required at the chapter endpoint. In a
+   vault, link to the persisted file (for example
+   `<vault>/Visuals/1.2-security-controls.html`) or its plugin content
+   reference; outside a vault, give a plain, copy-pasteable local path to the
+   written fragment. Do not describe implementation details or add decorative
+   prose around it.
 3. Verify the primary section-selection interaction, keyboard access, concise
    labels, and source fidelity.
 4. Verify light and dark themes and layouts at 736 px and 360 px. Use wide mode
    only when direct side-by-side comparison genuinely requires it.
 5. Confirm that no source facts, sections, limitations, or distinctions were
    dropped during compression and that no future-scope material was added.
+6. Keep the site navigable: when a vault `Visuals/` folder exists, refresh or
+   create its `index.html` listing every built surface, so the folder works as
+   a study site rather than a pile of files.
+7. Apply the hard gates and acceptance checks in
+   `references/visual-quality-gate.md`; regenerate rather than releasing a
+   box-note surface that merely satisfies HTML validity.
 
 ## Handle multi-chapter requests
 
@@ -170,14 +193,23 @@ action of that chapter's cycle. Do not wait for the learner to say
 - **Close with a link:** every endpoint build finishes by giving the learner a
   clickable way to open the surface to review or study (see Generate and
   verify, step 2). The link is the last thing the learner sees in that step.
+- **Persist it:** the endpoint writes the surface into the vault's `Visuals/`
+  folder (see Persistence boundary), so the link keeps working next session.
+  If the vault has no `Visuals/` folder, create it on first build.
 
 ## Persistence boundary
 
-- Default to no vault writes. The HTML fragment is an in-conversation view of
-  canonical notes.
-- If the learner asks to save the visual in the vault, hand off to
-  `obsidian-study-loop`'s current Markdown/Mermaid visual-review contract and
-  validator. Never save or export the inline HTML into `_study/visuals/`.
+- At the chapter endpoint, the surface is a durable artifact: write it to
+  `<vault>/Visuals/<scope-slug>.html` and keep an `index.html` listing every
+  built surface. This is the study site the endpoint's link points at, and it
+  is the only allowed vault write this skill performs.
+- Casual in-conversation visualizations that are not endpoint builds default
+  to no vault writes: use the thread-scoped writable directory and treat the
+  fragment as an in-conversation view of canonical notes.
+- If the learner asks to save a visual review through the study loop's
+  Markdown/Mermaid lane, hand off to `obsidian-study-loop`'s current
+  visual-review contract and validator. Never save or export the inline HTML
+  into `_study/visuals/` — that folder is the Markdown artifact lane.
 - If the learner asks for a spatial Canvas or durable map stack, hand off to
   `mind-map-obsidian` or `study-map` and obey their integrity gates.
 - A saved or inline visual remains a study aid. It never changes mastery until
@@ -192,8 +224,10 @@ action of that chapter's cycle. Do not wait for the learner to say
 - [ ] One chapter, one dominant canvas, and no long-scroll prose dump.
 - [ ] Essential distinctions and limitations survived compression.
 - [ ] Visualize interaction, accessibility, themes, and narrow layout verified.
-- [ ] No vault, session, note, or mastery state changed during inline generation.
+- [ ] Inline previews changed no vault, session, note, or mastery state.
 - [ ] At the chapter endpoint, the surface was built automatically from the
       completion record — no "visualize it" request was required.
+- [ ] The surface was persisted to `<vault>/Visuals/` (and `index.html`
+      refreshed) so the link stays clickable across sessions.
 - [ ] The final response gives the learner a clickable way to open the surface
       for review or study.
