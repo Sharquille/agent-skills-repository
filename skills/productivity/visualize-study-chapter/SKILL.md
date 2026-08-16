@@ -48,6 +48,10 @@ not a second note system or an assessment.
 5. Keep a source ledger while composing: every visible node, edge, label,
    sequence, and distinction must resolve to a source note and heading. Omit
    unsupported connections and report missing linkage instead of inventing it.
+   Carry the exact note-and-heading provenance with each selectable state's
+   input, operation, output, claim, and limit. When a control changes state,
+   update that provenance with the visual trace; never leave a stale chapter-
+   only source label beside a state-specific explanation.
 
 ## Protect evidence before visualizing
 

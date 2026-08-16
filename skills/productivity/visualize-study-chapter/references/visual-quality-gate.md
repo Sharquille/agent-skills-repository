@@ -112,6 +112,9 @@ still see what changed and why?** If not, redesign the scene.
 - Inspect every selectable state, not only the initial screenshot. Include the
   longest label, densest state, destructive consequence, and recovery or
   verification state when present.
+- Confirm the selected state's source note and exact heading are visible in
+  the trace or provenance rail and change with the state; a stale chapter-only
+  source label is a release blocker for a state-specific explanation.
 - At both 736px and 360px, check document overflow, control wrapping, label-to-
   object anchoring, label-to-line collisions, scene contrast, and actual
   screen-space text bounds. Repeat one dense state in light and dark themes.
