@@ -128,6 +128,48 @@ swaps note panels is not a visualization and must be redesigned.
 - Text serves as labels, annotations, and a linear fallback reading layer. If
   hiding paragraph text leaves no visible relationship, the surface is still
   decorated notes and fails the quality gate.
+- Make every selectable state a closed explanatory trace: show a concrete input
+  or starting condition, the visible change or operation, the concrete output
+  or consequence, and a bounded claim plus limitation. Do not reuse generic
+  labels such as `result`, `effect`, `transform`, or a floating claim taxonomy
+  when the source names the actual artifact (for example ciphertext, digest,
+  signature, alert, restored service, or contained host).
+- When a mechanism has direction or ownership, draw the direction with
+  arrowheads and label the owner or key at the point where it acts. When a
+  claim is conditional, put the condition in the scene or its adjacent
+  claim/limit rail rather than leaving it to the field notes.
+- A compact causal rail directly adjacent to the primary scene is allowed when
+  it is state-driven and uses short `input → change → output` labels plus
+  `claim` and `limit` fields. It must update with the selected state and serve
+  as a linear comprehension aid, not as a replacement for the relationship
+  diagram or a stack of prose cards.
+- Give each scene a visible purpose: the title or lead label should answer what
+  the learner is meant to understand (for example, who owns a key, what
+  crosses a boundary, or why a digest match is limited). Treat icons as
+  semantic nouns only when their relationship and consequence are labeled;
+  decorative icon rows do not count as explanation.
+- Establish a small type system before placing geometry: use a readable sans
+  for headings, object/action labels, and explanatory copy; reserve monospace
+  for compact technical tokens, formulas, and metadata. Keep one clear visual
+  hierarchy per scene and shorten copy before shrinking text below the
+  readable-size gate.
+- Reserve geometry safe zones before writing labels. Keep copy inside its
+  object or plate, keep claim and limit columns separated, and leave deliberate
+  breathing room after the final process node. A footer is one composition, not
+  a second prose layer laid over the scene.
+- Make visual stimulation causal rather than ornamental: every color, icon,
+  line, arrowhead, boundary, and emphasis state must encode an object,
+  operation, owner, direction, or consequence. Remove decoration that does not
+  help the learner predict what changes next.
+- Run a novice-only read test before release: temporarily ignore the notes,
+  recall answer, and prior study context, then describe the selected state from
+  the visual alone. If the input, operation, output, claim, or limitation
+  cannot be recovered from the scene and its compact rail, redesign the scene
+  instead of relying on the learner to infer the missing logic.
+- Treat a dense mobile footer as one composition: move its plate, icon, label,
+  and supporting line together in one explicit group or layout rule. Never
+  move only the text coordinates after the card has been positioned. Leave a
+  deliberate gap after the final process node before the claim/limit copy.
 - On narrow screens, keep the relationship scene primary. A complete reference
   layer may be progressively disclosed with native HTML when the visible scene
   already carries the chapter model; do not force the learner through a long
@@ -155,6 +197,9 @@ swaps note panels is not a visualization and must be redesigned.
    11 screen pixels; a uniformly shrunken desktop scene is not a mobile pass.
    Use wide mode only when direct side-by-side comparison genuinely requires
    it.
+   At 360 px, recompose a dense causal diagram vertically or provide a
+   state-driven adjacent causal rail with readable labels; do not rely on a
+   uniformly shrunken desktop SVG.
 5. Confirm that no source facts, sections, limitations, or distinctions were
    dropped during compression and that no future-scope material was added.
 6. Keep the site navigable: when a vault `Visuals/` folder exists, refresh or

@@ -49,6 +49,26 @@ starting condition, the affected object or boundary, and the visible
 consequence. Highlighting an isolated path fragment or floating label does not
 meet this floor.
 
+For each state, apply the stricter four-part contract:
+
+`input/starting condition → change or operation → concrete output/consequence → claim + limit`
+
+Do not use a generic `result`, `effect`, `transform`, or icon-only claim row
+when the source identifies the actual artifact or outcome. Name ciphertext,
+digest, signature, alert, restored service, contained sample, rejected claim,
+or another source-backed noun. If direction, ownership, or key use matters,
+show arrowheads and place the owner/key label at the operation that consumes
+it. A state-driven causal rail adjacent to the scene is acceptable as a
+compact reading aid, but it must update with the selected state and must not
+replace the primary relationship diagram with a prose card grid.
+
+Apply a no-context read test: without using the chapter notes or prior study
+knowledge, can a learner state what question the scene answers, follow the
+input → operation → output path, and name the claim's boundary? If the answer
+depends on already knowing the topic, the scene is polished decoration rather
+than an intuitive teaching illustration. Every icon must earn its place by
+identifying an object, action, owner, or consequence in that path.
+
 At 360px, recompose the scene: change the viewBox, reflow the geometry, shorten
 or relocate annotations, or remove nonessential decoration. Do not treat a
 uniformly shrunken desktop scene as responsive design. Keep every visible SVG
@@ -56,6 +76,20 @@ label at least 11 actual screen pixels after scaling. The linear reference
 layer may use a native `details` disclosure on narrow screens when the closed
 state still contains exact definitions and the primary scene remains complete
 without opening it.
+
+When a mobile scene has a claim/limit footer, move the plate, icon, label, and
+supporting line as one composition. A coordinate-only text move that detaches
+copy from its visual anchor is a release blocker; leave visible breathing room
+after the final process node before the footer begins.
+
+Typography and layout are part of the explanation, not a finishing pass:
+functional labels use a readable sans hierarchy, while monospace is reserved
+for compact technical tokens, formulas, and metadata. Copy stays inside its
+object or plate; claim and limit columns remain visibly separated; and no
+decorative mark survives unless it communicates an object, operation, owner,
+direction, boundary, or consequence. Check actual screen-space bounds for the
+longest and densest labels, not only the SVG viewBox or a document-level
+overflow result.
 
 Ask one release question: **if the prose boxes disappeared, could the learner
 still see what changed and why?** If not, redesign the scene.
@@ -84,6 +118,12 @@ still see what changed and why?** If not, redesign the scene.
 - A selected action must visibly alter at least two properties and leave the
   system's unchanged context legible enough to explain what moved, stopped,
   crossed, transformed, or became contained.
+- Review the densest and most easily conflated states for semantic correctness:
+  verification must terminate at an independent owner or decision; distinct
+  mechanisms such as RAT versus logic bomb and quarantine versus sandbox must
+  have separate visible lanes; and a security-property claim must state what
+  it does not establish (for example integrity is not secrecy, and a recorded
+  ledger entry is not proof that the input was true).
 - When pages are generator-backed, edit the generator first, regenerate every
   affected page and the index, then test the generated files. A hand-patched
   output that the next build will erase fails release.
