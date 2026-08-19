@@ -43,8 +43,10 @@ workflow in `STUDY-PROTOCOL.md`. Do not hand-edit `state.json` unless
 recovering.
 
 - `sessions/` stores study-session logs and assessment history.
-- `visuals/` stores current-scope visual review artifacts. These are
-  Markdown and Mermaid study aids, not quizzes or mastery evidence.
+- `visuals/` stores explicit current-scope Markdown and Mermaid review artifacts.
+  These are study aids, not quizzes or mastery evidence.
+- Automatic chapter-end HTML from `visualize-study-chapter` is helper-owned and
+  lives separately in the vault's `Visuals/` folder when that helper is available.
 - `dives/` stores teaching-dive notes (`teach-complex-concepts`) — decoupled
   explanations and diagrams, never graded study notes and never mastery
   evidence. Canonical study notes live in `Notes/`, authored only by the
@@ -117,6 +119,18 @@ def resolve_notes_dir(raw: Path, vault: Path) -> Path:
     return resolved
 
 
+def reject_symlink_components(path: Path, vault: Path) -> None:
+    try:
+        relative = path.relative_to(vault)
+    except ValueError as exc:
+        raise InstallError(f"Target is outside the vault: {path}") from exc
+    current = vault
+    for component in relative.parts:
+        current /= component
+        if current.is_symlink():
+            raise InstallError(f"Refusing symlinked vault path component: {current}")
+
+
 def configured_notes_dir(raw: Path | None, vault: Path) -> Path | None:
     if raw is not None:
         return resolve_notes_dir(raw, vault)
@@ -137,6 +151,7 @@ def configured_notes_dir(raw: Path | None, vault: Path) -> Path | None:
 
 
 def ensure_safe_path(path: Path, vault: Path) -> None:
+    reject_symlink_components(path, vault)
     try:
         parent = path.parent.resolve()
     except (OSError, RuntimeError) as exc:
@@ -251,11 +266,11 @@ def build_plan(vault: Path, notes_dir: Path | None) -> list[Change]:
         if directory is not None
     )
     for directory in directories:
+        ensure_safe_path(directory, vault)
         if directory.exists():
             if not directory.is_dir() or not directory.resolve().is_relative_to(vault):
                 raise InstallError(f"Expected a safe vault-local directory: {directory}")
         else:
-            ensure_safe_path(directory, vault)
             changes.append(Change("create directory", directory))
 
     if not (vault / PROTOCOL_NAME).exists() and notes_dir is None:
@@ -305,7 +320,8 @@ def build_plan(vault: Path, notes_dir: Path | None) -> list[Change]:
     return changes
 
 
-def atomic_write(target: Path, content: str) -> None:
+def atomic_write(target: Path, content: str, vault: Path) -> None:
+    ensure_safe_path(target, vault)
     previous_mode = target.stat().st_mode & 0o777 if target.exists() else None
     temporary: Path | None = None
     try:
@@ -325,6 +341,9 @@ def atomic_write(target: Path, content: str) -> None:
             os.fsync(handle.fileno())
         if previous_mode is not None:
             temporary.chmod(previous_mode)
+        # Re-check immediately before replacement so a newly introduced symlink
+        # or redirected parent is rejected rather than followed.
+        ensure_safe_path(target, vault)
         os.replace(temporary, target)
         temporary = None
     finally:
@@ -332,13 +351,14 @@ def atomic_write(target: Path, content: str) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def apply_plan(changes: list[Change]) -> None:
+def apply_plan(changes: list[Change], vault: Path) -> None:
     for change in changes:
+        ensure_safe_path(change.path, vault)
         if change.action == "create directory":
             change.path.mkdir(parents=True, exist_ok=False)
         else:
             assert change.content is not None
-            atomic_write(change.path, change.content)
+            atomic_write(change.path, change.content, vault)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -356,7 +376,7 @@ def main(argv: list[str] | None = None) -> int:
         if not args.apply:
             print("\nDRY RUN: no files changed. Re-run with --apply to install.")
             return 2
-        apply_plan(changes)
+        apply_plan(changes, vault)
         print(f"INSTALLED: {vault}")
         print("Existing protocol, manual, state, notes, and sessions were preserved.")
         return 0

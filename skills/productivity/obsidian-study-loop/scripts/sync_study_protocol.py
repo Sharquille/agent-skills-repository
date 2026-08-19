@@ -34,6 +34,18 @@ class SyncError(RuntimeError):
     """Expected user-facing sync failure."""
 
 
+def reject_symlink_components(path: Path, vault: Path) -> None:
+    try:
+        relative = path.relative_to(vault)
+    except ValueError as exc:
+        raise SyncError(f"Target is outside the vault: {path}") from exc
+    current = vault
+    for component in relative.parts:
+        current /= component
+        if current.is_symlink():
+            raise SyncError(f"Refusing symlinked vault path component: {current}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Sync a vault-local STUDY-PROTOCOL.md from obsidian-study-loop."
@@ -81,6 +93,7 @@ def resolve_vault(path: str) -> Path:
             "install_study_loop.py first to create missing scaffold safely."
         )
     for required in (protocol, state):
+        reject_symlink_components(required, vault)
         if not required.is_file():
             raise SyncError(f"Required study-vault file is not a regular file: {required}")
         try:
@@ -137,13 +150,16 @@ def render_template(template_path: Path, vault: Path, notes_dir: Path) -> str:
 
 
 def ensure_safe_target(target: Path, vault: Path) -> None:
+    reject_symlink_components(target, vault)
     if target.is_symlink():
         raise SyncError(f"Refusing to replace symlinked protocol target: {target}")
     if target.parent.resolve() != vault:
         raise SyncError(f"Protocol target escaped the vault root: {target}")
 
 
-def atomic_write_text(target: Path, text: str) -> None:
+def atomic_write_text(target: Path, text: str, vault: Path | None = None) -> None:
+    if vault is not None:
+        ensure_safe_target(target, vault)
     previous_mode = target.stat().st_mode & 0o777 if target.exists() else None
     temporary_path: Path | None = None
     try:
@@ -162,6 +178,10 @@ def atomic_write_text(target: Path, text: str) -> None:
             os.fsync(handle.fileno())
         if previous_mode is not None:
             temporary_path.chmod(previous_mode)
+        if vault is not None:
+            # Re-check immediately before replacement so a newly introduced
+            # symlink or redirected parent is rejected rather than followed.
+            ensure_safe_target(target, vault)
         os.replace(temporary_path, target)
         temporary_path = None
     finally:
@@ -294,11 +314,11 @@ def main() -> int:
             return 2
 
         if protocol_stale:
-            atomic_write_text(target, desired)
+            atomic_write_text(target, desired, vault)
             print(f"UPDATED: {target}")
             print(f"SOURCE:  {template}")
         if manual_stale:
-            atomic_write_text(manual_target, desired_manual)
+            atomic_write_text(manual_target, desired_manual, vault)
             print(f"UPDATED: {manual_target}")
             print(f"SOURCE:  {manual_source}")
         print(

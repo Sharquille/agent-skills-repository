@@ -79,6 +79,9 @@ When available, use these helper skills while following this protocol:
   one chapter. It is integrity-gated: every node, edge, and tag must resolve to a
   real note/tag/link, missing linkage is reported (not invented), and it writes
   only into `Maps/` — never `_study/` or note bodies.
+- `visualize-study-chapter` for the automatic chapter-end HTML surface under
+  `<vault>/Visuals/` when available and evidence-gated. Explicit Markdown/Mermaid
+  visual reviews remain this workflow's `_study/visuals/` lane; do not mix them.
 
 Helper skills do not change the safety rules: do not invent facts or citations,
 and do not add API keys.
@@ -1903,22 +1906,19 @@ copy affect the score.
     Reconstruct the missing session-side records from the evidence in the note
     (scores, dates, callouts) before doing new review work, and log the repair
     in the session log.
-20. **Chapter endpoint — build the visual surface automatically.** When the
+20. **Chapter endpoint — hand off the visual surface when available.** When the
     ordered pass sets a scope's `## Unit progress` Review column to `reviewed`,
-    that completion is also the trigger for the chapter's visual study surface.
-    Hand off to `visualize-study-chapter` without waiting for the learner to
-    ask: the scope is completed (quiz consumed, notes written, review
-    recorded), so the surface is the closing step of the chapter cycle, and
-    the endpoint response must include a clickable way for the learner to open
-    it for review or study, and the surface is persisted to the vault's
-    `Visuals/` folder so that link stays valid across sessions. The handoff must
-    pass `visualize-study-chapter`'s visual-quality gate; a card grid or
-    prose-panel swap is not an acceptable chapter endpoint. If the scope's
-    notes are not yet assessable or a fresh active/paused quiz attempt or
-    unanswered study-check overlaps the surface, defer the handoff and say
-    why, under `visualize-study-chapter`'s evidence gate — never build a
-    surface that leaks a live answer. The surface never changes mastery; it is
-    a study aid.
+    automatically invoke `visualize-study-chapter` if it is available and its
+    evidence gate passes; do not wait for a separate learner request. That helper
+    owns the automatic HTML surface under the vault's `Visuals/` folder and must
+    return a clickable way for the learner to open it. This is separate from the
+    explicit Markdown/Mermaid visual-review lane owned by this workflow under
+    `_study/visuals/`; never mix the two contracts. If the helper is unavailable,
+    fails, or the scope's notes are not assessable, record `Visual deferred —
+    <reason>` in the session log and complete review without improvising a visual
+    artifact. Also defer when a fresh active/paused quiz attempt or unanswered
+    study-check overlaps the surface. A visual never changes mastery; it is a
+    study aid.
 
 <!-- shared-contract:start id=process-reflection -->
 ## Optional Read-Only Study-Process Reflection

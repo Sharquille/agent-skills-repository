@@ -5,7 +5,7 @@ Usage:
   study_man.py            print the full manual
   study_man.py --list     list topics (id + title)
   study_man.py <topic>    print matching section(s); topic matches a section
-                          id, an alias, or a keyword in either
+                          id, an alias, or a keyword in its id, aliases, or title
   study_man.py --pretty   force the styled terminal view (ANSI); --raw forces
                           plain markdown. Default: styled on an interactive
                           terminal, plain markdown when piped.

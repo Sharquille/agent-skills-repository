@@ -1,9 +1,11 @@
 # Visual Review Artifact Standard
 
-Use this reference when creating or redesigning Markdown visual reviews under
-`_study/visuals/`. The active artifact format is Markdown with Mermaid so the
-same file remains reachable and renderable in Obsidian on desktop and iPadOS.
-The protocol remains authoritative if the two ever disagree.
+Use this reference when creating or redesigning explicit Markdown visual reviews
+under `_study/visuals/`. The active artifact format is Markdown with Mermaid so
+the same file remains reachable and renderable in Obsidian on desktop and iPadOS.
+The automatic chapter-end HTML lane belongs to `visualize-study-chapter` and its
+separate `<vault>/Visuals/` contract; do not apply this Markdown contract to that
+helper-owned output. The protocol remains authoritative if the two ever disagree.
 
 ## Active Markdown and Mermaid contract
 

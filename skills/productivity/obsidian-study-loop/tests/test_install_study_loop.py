@@ -62,7 +62,7 @@ class InstallStudyLoopTests(unittest.TestCase):
         self.assertTrue(workpages.is_dir(), "workpages scaffold directory missing")
         self.assertTrue((workpages / ".gitkeep").is_file(), "workpages .gitkeep missing")
         study_readme = (self.vault / "_study" / "README.md").read_text(encoding="utf-8")
-        self.assertIn("Markdown and Mermaid study aids", study_readme)
+        self.assertIn("Markdown and Mermaid review artifacts", study_readme)
         for name in installer.POINTER_FILES:
             text = (self.vault / name).read_text(encoding="utf-8")
             self.assertEqual(text.count("## Study sessions"), 1)
@@ -166,6 +166,15 @@ class InstallStudyLoopTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse((self.vault / "Notes").exists())
         self.assertTrue(custom.is_dir())
+
+    def test_symlinked_scaffold_directory_is_rejected(self) -> None:
+        real_study = self.vault / "real-study"
+        real_study.mkdir()
+        (self.vault / "_study").symlink_to(real_study, target_is_directory=True)
+        result = self.run_cli("--apply")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("symlink", result.stderr.lower())
+        self.assertFalse((real_study / "state.json").exists())
 
     def test_symlinked_pointer_target_is_rejected(self) -> None:
         outside = Path(self.temporary.name) / "outside.md"

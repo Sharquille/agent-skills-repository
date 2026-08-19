@@ -315,6 +315,16 @@ class SyncTests(VaultFixture):
             sync.ensure_safe_target(target, self.vault.resolve())
         self.assertEqual(victim.read_text(encoding="utf-8"), "keep")
 
+    def test_in_vault_symlinked_state_file_is_rejected(self) -> None:
+        self.write_protocol()
+        state_target = self.vault / "state-target.json"
+        state_target.write_text('{"active_session": null}\n', encoding="utf-8")
+        state = self.vault / "_study" / "state.json"
+        state.symlink_to(state_target)
+        with self.assertRaises(sync.SyncError):
+            sync.resolve_vault(str(self.vault))
+        self.assertEqual(state_target.read_text(encoding="utf-8"), '{"active_session": null}\n')
+
     def test_atomic_write_replaces_content_and_preserves_mode(self) -> None:
         target = self.vault / "STUDY-PROTOCOL.md"
         target.write_text("old", encoding="utf-8")
@@ -1525,6 +1535,32 @@ class ProtocolAlignmentTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             for control in ("`pause`", "`resume`", "`rephrase`", "`shorter`", "`deeper`"):
                 self.assertIn(control, text, (path, control))
+
+    def test_visual_lanes_and_prose_authorities_are_explicit(self) -> None:
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("`visualize-study-chapter`", text, path)
+            self.assertIn("`Visuals/`", text, path)
+            self.assertIn("`_study/visuals/`", text, path)
+            self.assertIn("never mix", text, path)
+            self.assertIn("`unslop`", text, path)
+            self.assertIn("`humanizer`", text, path)
+
+        references = SKILL_DIR / "references"
+        readme = (references / "README.md").read_text(encoding="utf-8")
+        self.assertIn("two visual lanes", readme)
+        self.assertIn("Never mix those contracts", readme)
+        visual_standard = (references / "visual-review-standard.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("helper-owned output", visual_standard)
+
+        manual = (references / "manpage.md").read_text(encoding="utf-8")
+        self.assertIn("`unslop`", manual)
+        self.assertIn("not the default note-authoring pass", manual)
+
+        study_man = (SKILL_DIR / "scripts" / "study_man.py").read_text(encoding="utf-8")
+        self.assertIn("keyword in its id, aliases, or title", study_man)
 
 
 if __name__ == "__main__":

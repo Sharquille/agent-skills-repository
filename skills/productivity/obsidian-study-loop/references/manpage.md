@@ -271,7 +271,8 @@ opens directly in Obsidian on desktop and iPadOS — concept maps, comparison
 tables, flows, and foldable retrieval prompts — written to `_study/visuals/`.
 It is a study aid labeled `Visual review artifact - not an assessment`: no
 scoring, no answer collection, no remote dependencies, and no assessment
-changes.
+changes. The automatic chapter endpoint is separate: `visualize-study-chapter`
+owns its helper-generated HTML under the vault's `Visuals/` folder.
 <!-- man:section-end id=visuals -->
 
 <!-- man:section id=layout aliases="files,disk,structure,vault,where,folders" -->
@@ -315,9 +316,12 @@ the saved files are enough to pick up where you left off.
   when a topic truly needs it.
 
 **Note quality**
+- `unslop` — preservation-first prose authoring; keeps technical terms and
+  learner-owned wording intact while removing unnecessary filler.
 - `portable-markdown` — keeps notes in standard Markdown that renders
   everywhere: callout boxes, clean tables, invisible markers.
-- `humanizer` — prose pass so notes read like notes, not chatbot output.
+- `humanizer` — only for an explicit, deeper voice-matched rewrite of finished
+  prose; it is not the default note-authoring pass.
 - `knowledge-capture-obsidian` — vault hygiene: frontmatter, tags, wikilinks,
   index links.
 
