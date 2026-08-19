@@ -1,6 +1,6 @@
 ---
 name: portable-markdown
-description: "Write or reformat Markdown so it renders cleanly and elegantly in EVERY tool, not just one editor. Enforces GitHub-Flavored Markdown alerts (the 5 standard types), HTML-comment machinery, and disciplined typography (comparison tables, key-term bolding, section rules). Use when notes or docs must look polished on GitHub AND Obsidian AND VS Code AND pandoc, when stripping editor-specific syntax (Obsidian %% comments, custom [!callout] types) that leaks as literal text elsewhere, or when an agent asks how to format study notes / READMEs / docs portably. Do not trigger for prose de-AI-ing (use humanizer), for HTML/CSS UI work, or for non-Markdown formats."
+description: "Write or reformat Markdown so it renders cleanly and elegantly in EVERY tool, not just one editor. Enforces GitHub-Flavored Markdown alerts (the 5 standard types), HTML-comment machinery, and disciplined typography (comparison tables, key-term bolding, section rules). Use when notes or docs must look polished on GitHub AND Obsidian AND VS Code AND pandoc, when stripping editor-specific syntax (Obsidian %% comments, custom [!callout] types) that leaks as literal text elsewhere, or when an agent asks how to format study notes / READMEs / docs portably. Do not trigger for prose authoring (use unslop), deep prose rewrites (use humanizer), HTML/CSS UI work, or non-Markdown formats."
 # --- provenance ---
 category: productivity
 source: self-authored (this repository)
@@ -15,6 +15,10 @@ Markdown is only "portable" if it looks the same — and looks good — wherever
 is read. The trap is editor-specific syntax that renders beautifully in one tool
 and leaks as literal junk in the next. This skill defines one standard that is
 **both portable and elegant**, and a way to check files against it.
+
+This skill owns Markdown portability and rendering syntax. It does not replace
+`unslop`'s preservation-first prose pass or `technical-writing`'s document-structure
+rules.
 
 The two most common leaks:
 

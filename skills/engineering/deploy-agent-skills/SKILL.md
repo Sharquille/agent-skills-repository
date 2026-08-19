@@ -71,8 +71,15 @@ The safety installer:
   implementation and bulk/context work, Luna/max supervision/critique,
   Sol/xhigh overview, targeted single-lane overrides, no Haiku, and
   guarded implementation through `orchestra-agent.sh --allow-write --scope`.
-- Keeps Codex's own `AGENTS.md` safety-only so invoked Codex workers do not
-  recursively route back through Agent Orchestra.
+- Adds a short, preservation-first writing-standard pointer to all four managed
+  blocks. `anti-slop-standard` owns code authoring and handover; `unslop` owns
+  prose authoring. The full code, prose, document-structure, and Markdown rules
+  stay in the repository skills and load when the relevant work requires them.
+  The writing standard does not override user instructions, required legal or
+  security wording, technical precision, or established repository terminology.
+- Keeps Codex's own `AGENTS.md` to safety and the writing standard, with no
+  orchestration routing, so invoked Codex workers do not recursively route back
+  through Agent Orchestra.
 
 ### Claude Config Snapshot
 

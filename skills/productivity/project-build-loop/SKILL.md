@@ -45,8 +45,8 @@ The conductor orchestrates; it does not re-implement domain work. Route to:
 - **Research:** `literature-review`, `study-research-queries`.
 - **Notes/format:** `task-steps-ledger` (per-task method, issue/fix,
   persistence, validation, and evidence ledger), `knowledge-capture-obsidian`,
-  `portable-markdown` (formatting authority), `humanizer` (prose pass on
-  publication only), `mind-map-obsidian`.
+  `unslop` (default prose authoring), `portable-markdown` (formatting authority),
+  `humanizer` (explicit deep rewrite for publication only), `mind-map-obsidian`.
 - **Security governance:** `security-threat-model`, `build-security-policy`,
   `security-and-hardening` (secret-scan / `.gitignore` baseline), `security-scan`,
   `agent-repo-security`, `security-ownership-map`.
@@ -375,6 +375,10 @@ dry-run-first creation.
 3. Log creation to `event-log.jsonl`; set the global last-active pointer.
 
 ### Phase 2 — Discovery interview
+
+Use `grilling` for the round and moving-frontier mechanics. This workflow's intake
+question bank and persistence rules remain the source of truth for project-specific
+questions and recorded answers.
 
 Walk `references/intake-questions.md` (governance-complete). Capture objectives,
 **authorization** (owner, scope, target list, allowed/excluded actions, evidence

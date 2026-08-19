@@ -17,6 +17,15 @@ This is a bounded cleanup workflow for code that works but feels bloated,
 repetitive, weakly tested, or over-abstracted. Prefer deletion over addition;
 keep diffs small, reversible, and smell-focused.
 
+[`anti-slop-standard`](../anti-slop-standard/SKILL.md) defines what slop is and is in
+force whenever anything is written. This skill is its remediation arm: it exists for
+code that was written before the standard applied, or that got past it. The standard
+names the rules; this workflow removes the violations safely.
+
+The cleanup pass must preserve behavior, meaning, technical terminology, public
+interfaces, and required wording. A word or pattern named by the standard is a review
+signal, not proof that the implementation is defective.
+
 ## When to use
 
 - The user says **deslop**, **anti-slop**, or **AI slop**.
@@ -79,11 +88,15 @@ In review mode:
 - Order the work from safest deletion to riskier consolidation.
 
 ### 3. Classify the slop before editing
-- **Duplication** — repeated logic, copy-paste branches, redundant helpers.
-- **Dead code** — unused code, unreachable branches, stale flags, debug leftovers.
-- **Needless abstraction** — pass-through wrappers, speculative indirection, single-use helper layers.
-- **Boundary violations** — hidden coupling, misplaced responsibilities, wrong-layer imports or side effects.
-- **Missing tests** — behavior not locked, weak regression coverage, edge-case gaps.
+Each category is a violation of one rule in [`anti-slop-standard`](../anti-slop-standard/SKILL.md); read it for the definitions and tests, and record findings under these names.
+
+| Category | Rule it violates |
+|---|---|
+| **Duplication** | Write it once |
+| **Dead code** | Write only what is reached |
+| **Needless abstraction** | Write the direct thing |
+| **Boundary violations** | Write it where it belongs |
+| **Missing tests** | Lock behavior as you write it |
 
 ### 4. Run one smell-focused pass at a time
 - Pass 1: Dead code deletion
