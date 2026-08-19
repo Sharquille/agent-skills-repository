@@ -49,9 +49,12 @@ This skill is the study orchestrator. Use these helper skills when available:
 - `knowledge-capture-obsidian`: apply its vault hygiene conventions before
   writing notes. Search the vault first, use consistent frontmatter, tags,
   `[[wikilinks]]`, and MOC/index links when they fit the vault.
-- `humanizer`: run a prose pass on completed `solid` and `partial` note
-  sections so they read like concise study notes, not chatbot output. Preserve
-  technical accuracy and do not add personality to reference material.
+- `unslop`: apply the preservation-first prose pass while authoring and when
+  polishing completed `solid` and `partial` note sections. Preserve technical
+  accuracy, exact terms, and the note's register.
+- `humanizer`: use only when the learner explicitly asks for a deeper,
+  voice-matched rewrite of finished note prose. Do not add personality to
+  reference material.
 - `portable-markdown`: the formatting authority for every note this skill writes.
   Use only the five GFM-standard alerts (`[!NOTE] [!TIP] [!IMPORTANT] [!WARNING]
   [!CAUTION]`), HTML `<!-- ... -->` machine markers, and clean typography
@@ -1627,8 +1630,9 @@ Available support-helpers:
   text materially differs — without changing the original evidence.
 - Map refresh: `study-map` can refresh course maps after reviewed notes are
   ready to link.
-- Note polish: `humanizer` and `portable-markdown` can clean reviewed prose and
-  formatting after the learner's own gap work is checked.
+- Note polish: `unslop` applies the preservation-first prose pass and
+  `portable-markdown` owns formatting after the learner's gap work is checked.
+  Use `humanizer` only when the learner asks for a deeper voice-matched rewrite.
 ```
 
 Ask which support path the user wants next, or tell them they can fill the gaps
@@ -1855,8 +1859,9 @@ Trigger examples: "review my additions", "check my gap notes".
      Do not leave `RESEARCH NEEDED` above reviewed work.
    - Check frontmatter, tags, `[[wikilinks]]`, and related/mind-map metadata for
      consistency with the rest of the vault.
-   - Apply a light humanizer pass so the final note reads like durable study
-     material, not an AI transcript.
+   - Apply the `unslop` preservation-first pass so the final note reads like durable
+     material, not an AI transcript. Do not rewrite exact terms or unchanged
+      sentences mechanically.
 8. Score each answered mastery check before editing the user's selections:
    - Accuracy or correctness: `0-2`
    - Context or application fit: `0-2`

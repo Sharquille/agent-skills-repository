@@ -48,8 +48,11 @@ When available, use these helper skills while following this protocol:
 
 - `knowledge-capture-obsidian` for frontmatter, tags, `[[wikilinks]]`, MOC/index
   hygiene, and clean Obsidian note structure.
-- `humanizer` for a final prose pass on completed `solid` and `partial` note
-  sections. Keep technical reference notes neutral, direct, and accurate.
+- `unslop` for the preservation-first prose pass on completed `solid` and
+  `partial` note sections. Keep technical reference notes neutral, direct, and
+  accurate.
+- `humanizer` only when the learner asks for a deeper, voice-matched rewrite of
+  finished note prose.
 - `study-research-queries` when the user asks for help researching a gap. It
   should produce search queries and a source plan, not fill the gap note unless
   the user explicitly asks for that.
@@ -1561,8 +1564,9 @@ Available support-helpers:
   text materially differs — without changing the original evidence.
 - Map refresh: `study-map` can refresh course maps after reviewed notes are
   ready to link.
-- Note polish: `humanizer` and `portable-markdown` can clean reviewed prose and
-  formatting after the learner's own gap work is checked.
+- Note polish: `unslop` applies the preservation-first prose pass and
+  `portable-markdown` owns formatting after the learner's gap work is checked.
+  Use `humanizer` only when the learner asks for a deeper voice-matched rewrite.
 ```
 
 Ask which support path the user wants next, or tell them they can fill the gaps
