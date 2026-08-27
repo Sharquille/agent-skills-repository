@@ -433,6 +433,40 @@ proportion to mastery: `solid` = at least 87.5%, `partial` = at least 50% but
 below 87.5%, and `gap` = below 50%. A fully correct definition may therefore
 be `2/2 applicable — solid (recall-only)`; never display it as `2/8`.
 
+**Behavioural anchors for context fit and transfer.** A dimension is applicable
+only when the prompt requests its response operation; a scenario or option list
+alone does not request one, and volunteered work never expands the applicable
+denominator. Judge only explicit written claims against the prompt and in-scope
+material — a short clause can satisfy an anchor, but never supply an omitted
+link. Take the first matching level from `2` downward.
+
+Context or application fit:
+
+- `2`: names a stated, load-bearing context fact and says how it supports the
+  proposed answer or rejects an alternative, and no context claim contradicts
+  the stem. Restatement, juxtaposition, or an unstated fact is not a link.
+- `1`: makes an application claim that fails `2` — a generic relevant feature,
+  an unlinked case fact, or a claim conflicting with stated context.
+- `0`: makes no application claim; selects or names an answer, gives a generic
+  definition, or is off-task.
+
+Transfer, limitations, alternatives, or distractor rejection:
+
+- `2`: completes every requested operation, each result specific and sound,
+  with an explicit relevant reason where support was requested, and no material
+  claim used is false or misapplied.
+- `1`: performs at least one requested operation but fails `2` — a part is
+  omitted, generic, unsupported, irrelevant, false, or misapplied.
+- `0`: performs none of the requested operations; repeats the answer or option
+  labels, or explains something unrelated.
+
+Score both independently of final-answer correctness. A correct answer with
+generic context handling or one faulty rejection earns `1`; an incorrect answer
+earns `2` when its stated link or requested work meets the `2` anchor. Record
+every sub-`2` result and its observed defect in `evidence`, and target that
+defect in `next action` for `partial` or `gap`, or in the next scheduled
+unassisted item for `solid`.
+
 Each assessment objective selects one scored `evidence question: Q<n>` from
 the linked attempt as its primary mastery evidence. Copy that question's raw
 score, assistance, and learner confidence exactly; prefer the most diagnostic
