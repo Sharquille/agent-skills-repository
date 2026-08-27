@@ -577,6 +577,24 @@ Historical evidence remains in the ledger. New evidence may update the current
 tutor confidence, but must not rewrite what the learner originally answered.
 <!-- shared-contract:end id=mastery-scoring -->
 
+<!-- shared-contract:start id=external-drill-boundary -->
+**External drill boundary.** An external spaced-repetition system may carry any
+amount of the learner's retrieval volume. Its review events are never mastery
+evidence.
+
+- A card rating is self-assigned and unsupervised. It carries no rubric score,
+  assistance provenance, question kind, or pre-feedback confidence, and cannot
+  satisfy any part of the mastery contract.
+- External review activity never sets or adjusts mastery, tutor confidence,
+  calibration, assistance, or retrieval stage, and never advances or resets a
+  review date.
+- Lapse counts and leech status are read-only signals. They may nominate an
+  objective for teaching or for a later scheduled check; record the nomination
+  as a prompt, never as evidence.
+- The protocol owns objective-level applied and transfer checks. The external
+  system owns card-level recurrence. Neither schedule is derived from the other.
+<!-- shared-contract:end id=external-drill-boundary -->
+
 ## Setup a Vault
 
 When the user asks to install or set up the study loop, use the bundled

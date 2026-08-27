@@ -1442,14 +1442,19 @@ class ProtocolAlignmentTests(unittest.TestCase):
         template_blocks = blocks(TEMPLATE_PATH)
         expected = {
             "mastery-scoring",
+            "question-design",
             "quiz-attempt",
             "retrieval-schedule",
             "teaching-evidence-boundary",
+            "external-drill-boundary",
             "gap-evidence",
             "visual-artifact",
             "process-reflection",
         }
         self.assertTrue(expected.issubset(skill_blocks))
+        # Every declared contract must be covered; a new block cannot opt out of
+        # byte-identity by simply not being listed above.
+        self.assertEqual(expected, set(skill_blocks))
         for block_id in expected:
             self.assertEqual(skill_blocks[block_id], template_blocks.get(block_id), block_id)
 

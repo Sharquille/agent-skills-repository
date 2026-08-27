@@ -295,9 +295,11 @@ owns its helper-generated HTML under the vault's `Visuals/` folder.
     workpages/           # note-refresh history archives (one per note)
 ```
 
-The session file is the audit trail: every quiz answer, grade, note write,
-dive, and review lands there with a timestamp. If the chat loses its memory,
-the saved files are enough to pick up where you left off.
+The session file is the audit trail: every question asked, its grade, note
+writes, dives, and reviews land there with a timestamp. It keeps the question
+and a short summary of what your answer showed — not your answer word for
+word. If the chat loses its memory, the saved files are enough to pick up
+where you left off.
 <!-- man:section-end id=layout -->
 
 <!-- man:section id=helpers aliases="tools,skills,toolbox,categories,helper skills" -->
