@@ -43,17 +43,19 @@ workflow in `STUDY-PROTOCOL.md`. Do not hand-edit `state.json` unless
 recovering.
 
 - `sessions/` stores study-session logs and assessment history.
+- `anki/` stores source manifests and generated text-import files for the
+  optional `anki-study-sync` handoff. Anki activity is practice, never mastery
+  evidence or study-loop state.
 - `visuals/` stores explicit current-scope Markdown and Mermaid review artifacts.
   These are study aids, not quizzes or mastery evidence.
 - Automatic chapter-end HTML from `visualize-study-chapter` is helper-owned and
   lives separately in the vault's `Visuals/` folder when that helper is available.
 - `dives/` stores teaching-dive notes (`teach-complex-concepts`) — decoupled
-  explanations and diagrams, never graded study notes and never mastery
-  evidence. Canonical study notes live in `Notes/`, authored only by the
-  quiz → assess → write-notes flow.
+  explanations and diagrams, never mastery evidence. The study loop may use a
+  verified dive to enrich the complete canonical material in `Notes/`.
 - `research/` stores session-integrated research-dive workspaces
-  (`evidence-research-loop`). Stage files there are source material for gap
-  research, never mastery evidence.
+  (`evidence-research-loop`). Stage files there support bounded content repair,
+  never mastery evidence.
 - `workpages/` stores note-refresh history archives (one per note). When a
   re-quiz proves mastery, retired note scaffold is filed here verbatim so the
   study note reads clean. These are archives, never mastery evidence; the
@@ -258,6 +260,7 @@ def build_plan(vault: Path, notes_dir: Path | None) -> list[Change]:
             notes_dir,
             vault / "_study",
             vault / "_study" / "sessions",
+            vault / "_study" / "anki",
             vault / "_study" / "visuals",
             vault / "_study" / "dives",
             vault / "_study" / "research",
@@ -292,6 +295,7 @@ def build_plan(vault: Path, notes_dir: Path | None) -> list[Change]:
 
     for directory in (
         vault / "_study" / "sessions",
+        vault / "_study" / "anki",
         vault / "_study" / "visuals",
         vault / "_study" / "dives",
         vault / "_study" / "research",

@@ -19,6 +19,10 @@ Release fails when any of these are true:
   or the scene has no equivalent static explanation.
 - A visible relation lacks a source-ledger entry, the page leaks active study
   evidence, requires a network connection, or changes mastery state.
+- Visible copy contains a learner answer, grammar correction, mistake,
+  correction narrative, score, confidence, calibration, or review history.
+- The surface reads from `_study/sessions/` or `_study/workpages/` instead of
+  clean published notes and verified references.
 - At 360 CSS pixels the learner must accept clipped labels, unreadable scaling,
   overlapping controls, or mandatory whole-scene horizontal panning.
 - A desktop SVG is merely scaled down until its labels pass below 11 actual
@@ -130,6 +134,8 @@ still see what changed and why?** If not, redesign the scene.
 - When pages are generator-backed, edit the generator first, regenerate every
   affected page and the index, then test the generated files. A hand-patched
   output that the next build will erase fails release.
+- Run the final visible prose through `humanizer` after technical verification.
+  Publish only the final rewrite, with technical terms and claims intact.
 
 ## Optional sourced imagery
 

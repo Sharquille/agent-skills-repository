@@ -108,8 +108,9 @@ Obsidian-only and optional; never make a map depend on a plugin to be readable.
 
 ## Lifecycle (with obsidian-study-loop)
 
-Refresh maps at review milestones, not every edit: when a chapter reaches
-`reviewed`, rebuild that chapter's Canvas, refresh the Home index, and update any
+Refresh maps at completion milestones, not every edit: when a version 2 chapter
+reaches `complete` (or a legacy chapter reaches `reviewed`), rebuild that
+chapter's Canvas, refresh the Home index, and update any
 concept/tag map that the chapter feeds. Maps are derived artifacts — regenerating
 them must never edit `_study/` state, the session log, or note bodies.
 

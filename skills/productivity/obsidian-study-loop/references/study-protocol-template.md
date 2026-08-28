@@ -1,9 +1,10 @@
 # Study Protocol
 
 This vault contains a reusable study workflow for agentic CLIs. The agent
-reading this file is the tutor. Do not call any LLM API, request API keys, or
-run a standalone study app except for explicit read-only advisory consults
-allowed by this protocol. Read and write plain files in this Obsidian vault.
+reading this file is the tutor. Do not call an LLM API or request API keys
+except for explicit read-only advisory consults and bounded research allowed by
+this protocol. A local Anki text-import handoff is allowed; direct collection
+mutation is not. Read and write plain files in this Obsidian vault.
 
 ## Paths and Conventions
 
@@ -11,6 +12,7 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - `STUDY_DIR`: `_study`
 - `NOTES_DIR`: `<NOTES_DIR>`
 - Session logs live in `_study/sessions/`.
+- Anki manifests and deterministic text-import handoffs live in `_study/anki/`.
 - Generated visual-review artifacts live in `_study/visuals/`.
 - Teaching-dive notes live in `_study/dives/` (created on first dive) —
   decoupled from the canonical study notes in `Notes/`.
@@ -21,6 +23,8 @@ allowed by this protocol. Read and write plain files in this Obsidian vault.
 - `STUDY-MANUAL.md` at the vault root is the installed plain-language manual
   (script-refreshed on protocol sync; do not hand-edit).
 - Active session state lives in `_study/state.json`.
+- The live review board is rendered from the session ledger. Do not persist a
+  second board document.
 - `state.json` must always be valid JSON and must contain exactly one active
   session pointer or `null`:
 
@@ -53,9 +57,9 @@ When available, use these helper skills while following this protocol:
   accurate.
 - `humanizer` only when the learner asks for a deeper, voice-matched rewrite of
   finished note prose.
-- `study-research-queries` when the user asks for help researching a gap. It
-  should produce search queries and a source plan, not fill the gap note unless
-  the user explicitly asks for that.
+- `study-research-queries` when a bounded content defect needs a source-aware
+  query plan before the research dive. It is planning, not publication or
+  competency evidence.
 - `teach-complex-concepts` for a **teaching dive** when covered material has
   not clicked and the learner needs adaptive tutoring rather than another
   notes pass. Session-integrated per Mid-Session Deep Dives below:
@@ -64,8 +68,8 @@ When available, use these helper skills while following this protocol:
 - `evidence-research-loop` for a **research dive** when a question needs
   citation-audited, primary-source research. Session-integrated per
   Mid-Session Deep Dives below: the workspace roots at
-  `_study/research/<YYYY-MM-DD>-<question-slug>/`, and the synthesis becomes
-  citable provenance for gap fills — never mastery evidence.
+  `_study/research/<YYYY-MM-DD>-<question-slug>/`, and the verified synthesis
+  may be incorporated into the canonical note — never as mastery evidence.
 - `literature-review` only for formal, citation-backed research. Routine
   certification notes should stay lighter.
 - `study-consult-panel` (optional) for a read-only, advisory second opinion on a
@@ -82,17 +86,21 @@ When available, use these helper skills while following this protocol:
 - `visualize-study-chapter` for the automatic chapter-end HTML surface under
   `<vault>/Visuals/` when available and evidence-gated. Explicit Markdown/Mermaid
   visual reviews remain this workflow's `_study/visuals/` lane; do not mix them.
+- `anki-study-sync` after every objective is content-ready, to generate a
+  stable, source-anchored text-import handoff under `_study/anki/`. It never
+  grades the learner, reads review history, or mutates an Anki collection.
 
 Helper skills do not change the safety rules: do not invent facts or citations,
 and do not add API keys.
 
 The agent is the tutor and never outsources the teaching, quizzing, or grading
-to an external LLM API. Two explicit, opt-in exceptions exist, and neither ever
-becomes the tutor or grader: `study-consult-panel`, a read-only **advisory**
+to an external LLM API. Two narrow exceptions exist, and neither ever becomes
+the tutor or grader: `study-consult-panel`, an explicit read-only **advisory**
 consult through the already-configured `opencode-consult` wrapper, including
 bounded MiMo learner-answer grammar cleanup; and a session-integrated
-**research dive**, where `evidence-research-loop` delegates source reading
-through the same wrapper family under `agent-orchestra` governance. Neither
+**research repair** triggered by a recorded content defect, where
+`evidence-research-loop` delegates source reading through the same wrapper
+family under `agent-orchestra` governance. Neither
 adds API keys, and both outputs are untrusted until the agent verifies them
 against the source. If a wrapper or its provider is unavailable, proceed from
 the agent's own draft.
@@ -101,14 +109,16 @@ the agent's own draft.
 
 Session frontmatter `status` must be one of:
 
-- `studying`
-- `quizzed`
-- `notes-written`
-- `reviewed`
+- `preparing`
+- `learning`
+- `assessing`
+- `complete`
 
-The session status records the latest completed workflow stage, not
-whole-session coverage. For a multi-scope session, `## Unit progress` is the
-source of truth for which scopes were quizzed, written, and reviewed.
+These values require `study-loop-version: 2`. For an unversioned legacy
+session, preserve and validate `studying`, `quizzed`, `notes-written`, and
+`reviewed`; never generate them for a new session. `## Objective status` is the
+version 2 source of truth for chapter coverage, while `## Unit progress`
+remains the legacy source.
 
 ## Timestamp and Link Discipline
 
@@ -263,7 +273,12 @@ When the packet maps a broad exam objective to more than one lesson:
 5. If an existing note already contains out-of-scope material, do not silently
    move or delete it. Flag the overlap and ask before restructuring the note.
 
-## Context-Anchored Examples and Mastery Checks
+## Context-Anchored Examples and Legacy In-Note Checks
+
+For version 2, keep the context-chain and worked-example rules in this section,
+but ask competency checks in chat and persist them in the session ledger. Do
+not emit the in-note `study-check` schema below; it remains only for reading and
+preserving version 1 notes.
 
 Applied examples must identify the protected context instead of using vague
 phrases such as "the same asset." Use this reasoning chain:
@@ -285,10 +300,9 @@ Distinguish two example types:
   classify, compare, sequence, diagnose, calculate, configure, or explain. Every
   answered mastery check is evidence for grading and confidence.
 
-Two assessment channels coexist. The Phase 3 quiz is asked and answered live in
-chat; in-note `study-check` blocks are answered offline by the learner and scored
-during Phase 7 review. Use the chat quiz to assess within a session; embed a
-`study-check` when you want the learner to practice application between sessions.
+Version 2 asks mastery checks live in chat and stores the evidence in the
+session ledger. The in-note channel described below exists only for version 1
+compatibility.
 
 Where meaningful, include at least one mastery check per objective. Use
 checkboxes when multiple selections or distractors help; use short-answer fields
@@ -370,7 +384,7 @@ Do the same for learner confidence. This is a presentation-only normalization:
 preserve every original choice exactly and record it in mastery evidence before
 changing the rendering.
 
-## Learner Answer Grammar Cleanup
+## Legacy Learner Answer Grammar Cleanup
 
 Learner grammar cleanup is a readability aid, not tutoring, grading, or answer
 generation. Use it only when the user asks for grammar cleanup or when a review
@@ -415,9 +429,10 @@ Rules:
 <!-- shared-contract:start id=mastery-scoring -->
 ## Mastery Evidence and Confidence
 
-Use all learner-produced evidence, not only the final quiz score. Evidence
-includes quiz answers, answered `study-check` blocks, learner-authored gap
-research, lab decisions, and later review explanations.
+Use all valid learner-produced evidence, not only the final quiz score. Version
+2 evidence includes attempt-scoped chat answers and lab decisions. Answered
+`study-check` blocks, learner-authored gap research, and later review
+explanations remain valid only in their preserved version 1 records.
 
 For each evidence item, score only the dimensions that genuinely apply:
 
@@ -432,6 +447,40 @@ rubric dimensions used; full applied evidence remains `/8`. Map the applicable
 proportion to mastery: `solid` = at least 87.5%, `partial` = at least 50% but
 below 87.5%, and `gap` = below 50%. A fully correct definition may therefore
 be `2/2 applicable — solid (recall-only)`; never display it as `2/8`.
+
+**Behavioural anchors for context fit and transfer.** A dimension is applicable
+only when the prompt requests its response operation; a scenario or option list
+alone does not request one, and volunteered work never expands the applicable
+denominator. Judge only explicit written claims against the prompt and in-scope
+material — a short clause can satisfy an anchor, but never supply an omitted
+link. Take the first matching level from `2` downward.
+
+Context or application fit:
+
+- `2`: names a stated, load-bearing context fact and says how it supports the
+  proposed answer or rejects an alternative, and no context claim contradicts
+  the stem. Restatement, juxtaposition, or an unstated fact is not a link.
+- `1`: makes an application claim that fails `2` — a generic relevant feature,
+  an unlinked case fact, or a claim conflicting with stated context.
+- `0`: makes no application claim; selects or names an answer, gives a generic
+  definition, or is off-task.
+
+Transfer, limitations, alternatives, or distractor rejection:
+
+- `2`: completes every requested operation, each result specific and sound,
+  with an explicit relevant reason where support was requested, and no material
+  claim used is false or misapplied.
+- `1`: performs at least one requested operation but fails `2` — a part is
+  omitted, generic, unsupported, irrelevant, false, or misapplied.
+- `0`: performs none of the requested operations; repeats the answer or option
+  labels, or explains something unrelated.
+
+Score both independently of final-answer correctness. A correct answer with
+generic context handling or one faulty rejection earns `1`; an incorrect answer
+earns `2` when its stated link or requested work meets the `2` anchor. Record
+every sub-`2` result and its observed defect in `evidence`, and target that
+defect in `next action` for `partial` or `gap`, or in the next scheduled
+unassisted item for `solid`.
 
 Each assessment objective selects one scored `evidence question: Q<n>` from
 the linked attempt as its primary mastery evidence. Copy that question's raw
@@ -487,7 +536,210 @@ Historical evidence remains in the ledger. New evidence may update the current
 tutor confidence, but must not rewrite what the learner originally answered.
 <!-- shared-contract:end id=mastery-scoring -->
 
-## Phase 1 - Setup
+<!-- shared-contract:start id=external-drill-boundary -->
+**External drill boundary.** Anki may carry any amount of the learner's recall
+volume through the file handoff owned by `anki-study-sync`. Its review events
+are never mastery evidence.
+
+- A card rating is self-assigned and unsupervised. It carries no rubric score,
+  assistance provenance, question kind, or pre-feedback confidence, and cannot
+  satisfy any part of the mastery contract.
+- External review activity never sets or adjusts mastery, tutor confidence,
+  calibration, assistance, or retrieval stage, and never advances or resets a
+  review date.
+- Lapse counts and leech status are read-only signals. They may nominate an
+  objective for teaching or for a later scheduled check; record the nomination
+  as a prompt, never as evidence.
+- The protocol owns objective-level applied and transfer checks. The external
+  system owns card-level recurrence. Neither schedule is derived from the other.
+- Stable external IDs let text import update the same note instead of creating
+  a duplicate; scheduling remains Anki-owned. A changed retrieval target gets
+  a new ID; the old row is retired and offered for suspension, never silently
+  deleted.
+<!-- shared-contract:end id=external-drill-boundary -->
+
+<!-- shared-contract:start id=chapter-lifecycle -->
+## Chapter Lifecycle — Version 2
+
+Version 2 reverses the old worksheet model. The agent publishes complete study
+material; the learner reads, drills, and demonstrates competence. Never create
+new gap placeholders, learner-edit regions, required learner research fields, or
+graded in-note study checks. Those structures are legacy evidence only.
+
+### State and source of truth
+
+A new session uses this frontmatter:
+
+```yaml
+---
+topic: <topic>
+created: <local ISO datetime>
+status: preparing
+study-loop-version: 2
+objectives:
+  - <objective 1>
+  - <objective 2>
+---
+```
+
+The allowed states are `preparing`, `learning`, `assessing`, and
+`complete`. Keep `_study/state.json` exactly
+`{"active_session": "<vault-relative session path>"}`; do not add phase, board,
+or Anki keys.
+
+The session file is the ledger. It contains exactly one live objective table:
+
+```markdown
+## Objective status
+
+| Objective | Note | Content | Drill | Competency | Reason | Next action |
+|---|---|---|---|---|---|---|
+| <objective> | <Note.md#Heading or pending> | <pending, ready, or blocked> | <pending, ready, or not-required> | <pending, passed, needs-remediation, or not-required> | <brief evidence-based reason> | <one concrete action> |
+```
+
+Every objective appears once. Update a row in place after each durable action.
+The first unfinished row supplies the immediate next action. Do not store a
+second review-board document: render the board on demand with
+`scripts/study_board.py <VAULT_PATH>` so it cannot drift from the ledger. The
+learner-facing board shows readiness, the reason for a block, note locations,
+and the next action; it does not expose raw answers or a punitive composite
+score.
+
+Maintain this H2 order for version 2 sessions:
+
+1. `## Study content`
+2. `## Objective status`
+3. `## Anki handoff` when prepared
+4. attempt-scoped `## Quiz progress — ...` blocks
+5. matching `## Assessment — ...` blocks
+6. `## Notes written — ...` and `## Deep dive — ...` records when present
+7. `## Mastery evidence` when present
+8. `## Session log` last
+
+### Prepare
+
+1. Resolve the active vault and preserve an existing active session unless the
+   learner clearly confirms a replacement.
+2. Normalize the supplied chapter outline into stable objectives. When the
+   course packet is incomplete, say what is missing. Continue from the supplied
+   outline only when the learner says to proceed or when bounded, cited research
+   can establish the missing factual content.
+3. Create the version 2 session and initialize every objective row to
+   `pending`.
+4. Search the vault before writing. For every objective, create or enrich the
+   canonical note as complete reference material: a plain explanation, exact key
+   terms, boundaries or common confusions, a worked example, exam or practical
+   focus when supported, and verified links. Use
+   `study-loop-version: 2` and `status: ready` in new note frontmatter.
+5. A factual omission, contradiction, stale claim, or thin source is a content
+   defect. Route only that defect through a scoped research dive, verify the
+   sources, then publish the corrected synthesis in the canonical note. An
+   unclear concept for the learner is a teaching need, not a reason to withhold
+   the note.
+6. Never infer competence from the quality or completeness of an agent-written
+   note. Note publication sets only the Content column to `ready`.
+7. When every card source resolves to a content-ready note heading, invoke
+   `anki-study-sync` to create a manifest and deterministic TSV under
+   `_study/anki/`. Record paths and status under `## Anki handoff`. If the
+   helper is unavailable or generation fails, record
+   `Anki deferred — <reason>`; note publication still succeeds and Drill may
+   be `not-required` only when the learner explicitly declines Anki.
+8. Set the session to `learning` once each objective is content-ready or has a
+   precise blocking reason. Show the generated board and send the learner to
+   the exact note headings and Anki import/review action.
+
+### Learn
+
+The learner reads the published locations and uses Anki for recall volume.
+Anki owns recurrence, random card selection, manual recall practice, and its
+own scheduler. The portable Basic-card handoff does not provide automatic
+typed-answer comparison. The study loop neither predicts nor mirrors Anki due
+dates.
+
+If the learner reports confusion, run one focused teaching intervention. Persist
+the dive, let this orchestrator incorporate any verified clarification into the
+canonical note and card manifest, then set one fresh applied check as the next
+action. Teaching responses and immediate teach-back are learning activity, not
+competency evidence.
+
+A reported Anki lapse or leech may nominate an objective for explanation or a
+fresh later check. It never changes Content, Competency, mastery, confidence,
+assistance, calibration, or a protocol review date.
+
+### Assess
+
+Set the session to `assessing` and ask a small applied competency check: one
+question at a time, normally one diagnostic scenario per objective and no more
+than three prompts in one action. Anki already owns repetitive definition and
+recognition practice.
+
+Use the canonical question-design, scoring, assistance, confidence, and
+attempt-recovery contracts below. Every attempt has a fresh
+`<YYYY-MM-DD>-<NN>` ID. Write the complete prompt before showing it, preserve
+scored evidence in the session, and consume it into exactly one matching
+assessment. A post-teaching check must use a fresh surface. The teaching answer
+itself never counts.
+
+Version 2 assessment rows stop after `calibration`; do not add legacy
+`review stage`, `next review`, or `next action` fields. The objective table owns
+the next action, while Anki owns recurring recall dates.
+
+After scoring, route the result by cause:
+
+- Correct, unassisted applied evidence: Competency `passed`.
+- Conceptual misunderstanding or weak reasoning: Competency
+  `needs-remediation`; return to Learn for one focused teaching intervention,
+  then schedule a fresh attempt.
+- Missing, contradictory, or weakly sourced canonical content: Content
+  `blocked`; return to Prepare for one bounded research repair, republish the
+  note and affected cards, then schedule a fresh attempt.
+- A recall miss without an applied defect: recommend Anki practice; do not
+  manufacture a mastery downgrade from an external rating.
+
+One learner action may trigger at most one intervention and one fresh check.
+Persist the trigger and outcome. If the same failure repeats, stop the automatic
+loop, keep the row at `needs-remediation`, and present the learner with the
+specific unresolved issue rather than repeating an identical dive.
+
+### Complete and reopen
+
+A chapter may become `complete` only when every objective satisfies all three
+gates:
+
+- Content is `ready`.
+- Drill is `ready`, or `not-required` by explicit learner choice.
+- Competency is `passed`, or `not-required` only for an objective that is
+  genuinely informational and has no defensible applied behavior.
+
+Write the table updates, assessment evidence, session log, and frontmatter
+status in one ordered pass, then run the validator and render the board. A
+failed write leaves the last coherent state and is repaired from the session
+ledger; never infer missing evidence.
+
+At completion, refresh maps and offer the chapter visual helper. Anki continues
+its independent recall schedule after completion.
+
+Reopen a completed chapter only for a substantive objective or source revision,
+a verified defect in the canonical note, or new applied evidence that
+contradicts the prior competency decision. Ordinary Anki reviews, lapses,
+interval changes, or card edits do not reopen it.
+
+### Legacy preservation
+
+A session without `study-loop-version: 2` remains version 1. Validate and
+preserve its historical statuses, gap markers, learner-edit regions, in-note
+checks, workpages, and review records. Do not generate new version 1 scaffolds,
+silently migrate them, delete learner material, or let legacy instructions
+override this lifecycle. Migration, when requested, archives the raw legacy
+evidence under `_study/workpages/` and creates a clean version 2 publication;
+it never rewrites the original evidence in place.
+<!-- shared-contract:end id=chapter-lifecycle -->
+
+## Legacy Phase 1 - Setup
+
+The seven legacy phases below apply only to sessions without
+`study-loop-version: 2`. Never use them to create a new session; use the Chapter
+Lifecycle above.
 
 Trigger examples:
 
@@ -642,13 +894,13 @@ the end of the file:
 When a heading already exists, append under it instead of creating a duplicate
 heading. Do not reorder an existing session file without user approval.
 
-## Phase 2 - Study Break
+## Legacy Phase 2 - Study Break
 
 Nothing happens during the study break. The user closes the agent and studies
 offline. The session survives because `_study/state.json` points to the active
 session file on disk.
 
-## Phase 3 - Quiz
+## Legacy Phase 3 - Quiz
 
 Trigger examples:
 
@@ -773,9 +1025,10 @@ When the user asks to be quizzed:
 <!-- shared-contract:start id=question-design -->
 ## Question Design
 
-These rules govern every question the tutor composes at runtime, in the chat
-quiz and in authored `study-check` blocks. Non-scoring retrieval prompts in
-visual review artifacts are exempt.
+These rules govern every question the tutor composes at runtime. Version 2 uses
+them for chat-based applied checks; version 1 also used them for authored
+`study-check` blocks. Non-scoring retrieval prompts in visual review artifacts
+and Anki recall cards are exempt.
 
 **One ask.** An *ask* is one target concept being acted on. A question may
 require more than one output about that single concept — compare two things,
@@ -1027,6 +1280,10 @@ read, score, or rely on HTML quiz results.
 
 ## Mid-Session Deep Dives
 
+For version 2, a dive is a bounded Prepare/Learn remediation action governed by
+the Chapter Lifecycle. The older gap-stub and embedded-check instructions below
+are retained only to recover or finish version 1 sessions.
+
 Chat quiz, assessment, notes, and review remain the canonical mastery path. A
 **deep dive** is a mid-session learning activity run by a helper skill under
 this protocol's persistence and mastery rules:
@@ -1205,7 +1462,7 @@ contaminate:
   evidence alone cannot raise tutor confidence to `high`; pair it with a later
   independent check, such as the objective's next-review date.
 
-## Phase 4 - Assess
+## Legacy Phase 4 - Assess
 
 After the quiz is complete:
 
@@ -1298,7 +1555,7 @@ When a re-quiz upgrades an objective on an already-reviewed note to `solid`, off
 the learner a note refresh (see Note Refresh on Re-quiz) so the note reads as clean
 current material with its prior scaffold archived, not as a record of past gaps.
 
-## Phase 5 - Write Notes
+## Legacy Phase 5 - Write Notes
 
 After assessment, write markdown notes into `NOTES_DIR` for the assessed scope,
 not necessarily the whole session. If the latest quiz covered only `1.1`, write
@@ -1576,7 +1833,7 @@ Ask which support path the user wants next, or tell them they can fill the gaps
 offline and return with "review my additions." Do not start a helper workflow
 unless the user chooses it or has already asked for that help.
 
-## Note Refresh on Re-quiz
+## Legacy Note Refresh on Re-quiz
 
 After a re-quiz proves mastery, refresh each upgraded note section into clean study
 material and archive the superseded scaffold to the note's workpage in the vault's
@@ -1672,7 +1929,7 @@ changes no `## Assessment`, `## Unit progress`, `## Mastery evidence`, or master
 grade — it is hygiene of already-earned mastery, never new, altered, or deleted
 evidence.
 
-## Phase 6 - User Research
+## Legacy Phase 6 - User Research
 
 The user researches `gap` objectives offline and fills in the content under the
 placeholder in the notes file. Keep the `<!-- gap:... -->` marker and matching
@@ -1689,7 +1946,7 @@ queries, preferred source types, and a capture checklist. Prefer official course
 materials, exam objectives, standards bodies, vendor documentation, and reputable
 technical references over generic SEO articles.
 
-## Phase 7 - Review
+## Legacy Phase 7 - Review
 
 Trigger examples:
 
@@ -1924,8 +2181,9 @@ copy affect the score.
 ## Optional Read-Only Study-Process Reflection
 
 Run this only when the learner explicitly asks to reflect on how the study
-process is working. It is an observer over reviewed history, not an eighth
-phase, and it never runs automatically after a session, quiz, review, or dive.
+process is working. It is an observer over completed or legacy reviewed
+history, not a lifecycle state, and it never runs automatically after a
+session, applied check, completion, legacy review, or dive.
 
 1. **Resolve and scope before reading.** Use `_study/state.json` only to resolve
    the vault context, then read the learner-selected course, chapter, or
@@ -2001,10 +2259,10 @@ phase, and it never runs automatically after a session, quiz, review, or dive.
   them.
 - Keep `_study/state.json` valid JSON at all times.
 - Keep one active session pointer or `null`.
-- A reviewed session may remain active. This is expected and helps the next
-  agent recover context.
-- Never clear `active_session` after review unless the user explicitly asks to
-  clear or close state.
+- A complete version 2 session or reviewed legacy session may remain active.
+  This is expected and helps the next agent recover context.
+- Never clear `active_session` after completion or legacy review unless the
+  user explicitly asks to clear or close state.
 - Record every state change in the session file.
 - The agent reading this protocol is the tutor. Do not call Anthropic, OpenAI,
   Gemini, or other LLM APIs directly; the only permitted external-model paths
@@ -2014,7 +2272,7 @@ phase, and it never runs automatically after a session, quiz, review, or dive.
 - Learner grammar cleanup never changes the original answer or learner-owned
   research text. MiMo output is advisory-only and must remain separate from
   graded evidence.
-- A note refresh (see Note Refresh on Re-quiz) only relocates superseded scaffold
+- A legacy note refresh (see Legacy Note Refresh on Re-quiz) only relocates superseded scaffold
   verbatim to `_study/workpages/`; it never rewrites, deletes, or fabricates
   learner-owned evidence, runs only on a `status: reviewed` note, is
   offer-then-approve, and leaves the session file as the canonical ledger.
@@ -2024,55 +2282,33 @@ phase, and it never runs automatically after a session, quiz, review, or dive.
 Before completing any setup or protocol change, verify this workflow remains
 unambiguous:
 
-1. Setup creates a dated session log, frontmatter, audit entry, and `state.json`
-   pointer.
-2. Study break requires no action.
-3. Quiz loads `state.json`, creates a unique attempt and adaptive budget,
-   persists each question before showing it, honors learner controls, and gives
-   feedback one answer at a time.
-4. Assess consumes the exact attempt, writes applicable-denominator scores,
-   confidence/calibration, and the next review stage or remediation action,
-   then sets `status: quizzed`.
-5. Write Notes creates the scope-appropriate per-section or topic note(s),
-   writes complete sections for `solid` and `partial`, writes exact gap stubs
-   for `gap`, sets `status: notes-written`, and shows the available
-   `support-helper` menu when follow-up work exists.
-6. User Research happens offline unless the user chooses a helper path from the
-   `support-helper` menu.
-7. Review reopens the written notes, scores the original learner regions,
-   verifies their source fields, adds corrections beside rather than over them,
-   appends the changelog, sets `status: reviewed`, and keeps state active.
-8. Any timestamp written to frontmatter or the session log came from the system
-   date command, not from a guessed or placeholder value.
-9. Every `[[wikilink]]` in newly written notes resolves to an existing note, or
-   the user explicitly asked for future concept-page links.
-10. Every applied example uses the topic-appropriate context chain and explains
-    why the answer fits.
-11. Every answer eligible as evidence is scored in its attempt assessment or
-    review changelog; orientation and immediate post-feedback teach-backs are
-    explicitly excluded.
-12. Answered `study-check` blocks are scored during review without changing the
-    user's checkbox selections before grading.
-13. Note frontmatter follows the field contract: one spelling of `course` and
-    `domain` per course, `type` is `learning` or `reference`, the note status
-    lifecycle is respected, and `updated` is bumped on every substantive edit.
-14. After review, the note and session file agree: feedback in a note has a
-    matching `## Review` changelog, an updated `## Unit progress` Review
-    column, and a session log entry.
-15. Learner text inside every learner-edit boundary and on learner-answer lines
-    was never replaced; corrections live in feedback callouts.
-16. Grammar-cleaned learner copies, when present, were added separately with a
-    `learner-answer-cleaned` marker, only where the text materially differs
-    from the original, and did not affect mastery scoring.
-17. A visual review artifact, when generated, is post-assessment, scope-locked
-    by the human gate, Markdown contract version `2`, structurally validated,
-    and logged. It contains no answer collection, grading, or remote dependency.
-18. A deep dive, when run, was relevance-checked against the active session,
-    passed the evidence collision check, was recorded under
-    `## Deep dive — <scope>` with a session log entry, persisted its durable
-    content per the deep-dive rules, and changed no assessment, unit progress,
-    mastery evidence, or status fields. Immediate teach-back stayed learning-
-    only; any mastery update came from a fresh attempt or reviewed study-check.
-19. The read-only validator reports no integrity errors after setup, sync, or a
-    completed recovery pass; any warning is understood and intentionally left
-    open.
+1. Prepare creates version 2 frontmatter, a dated session log, the exact
+   `state.json` pointer, and one Objective status row per frontmatter objective.
+2. Every Content-ready row points to an existing `Note.md#Heading`; every new
+   note is complete, `status: ready`, and contains no learner-work scaffold.
+3. Any automatic research is bounded to a recorded factual defect, is source-
+   verified, and changes content only; teaching remains mastery-neutral.
+4. Every Drill-ready row has a safe, existing manifest and TSV under
+   `_study/anki/`. A deferred handoff names its reason. Anki never changes
+   competency, confidence, calibration, or session state.
+5. The live board is rendered from the session ledger; no second board file or
+   copied status table was written.
+6. Every applied check loads `state.json`, creates a fresh attempt, persists the
+   prompt before display, honors learner controls, and gives feedback one answer
+   at a time.
+7. Assess consumes the exact attempt and writes applicable-denominator score,
+   assistance, evidence, confidence, and calibration. Version 2 adds no recall
+   review stage or next-review schedule.
+8. A failed check routes to at most one targeted intervention and one fresh
+   check. Repeating the same failure stops the automatic loop and leaves a
+   specific unresolved next action.
+9. Complete means every Content and Drill gate passes and every Competency
+   `passed` row has latest unassisted applied evidence. Ordinary Anki activity
+   does not complete or reopen the chapter.
+10. Any timestamp came from the system date command; every new wikilink and
+    heading anchor resolves; every applied example uses a load-bearing context
+    chain and explains why the answer fits.
+11. Legacy sessions and notes remain unversioned, readable, and byte-preserved.
+    No migration, cleanup, or sync step silently rewrote learner evidence.
+12. The read-only validator reports no integrity errors after setup, sync, or a
+    completed recovery pass; every remaining warning is understood.

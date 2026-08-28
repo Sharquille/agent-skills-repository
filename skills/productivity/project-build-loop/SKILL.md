@@ -3,7 +3,7 @@ name: project-build-loop
 description: "Run or install a disk-backed project lifecycle workflow (the build-side counterpart to obsidian-study-loop) for cybersecurity/networking labs and coding projects. Use when the user wants to start, bootstrap, plan, track, or resume a project under ~/Documents/development/projects, run a gated discovery interview, generate a dependency-aware roadmap and numbered tasks, work a task with focused task briefs plus observations notes and per-task steps ledgers, classify a project's archetype and dual-use sensitivity tier, run multi-model consults on project artifacts, run an evidence-linked read-only reflection over completed project records, or hand a sanitized write-up to publication. The conductor owns all lifecycle state, task dependencies, git checkpoints, and gates; it routes execution to existing domain skills and treats every consult as advisory. Do not trigger for study/tutoring sessions (use obsidian-study-loop) or for one-off coding edits with no project lifecycle."
 # --- provenance ---
 category: productivity
-source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via consult-orchestrator (Codex + Kimi); artifact dependency/ready-blocked and live-artifact concepts adapted from Fission-AI/OpenSpec v1.6.0 without a runtime dependency
+source: self-authored; design in docs/plans/project-orchestra-plan.md, pressure-tested via agent-orchestra, then named consult-orchestrator (Codex + Kimi); artifact dependency/ready-blocked and live-artifact concepts adapted from Fission-AI/OpenSpec v1.6.0 without a runtime dependency
 author: Sharquille Andrew
 license: MIT
 retrieved: 2026-06-27
@@ -48,15 +48,16 @@ The conductor orchestrates; it does not re-implement domain work. Route to:
   `unslop` (default prose authoring), `portable-markdown` (formatting authority),
   `humanizer` (explicit deep rewrite for publication only), `mind-map-obsidian`.
 - **Security governance:** `security-threat-model`, `build-security-policy`,
-  `security-and-hardening` (secret-scan / `.gitignore` baseline), `security-scan`,
+  `security-best-practices` (secure-coding and web hardening baseline), `security-scan`,
   `agent-repo-security`, `security-ownership-map`.
 - **Cyber domain:** the `analyzing-*`, `performing-*`, `building-*`,
   `configuring-*`, `scanning-*` skills as the archetype profile dictates.
 - **Networking:** `configuring-network-segmentation-with-vlans`,
   `configuring-pfsense-firewall-rules`, `homelab-*`, `cisco-ios-patterns`,
   `network-config-validation`, `network-bgp-diagnostics`.
-- **Naming:** `project-name-consult` (Kimi for domain accuracy, MiMo for
-  portfolio readability) — called during Phase 1 intake before bootstrap.
+- **Naming:** `project-name-consult` (native-harness technical, security, and
+  portfolio lanes plus five bounded searches) — called during Phase 1 intake
+  before bootstrap. External wrappers are optional and never required.
 - **Consult:** `project-consult-panel` for redacted project artifacts, backed by
   canonical `agent-orchestra`; legacy consult skill names are compatibility only.
 - **Publish:** `project-publish` (Astro), reusing `site-architecture`,
@@ -362,10 +363,12 @@ dry-run-first creation.
 
 ### Phase 1 — Intake & safe bootstrap
 
-1. Collect a short project description. Route to `project-name-consult` (Kimi +
-   MiMo) for a domain-accurate, portfolio-ready title and category; present a
-   ranked shortlist; confirm the user's choice before any write. Fall back to the
-   conductor's own inference if the models are unavailable.
+1. Collect a short project description. Route to `project-name-consult` for a
+   domain-accurate, portfolio-ready title and category using bounded native
+   harness lanes and five sanitized searches; present a ranked shortlist and
+   confirm the user's choice before any write. If those advisory lanes are
+   unavailable, use conductor inference and record the limitation rather than
+   blocking bootstrap.
 2. Run `scripts/bootstrap_project.sh` (see its header). It slugifies the title,
    rejects `..`/absolute/symlink targets, `realpath`-guards the path under the
    approved base, refuses a non-empty dir lacking a project marker, prints a

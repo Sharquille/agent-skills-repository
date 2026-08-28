@@ -15,7 +15,20 @@ from pathlib import Path, PurePosixPath
 
 
 PROTOCOL_NAME = "STUDY-PROTOCOL.md"
-SESSION_STATUSES = {"studying", "quizzed", "notes-written", "reviewed"}
+LEGACY_SESSION_STATUSES = {"studying", "quizzed", "notes-written", "reviewed"}
+V2_SESSION_STATUSES = {"preparing", "learning", "assessing", "complete"}
+OBJECTIVE_STATUS_HEADER = (
+    "Objective",
+    "Note",
+    "Content",
+    "Drill",
+    "Competency",
+    "Reason",
+    "Next action",
+)
+CONTENT_STATES = {"pending", "ready", "blocked"}
+DRILL_STATES = {"pending", "ready", "not-required"}
+COMPETENCY_STATES = {"pending", "passed", "needs-remediation", "not-required"}
 HEADING_PATTERN = re.compile(r"^## (.+)$", flags=re.MULTILINE)
 STUDY_CHECK_START = re.compile(
     r"<!-- study-check:start\s+id=([^\s>]+)[^>]*-->", flags=re.MULTILINE
@@ -314,26 +327,228 @@ def frontmatter_value(block: str | None, key: str) -> str | None:
     return match.group(1) if match else None
 
 
+def frontmatter_list(block: str | None, key: str) -> list[str]:
+    if block is None:
+        return []
+    match = re.search(
+        rf"^{re.escape(key)}:\s*$\n(?P<body>(?:^[ \t]+- .+(?:\n|$))+)",
+        block,
+        flags=re.MULTILINE,
+    )
+    if match is None:
+        return []
+    return [
+        item.strip()
+        for item in re.findall(r"^[ \t]+- (.+?)\s*$", match.group("body"), flags=re.MULTILINE)
+    ]
+
+
 def heading_group(title: str) -> int | None:
     if title == "Study content":
         return 1
-    if title == "Unit progress":
+    if title in {"Unit progress", "Objective status"}:
         return 2
-    if title.startswith("Quiz progress — "):
+    if title == "Anki handoff":
         return 3
-    if title.startswith("Assessment — "):
+    if title.startswith("Quiz progress — "):
         return 4
-    if title.startswith("Notes written — "):
+    if title.startswith("Assessment — "):
         return 5
-    if title.startswith("Deep dive — "):
+    if title.startswith("Notes written — "):
         return 6
-    if title.startswith("Review — "):
+    if title.startswith("Deep dive — "):
         return 7
-    if title == "Mastery evidence":
+    if title.startswith("Review — "):
         return 8
-    if title == "Session log":
+    if title == "Mastery evidence":
         return 9
+    if title == "Session log":
+        return 10
     return None
+
+
+def markdown_table_cells(line: str) -> tuple[str, ...]:
+    return tuple(cell.strip() for cell in line.strip().strip("|").split("|"))
+
+
+def parse_objective_status_rows(section: str) -> list[tuple[str, ...]]:
+    lines = [
+        line.strip()
+        for line in section.splitlines()
+        if line.strip().startswith("|")
+    ]
+    if len(lines) < 3:
+        raise ValueError("Objective status table has no objective rows")
+    if markdown_table_cells(lines[0]) != OBJECTIVE_STATUS_HEADER:
+        raise ValueError("Objective status table has unsupported columns")
+    separator = markdown_table_cells(lines[1])
+    if len(separator) != len(OBJECTIVE_STATUS_HEADER) or any(
+        not re.fullmatch(r":?-{3,}:?", cell) for cell in separator
+    ):
+        raise ValueError("Objective status table has a malformed separator")
+    rows: list[tuple[str, ...]] = []
+    for index, line in enumerate(lines[2:], start=1):
+        values = markdown_table_cells(line)
+        if len(values) != len(OBJECTIVE_STATUS_HEADER) or any(
+            not value for value in values
+        ):
+            raise ValueError(
+                f"Objective status row {index} must contain seven non-empty cells"
+            )
+        rows.append(values)
+    return rows
+
+
+def validate_objective_status(
+    path: Path,
+    vault: Path,
+    section: str,
+    session_status: str | None,
+    expected_objectives: list[str],
+    issues: list[Issue],
+) -> dict[str, tuple[str, str, str]]:
+    try:
+        rows = parse_objective_status_rows(section)
+    except ValueError as exc:
+        issues.append(Issue("ERROR", path, str(exc)))
+        return {}
+    seen: set[str] = set()
+    states_by_objective: dict[str, tuple[str, str, str]] = {}
+    for values in rows:
+        objective, note, content, drill, competency, _, _ = values
+        if objective in seen:
+            issues.append(Issue("ERROR", path, f"duplicate Objective status row: {objective}"))
+        seen.add(objective)
+        if content not in CONTENT_STATES:
+            issues.append(Issue("ERROR", path, f"{objective} has unsupported content state"))
+        if content == "ready":
+            if note == "pending" or note.count("#") != 1:
+                issues.append(
+                    Issue("ERROR", path, f"{objective} ready content must name Note.md#Heading")
+                )
+            else:
+                raw_path, heading = note.split("#", 1)
+                relative = PurePosixPath(raw_path)
+                if (
+                    relative.is_absolute()
+                    or ".." in relative.parts
+                    or relative.suffix.lower() != ".md"
+                    or not heading.strip()
+                ):
+                    issues.append(
+                        Issue("ERROR", path, f"{objective} has an unsafe note location")
+                    )
+                else:
+                    note_path = vault.joinpath(*relative.parts)
+                    try:
+                        resolved_note = note_path.resolve()
+                    except (OSError, RuntimeError) as exc:
+                        issues.append(
+                            Issue("ERROR", path, f"{objective} note location is unsafe: {exc}")
+                        )
+                    else:
+                        if not resolved_note.is_relative_to(vault) or not resolved_note.is_file():
+                            issues.append(
+                                Issue("ERROR", path, f"{objective} note location does not exist")
+                            )
+                        else:
+                            note_text = read_utf8(resolved_note, issues)
+                            note_headings = (
+                                {
+                                    re.sub(r"\s+#+\s*$", "", match.group(1)).strip()
+                                    for match in re.finditer(
+                                        r"^#{1,6}\s+(.+?)\s*$",
+                                        note_text,
+                                        flags=re.MULTILINE,
+                                    )
+                                }
+                                if note_text is not None
+                                else set()
+                            )
+                            if heading.strip() not in note_headings:
+                                issues.append(
+                                    Issue(
+                                        "ERROR",
+                                        path,
+                                        f"{objective} note heading does not exist: {heading.strip()}",
+                                    )
+                                )
+        if drill not in DRILL_STATES:
+            issues.append(Issue("ERROR", path, f"{objective} has unsupported drill state"))
+        if competency not in COMPETENCY_STATES:
+            issues.append(Issue("ERROR", path, f"{objective} has unsupported competency state"))
+        if (
+            content in CONTENT_STATES
+            and drill in DRILL_STATES
+            and competency in COMPETENCY_STATES
+        ):
+            states_by_objective[objective] = (content, drill, competency)
+        if session_status == "complete" and (
+            content != "ready"
+            or drill not in {"ready", "not-required"}
+            or competency not in {"passed", "not-required"}
+        ):
+            issues.append(Issue("ERROR", path, f"complete session has an open gate: {objective}"))
+    expected = set(expected_objectives)
+    if expected and seen != expected:
+        missing = sorted(expected - seen)
+        extra = sorted(seen - expected)
+        detail = []
+        if missing:
+            detail.append("missing " + ", ".join(missing))
+        if extra:
+            detail.append("unexpected " + ", ".join(extra))
+        issues.append(
+            Issue("ERROR", path, "Objective status rows do not match frontmatter: " + "; ".join(detail))
+        )
+    return states_by_objective
+
+
+def validate_anki_handoff(
+    path: Path, vault: Path, section: str, issues: list[Issue]
+) -> bool:
+    status_match = re.search(
+        r"^- Status: (?P<status>ready|deferred)(?: — (?P<reason>.+))?$",
+        section,
+        flags=re.MULTILINE,
+    )
+    if status_match is None:
+        issues.append(Issue("ERROR", path, "Anki handoff has no valid Status record"))
+        return False
+    if status_match.group("status") == "deferred":
+        if not status_match.group("reason"):
+            issues.append(Issue("ERROR", path, "deferred Anki handoff must name a reason"))
+        return False
+    expected = {
+        "Manifest": ".json",
+        "Import": ".tsv",
+    }
+    for label, suffix in expected.items():
+        match = re.search(
+            rf"^- {label}: `(?P<value>[^`]+)`$", section, flags=re.MULTILINE
+        )
+        if match is None:
+            issues.append(Issue("ERROR", path, f"ready Anki handoff has no {label} path"))
+            continue
+        raw = match.group("value")
+        relative = PurePosixPath(raw)
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or relative.parts[:2] != ("_study", "anki")
+            or relative.suffix.lower() != suffix
+        ):
+            issues.append(Issue("ERROR", path, f"Anki {label} path is unsafe: {raw}"))
+            continue
+        candidate = vault.joinpath(*relative.parts)
+        try:
+            resolved = candidate.resolve()
+        except (OSError, RuntimeError) as exc:
+            issues.append(Issue("ERROR", path, f"Anki {label} path is unsafe: {exc}"))
+            continue
+        if not resolved.is_relative_to(vault / "_study" / "anki") or not resolved.is_file():
+            issues.append(Issue("ERROR", path, f"Anki {label} file does not exist: {raw}"))
+    return True
 
 
 def heading_blocks(text: str) -> list[tuple[str, int, int]]:
@@ -680,6 +895,7 @@ def validate_assessment_attempt(
     title: str,
     section: str,
     quiz_evidence: dict[str, tuple[str, str, str, str, str]] | None,
+    version_two: bool,
     issues: list[Issue],
 ) -> None:
     matches = list(ASSESSMENT_RECORD.finditer(section))
@@ -714,11 +930,13 @@ def validate_assessment_attempt(
                 Issue("ERROR", path, f"{objective} has malformed assessment fields: {field_error}")
             )
             continue
-        expected_order = shared_order + (
-            ["review stage", "next review"]
-            if mastery.startswith("solid")
-            else ["next action"]
-        )
+        expected_order = shared_order
+        if not version_two:
+            expected_order += (
+                ["review stage", "next review"]
+                if mastery.startswith("solid")
+                else ["next action"]
+            )
         if order != expected_order:
             issues.append(
                 Issue(
@@ -868,7 +1086,7 @@ def validate_assessment_attempt(
                     )
                 )
 
-        if mastery.startswith("solid"):
+        if mastery.startswith("solid") and not version_two:
             if fields.get("review stage") not in {"1", "2", "3", "4", "5"}:
                 issues.append(Issue("ERROR", path, f"{objective} has invalid review stage"))
             next_review = fields.get("next review", "")
@@ -891,17 +1109,25 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
     if text is None:
         return
     block = frontmatter(text)
+    version = frontmatter_value(block, "study-loop-version")
+    status = frontmatter_value(block, "status")
+    objectives = frontmatter_list(block, "objectives")
     if block is None:
         issues.append(Issue("ERROR", path, "missing or unterminated frontmatter"))
     else:
         for key in ("topic", "created", "status", "objectives"):
             if not re.search(rf"^{key}:\s*", block, flags=re.MULTILINE):
                 issues.append(Issue("ERROR", path, f"frontmatter is missing {key}"))
-        status = frontmatter_value(block, "status")
-        if status is not None and status not in SESSION_STATUSES:
+        if version not in {None, "2"}:
+            issues.append(Issue("ERROR", path, f"unsupported study-loop-version: {version}"))
+        allowed_statuses = (
+            V2_SESSION_STATUSES if version == "2" else LEGACY_SESSION_STATUSES
+        )
+        if status is not None and status not in allowed_statuses:
             issues.append(Issue("ERROR", path, f"unsupported session status: {status}"))
 
     headings = heading_blocks(text)
+    objective_states: dict[str, tuple[str, str, str]] = {}
     titles = [title for title, _, _ in headings]
     for title, count in Counter(titles).items():
         if count > 1:
@@ -923,6 +1149,35 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
                 Issue("ERROR", path, f"heading is outside canonical group order: {title}")
             )
         previous_group = max(previous_group, group)
+
+    if version == "2":
+        if not objectives:
+            issues.append(Issue("ERROR", path, "version 2 session has no objectives"))
+        elif len(objectives) != len(set(objectives)):
+            issues.append(Issue("ERROR", path, "version 2 session has duplicate objectives"))
+        if titles.count("Objective status") != 1:
+            issues.append(
+                Issue("ERROR", path, "version 2 session must contain one ## Objective status")
+            )
+        if "Unit progress" in titles:
+            issues.append(
+                Issue("ERROR", path, "version 2 session must use Objective status, not Unit progress")
+            )
+        for title, start, end in headings:
+            if title == "Objective status":
+                objective_states = validate_objective_status(
+                    path, vault, text[start:end], status, objectives, issues
+                )
+        anki_ready = False
+        for title, start, end in headings:
+            if title == "Anki handoff":
+                anki_ready = validate_anki_handoff(
+                    path, vault, text[start:end], issues
+                )
+        if any(drill == "ready" for _, drill, _ in objective_states.values()) and not anki_ready:
+            issues.append(
+                Issue("ERROR", path, "Drill ready requires a ready Anki handoff")
+            )
 
     quiz_attempts: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
     assessment_attempts: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
@@ -1021,7 +1276,7 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
         quiz_evidence = matching_quizzes[0][2] if len(matching_quizzes) == 1 else None
         for title, section in assessments:
             validate_assessment_attempt(
-                path, title, section, quiz_evidence, issues
+                path, title, section, quiz_evidence, version == "2", issues
             )
         if len(matching_quizzes) != 1:
             issues.append(
@@ -1061,6 +1316,42 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
                     path,
                     f"duplicate assessment attempt id {attempt_id}: "
                     f"{', '.join(attempt_titles)}",
+                )
+            )
+
+    if version == "2" and status == "complete":
+        applied_passes: set[str] = set()
+        for key, assessments in assessment_attempts.items():
+            matching_quizzes = quiz_results.get(key, [])
+            if len(matching_quizzes) != 1:
+                continue
+            quiz_evidence = matching_quizzes[0][2]
+            for _, section in assessments:
+                for match in ASSESSMENT_RECORD.finditer(section):
+                    objective = match.group("objective")
+                    applied_passes.discard(objective)
+                    if match.group("mastery") != "solid":
+                        continue
+                    fields, _, field_error = assessment_fields(match.group("fields"))
+                    if field_error:
+                        continue
+                    selected = quiz_evidence.get(fields.get("evidence question", ""))
+                    if selected is None:
+                        continue
+                    _, _, assistance, _, question_kind = selected
+                    if assistance == "none" and question_kind in APPLIED_KINDS:
+                        applied_passes.add(objective)
+        missing_evidence = sorted(
+            objective
+            for objective, (_, _, competency) in objective_states.items()
+            if competency == "passed" and objective not in applied_passes
+        )
+        for objective in missing_evidence:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"complete competency has no unassisted applied evidence: {objective}",
                 )
             )
 
@@ -1254,6 +1545,33 @@ def validate_note(
         return
     block = frontmatter(text)
     status = frontmatter_value(block, "status")
+    version = frontmatter_value(block, "study-loop-version")
+    if version not in {None, "2"}:
+        issues.append(Issue("ERROR", path, f"unsupported study-loop-version: {version}"))
+    if version == "2":
+        if status != "ready":
+            issues.append(Issue("ERROR", path, "version 2 note status must be ready"))
+        legacy_scaffold = (
+            STUDY_CHECK_START.search(text)
+            or LEARNER_EDIT_START.search(text)
+            or re.search(r"<!--\s*gap:", text)
+            or re.search(r"<!--\s*learner-answer:", text)
+            or LEARNER_SOURCE.search(text)
+            or re.search(r"^## Review — ", text, flags=re.MULTILINE)
+            or re.search(
+                r"^> \[!IMPORTANT\]\s*$\n> .*RESEARCH NEEDED",
+                text,
+                flags=re.MULTILINE,
+            )
+        )
+        if legacy_scaffold:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    "version 2 note contains legacy learner-work scaffolding",
+                )
+            )
     marker_counts(path, STUDY_CHECK_START, STUDY_CHECK_END, text, "study-check", issues)
     marker_counts(path, LEARNER_EDIT_START, LEARNER_EDIT_END, text, "learner-edit", issues)
 

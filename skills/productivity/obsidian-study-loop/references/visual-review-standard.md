@@ -123,10 +123,10 @@ Ground the design in the subject:
 
 The former default experience is the tactile study surface: a precise, keyboard-
 friendly technical reading interface defined by flow and information
-architecture, not decoration. Build it from the bundled template in
-`tactile-study-surface/` (chrome, compiled behaviors, assembler, worked
-example — see its `SPEC.md`), so every artifact shares byte-identical chrome
-and only the declarative per-scope JSON manifest changes.
+architecture, not decoration. Its chrome, compiled behaviors, and JSON
+assembler have been removed from this skill; nothing here generates a new one.
+The description below is retained only to explain the shape of `.html`
+artifacts that already exist in a vault, which the validator still checks.
 
 #### Narrative flow
 
@@ -263,7 +263,7 @@ Do not add:
   or links that leave the document.
 
 Fragment links and inline `data:image/` resources are the only URL-bearing
-exceptions. The JSON tactile assembler deliberately rejects SVG. If a
+exceptions. The retired JSON assembler rejected SVG outright. If a
 concept-native diagram truly needs inline SVG, author it through a separately
 reviewed offline artifact, give it the accessibility treatment below, and run
 the same validator and browser checks; never smuggle SVG through `body_html`.

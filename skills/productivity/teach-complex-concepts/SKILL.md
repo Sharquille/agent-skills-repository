@@ -53,7 +53,7 @@ active, run as a **teaching dive** under that protocol instead of standalone:
    loop's Mid-Session Deep Dives rules (`in-scope` / `adjacent` / `unrelated`)
    and run its evidence collision check before teaching.
 3. Tutor exactly as this skill specifies — the adaptive loop, hint ladder, and
-   conservative mastery judgments are unchanged, and the study loop's quiz
+   conservative mastery judgments are unchanged, and the study loop's applied-check
    rules (answer withholding, per-question scoring) never govern the dive
    conversation; this skill's workflow does, end to end. Use the session file
    as the learner profile (course, certification goal, in-scope objectives,
@@ -62,14 +62,15 @@ active, run as a **teaching dive** under that protocol instead of standalone:
    `## Deep dive — <scope>` in the session file, land the durable explanation
    and any Mermaid diagrams in a decoupled dive note at
    `_study/dives/<YYYY-MM-DD>-<topic-slug>.md`, and append the session-log
-   line. Never write into `Notes/` — the vault's canonical study notes are
-   authored only by the study loop's quiz → assess → write-notes flow. The
-   study loop owns the section order and validator; this skill writes within
-   that structure without calling back into the loop.
+   line. This helper never writes into `Notes/` directly. The study-loop
+   orchestrator may verify the dive and incorporate a clearer explanation into
+   its complete canonical note, then refresh affected Anki cards. The study
+   loop owns that publication, section order, and validator.
 4. Keep the mastery boundary: mid-dive answers and this skill's mastery labels
    never enter the study loop's assessments, rubric evidence, or confidence
-   calculations. Close by offering the canonical follow-ups (scoped re-quiz or
-   embedded study-check) and record the disposition in the dive entry.
+   calculations. Close by offering one fresh scoped applied check and record
+   the disposition in the dive entry. Legacy sessions may retain their older
+   re-quiz or embedded-check path.
 5. A later study-process reflection may cite a persisted teaching-dive record
    only as evidence about instructional fit — for example, pacing,
    representation, or hint strategy. It never turns a dive response into

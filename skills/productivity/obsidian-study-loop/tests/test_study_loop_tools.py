@@ -1403,12 +1403,14 @@ class ProtocolAlignmentTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("validate_study_vault.py", text, path)
 
-    def test_note_refresh_is_documented_in_both_protocol_sources(self) -> None:
+    def test_legacy_refresh_and_clean_publication_are_documented(self) -> None:
         for path in (SKILL_PATH, TEMPLATE_PATH):
             text = path.read_text(encoding="utf-8")
-            self.assertIn("## Note Refresh on Re-quiz", text, path)
+            self.assertIn("## Legacy Note Refresh on Re-quiz", text, path)
             self.assertIn("_study/workpages/", text, path)
             self.assertIn("type: study-workpage", text, path)
+            self.assertIn("complete reference material", text, path)
+            self.assertIn("Never create\nnew gap placeholders", text, path)
         manual = (SKILL_DIR / "references" / "manpage.md").read_text(encoding="utf-8")
         self.assertIn("_study/workpages/", manual)
 
@@ -1442,14 +1444,20 @@ class ProtocolAlignmentTests(unittest.TestCase):
         template_blocks = blocks(TEMPLATE_PATH)
         expected = {
             "mastery-scoring",
+            "question-design",
             "quiz-attempt",
             "retrieval-schedule",
             "teaching-evidence-boundary",
+            "external-drill-boundary",
+            "chapter-lifecycle",
             "gap-evidence",
             "visual-artifact",
             "process-reflection",
         }
         self.assertTrue(expected.issubset(skill_blocks))
+        # Every declared contract must be covered; a new block cannot opt out of
+        # byte-identity by simply not being listed above.
+        self.assertEqual(expected, set(skill_blocks))
         for block_id in expected:
             self.assertEqual(skill_blocks[block_id], template_blocks.get(block_id), block_id)
 

@@ -8,12 +8,11 @@ protocol, the protocol wins. Print any topic with
 <!-- man:section id=what aliases="about,overview,intro,what is this" -->
 ## What this is
 
-A study system saved as ordinary files inside your Obsidian vault. The agent is
-your tutor: it sets up study sessions, quizzes you one question at a time,
-grades honestly, writes structured notes with deliberate gaps for you to
-research, and reviews what you filled in. Everything is saved as plain
-Markdown and JSON, so you can close the terminal, study for three days, come
-back on another machine, and pick up exactly where you left off.
+A study system saved as ordinary files inside your Obsidian vault. The agent
+builds and enriches complete chapter notes, shows a live board of what to read
+and what still needs proof, prepares Anki recall cards, and grades short applied
+checks. Weak areas route to focused teaching or cited research and then a fresh
+check. You do not have to fill note placeholders to make the loop move.
 
 Your vault is the database. Routine tutoring, quizzing, grading, and note work
 stay local. Only an explicit advisory consult or research dive may send bounded
@@ -22,26 +21,24 @@ until the tutor verifies them.
 <!-- man:section-end id=what -->
 
 <!-- man:section id=quickstart aliases="start,begin,first-night,how do i start,typical" -->
-## Quickstart — a typical study night
+## Quickstart — prepare, learn, assess, complete
 
-1. **Tell the tutor what you're studying.** "I'll be studying 3.2 Cryptography
-   Implementations tonight." Paste the section breakdown if you have it —
-   learning outcomes, key terms, exam objectives, labs. More useful detail
-   produces a better-aligned quiz.
-2. **Optionally activate what you know.** The tutor may offer one short prior-
-   knowledge prompt labeled as orientation, not a quiz. It is never graded.
-3. **Go study.** Offline, at your pace. The session waits on disk.
-4. **Come back and say "quiz me"** (or "quiz me on 3.2" for one section).
-   One question at a time; answer in your own words.
-5. **Get graded.** Each objective lands as `solid`, `partial`, or `gap`, with
-   evidence.
-6. **Notes get written** into your vault — full sections for what you know,
-   research stubs for what you missed.
-7. **Fill the gaps yourself** (that's where the learning is), then say
-   **"review my additions"** to get them checked and scored.
+1. **Name the chapter.** Paste its outline, objectives, key terms, labs, or
+   course pages when you have them.
+2. **Let the tutor prepare it.** The agent writes complete notes for every
+   objective, researches only factual defects, and prepares an Anki import.
+3. **Follow the board.** Read the exact note headings it names and import or
+   review the Anki cards. The board always gives one immediate next action.
+4. **Return for a competency check.** The tutor asks a few applied scenario
+   questions, one at a time. Anki handles repetitive recall; this check tests
+   whether you can use the material.
+5. **Repair and retry.** A misunderstanding gets focused teaching; a content
+   defect gets cited research and note enrichment. Then you receive a fresh
+   check, not the same question again.
+6. **Complete the chapter.** Completion requires ready notes, ready or declined
+   Anki practice, and passed applied competency for every relevant objective.
 
-Repeat per section. Say "study manual" or name a topic (like "deep dives")
-any time you want this guide.
+Anki reviews continue after chapter completion without reopening it.
 <!-- man:section-end id=quickstart -->
 
 <!-- man:section id=say aliases="commands,triggers,phrases,cheat sheet,what do i say" -->
@@ -49,21 +46,19 @@ any time you want this guide.
 
 | You want | Say |
 |---|---|
-| Start a session | "I'll be studying X tonight" (paste the study packet) |
-| Get quizzed on everything | "quiz me" / "I'm done" / "ready for the quiz" |
-| Get quizzed on one section | "quiz me on 3.1" / "quiz Security Controls" |
+| Prepare a chapter | "Prepare chapter X" (paste the study packet) |
+| See the live board | "Show my study board" / "what should I do next?" |
+| Prepare Anki cards | "Prepare the Anki import" |
+| Run competency checks | "Test my competency" / "assess objective 3.1" |
 | A nudge mid-question | "hint" (steps down a ladder; never spoils outright) |
-| Save the current quiz | "pause" (keeps the attempt unfinished and ungraded) |
+| Save the current check | "pause" (keeps the attempt unfinished and ungraded) |
 | Continue it | "resume" |
 | Change wording only | "rephrase" (no hint penalty) |
-| Fewer or more questions | "shorter" / "deeper" (scope stays fixed) |
 | Give up on a question | "show me" / "skip" |
 | Explain it back | "let me teach it back" (learning practice; later fresh checks can count) |
-| Deeper teaching mid-session | "teach me X" / "I don't get X" / "go deeper on X" |
-| Sourced research mid-session | "research X with sources" / "research X properly" |
+| Repair confusion | "teach me X" / "I don't get X" / "go deeper on X" |
+| Repair thin notes | "research X with sources" / "enrich this section" |
 | A visual study aid | "make me a visual review for the current scope" |
-| Gap-fill checked | "review my additions" / "check my gap notes" |
-| Help researching a gap | "help me research X" (gets queries and a source plan) |
 | Reflect on the study process | "reflect on my study process" / "what keeps helping or hurting my learning?" |
 | This guide | "study manual" / "man page for the study loop" / a topic name |
 <!-- man:section-end id=say -->
@@ -71,42 +66,28 @@ any time you want this guide.
 <!-- man:section id=phases aliases="loop,workflow,lifecycle,how it works" -->
 ## The loop
 
-1. **Setup** — you name the topic and paste per-section study content. A
-   dated session file is created and the system remembers it as the active
-   one.
-2. **Study break** — nothing happens. You study offline; disk remembers.
-3. **Quiz** — conversational, one question at a time, scoped to what you name.
-   You see an estimated range first. Each planned, asked, scored, or deferred
-   question is saved under a unique attempt, so interruption and re-quizzing do
-   not collide.
-4. **Assess** — every in-scope objective graded `solid` / `partial` / `gap`
-   using only the scoring dimensions that apply, with brief evidence and
-   confidence calibration.
-5. **Write notes** — real notes in your vault. `solid` and `partial` get full
-   sections; `gap` gets a research stub that tells you exactly what to find
-   out, without spoiling the answer.
-6. **Your research** — you fill the stubs in your own words. The tutor doesn't
-   do this for you unless you explicitly ask.
-7. **Review** — "review my additions" checks accuracy, scores your practice
-   checks, adds corrections beside your original work, and closes the loop in
-   the session log.
+1. **Prepare** — the agent turns the supplied chapter into complete, verified
+   notes and a stable Anki handoff. A content defect loops back here for repair.
+2. **Learn** — you read the board's note locations and use Anki for recall. A
+   misunderstanding gets one focused teaching intervention.
+3. **Assess** — you answer a small number of applied questions in chat. The
+   session ledger preserves the evidence, hints, confidence, and score.
+4. **Complete** — every objective has ready content, a ready or explicitly
+   declined drill path, and passed competency where application is meaningful.
 
-Three optional layers sit alongside the phases: **deep dives** (mid-session
-tutoring or sourced research), **visual review artifacts** (Markdown and
-Mermaid study aids in Obsidian), and a **read-only process reflection** over
-reviewed history. None changes your grades.
+The board is generated from the session file, so there is no second checklist
+to drift. Anki ratings never count as mastery. A failed applied check returns to
+Learn; a faulty note returns to Prepare; both end in a fresh check.
 <!-- man:section-end id=phases -->
 
 <!-- man:section id=quiz aliases="quizzing,questions,hints,test me" -->
-## How the quiz works
+## How the competency check works
 
 - One question at a time, in chat. No walls of lettered questions.
-- Before starting, the tutor gives an estimated minimum/target/maximum range;
-  the quiz stops once the evidence is sufficient.
-- Expect a mix: recall, fill-in-the-blank, compare-contrast, and applied
-  scenarios where you explain *why* the answer fits.
-- At least one pure free-recall prompt per section — producing a term from a
-  scenario is stronger evidence than recognizing it in a list.
+- Normally one diagnostic scenario per objective and no more than three prompts
+  in one action. Anki handles the repeated definitions and recognition work.
+- Expect application, comparison, classification, or transfer prompts where you
+  explain *why* an answer fits and when it would not.
 - **"hint"** steps down a ladder one level per request: first a reframing,
   then attention to the relevant detail, then the underlying principle. Hints
   never reveal the answer, and a hint-assisted correct answer caps at
@@ -118,7 +99,7 @@ reviewed history. None changes your grades.
 - `pause`, `resume`, `rephrase`, `shorter`, and `deeper` are first-class
   controls. Rephrasing changes wording without a hint penalty; shorter/deeper
   adjusts question density without silently expanding scope.
-- Quiz progress records the complete current prompt before it is shown. If the
+- Attempt progress records the complete current prompt before it is shown. If the
   session dies mid-question, the next tutor can resume that exact attempt.
 <!-- man:section-end id=quiz -->
 
@@ -148,13 +129,11 @@ dimensions the question genuinely exercises.
   its raw score reaches the `solid` band. After **show me** or **skip**, only
   what you produced before the answer was revealed is scored—often a `gap`.
   The shown answer never earns credit, and revealed evidence is never `solid`.
-- Successful unassisted retrieval moves through review stages of roughly 1,
-  3, 7, 21, and 30 days, then at least monthly. A miss or assisted response
-  does not advance; after remediation the sequence restarts.
-- At most one or two due questions may appear before a new quiz. They come
-  from related or easily confused material and remain graded under their
-  original scope—not the new one. Their attempt stays in the originating
-  session file while your active-session pointer remains unchanged.
+- Anki owns recurring recall dates and due-card selection. Its ratings do not
+  alter competency, confidence, or the session ledger.
+- The tutor schedules a fresh applied check only after remediation or a
+  substantive chapter revisit. Version 2 does not run a second spaced schedule
+  alongside Anki.
 - Two confidence signals stay separate: **yours** (before feedback) and the
   **tutor's** (from accumulated evidence). Calibration compares your confidence
   with that answer's mastery band; tutor confidence remains a separate judgment.
@@ -164,36 +143,25 @@ dimensions the question genuinely exercises.
   until you've shown you can apply it.
 <!-- man:section-end id=scoring -->
 
-<!-- man:section id=notes aliases="gaps,gap stubs,study-checks,review,research needed,fill in" -->
-## Notes, gaps, and review
+<!-- man:section id=notes aliases="notes,enrichment,publication,content ready" -->
+## Complete notes and enrichment
 
-Notes land in your vault (one note per course section by default) with a
-proper metadata header (frontmatter) and tags. Three kinds of content:
+Notes are clean, agent-maintained study material—not worksheets. Every objective
+gets a complete section with a plain explanation, exact terms, useful
+boundaries, a worked example, and supported exam or practical context. A weak
+test result does not make the note incomplete and does not create homework
+fields for you to fill.
 
-- **Full sections** for `solid`/`partial` objectives — explanation, key terms,
-  exam focus, worked examples.
-- **Gap stubs** for what you missed: a callout stating exactly what to
-  research (never the answer), plus marked response and source fields. Replace
-  both `Write here.` lines and keep the hidden markers—they preserve your
-  original evidence and let review find it.
-- **Study-checks**: practice exercises embedded in notes, answered offline
-  between sessions. Check a box, fill the response lines, pick your
-  confidence.
+If the canonical material is thin, contradictory, or weakly sourced, the tutor
+runs bounded cited research and enriches the same note. If the material is
+correct but has not clicked, the tutor teaches it and may add a verified clearer
+explanation. Neither action proves mastery; only a fresh applied response can do
+that.
 
-Then say **"review my additions"**. Your gap fills are checked for accuracy
-and for a named source — say where you learned it (course material, vendor
-doc, RFC/NIST) or it can't earn `solid` — and study-checks are scored on the same
-applicable-dimension rubric, corrections are explained, and the session file
-records it all. Your original words are never rewritten; corrections and a
-reviewed synthesis live in feedback callouts next to them.
-
-**Note refresh on re-quiz.** When you re-quiz a topic later and prove you have
-mastered an objective that previously had gaps, the note section is rewritten as
-clean study material and the old scaffold — your earlier answer, research
-callouts, and review tips — moves into a workpage file under `_study/workpages/`.
-Your note then reads like fresh material, while your old work stays linked and
-fully preserved so you can always trace how you got there. This only happens on an
-already-reviewed note and only with your approval.
+Old study-loop notes may still contain gap fields or embedded checks. They are
+preserved as legacy evidence. A requested migration archives those original
+regions under `_study/workpages/` and publishes a clean version 2 note without
+silently rewriting your historical answer.
 <!-- man:section-end id=notes -->
 
 <!-- man:section id=deep-dives aliases="deep dive,dive,teach me,research dive,teaching dive,go deeper" -->
@@ -207,7 +175,7 @@ When the material just isn't landing, you don't have to leave the session:
 - **"research X with sources"** → a **research dive**: a research process
   (`evidence-research-loop`) that checks every quote against its source,
   working in a dated folder under `_study/research/` in your vault. Its
-  final write-up becomes a source you can cite when filling a gap stub.
+  verified final write-up may enrich the canonical note.
 
 A teaching dive is real tutoring, not more quizzing: expect a clear goal,
 concrete scenarios, worked examples, and explanations that build on your
@@ -216,18 +184,15 @@ answers never count toward your grades anyway. If a picture would help, ask
 for one ("draw it") — the tutor draws the analogy first, then the same
 picture relabeled with the real terms, and Obsidian renders them.
 
-Teaching dives stay out of your real study notes. Your `Notes/` folder is
-built only by the study flow (quiz → grade → write notes) — a dive never
-touches it. Instead each teaching dive is saved as its own file in
-`_study/dives/`, and your session record links to it. So the tutoring is
-kept, but it never overwrites or pre-empts the course notes your quizzes
-produce. The topic is still checked against your active session first —
-in-scope dives are labeled with the section they belong to; unrelated ones
-run standalone.
+Each teaching dive is saved under `_study/dives/`, and the session record links
+to it. The dive itself remains separate evidence, but the study-loop
+orchestrator may publish a verified clearer explanation into the canonical
+note and refresh affected cards. The topic is checked against the active
+chapter first; unrelated dives stay standalone.
 
 **Deep dives never change your grades.** Teaching answers are hint-saturated,
-so they aren't mastery evidence; instead every dive ends by offering a short
-re-quiz or an embedded practice check — the honest paths to updating mastery.
+so they aren't mastery evidence; instead every remediation ends with a fresh
+applied check — the honest path to updating competency.
 The normal rhythm is orient → focused chunk → worked example → retrieval →
 feedback → self-explanation or teach-back → a later fresh transfer check. An
 immediate teach-back helps learning but is not itself mastery evidence.
@@ -236,7 +201,8 @@ immediate teach-back helps learning but is not itself mastery evidence.
 <!-- man:section id=reflection aliases="reflect,reflection,study process,learning patterns,improve studying" -->
 ## Reflect on the study process
 
-Say **"reflect on my study process"** when you have enough reviewed history
+Say **"reflect on my study process"** when you have enough completed or legacy
+reviewed history
 and want to know whether something repeatedly helps or gets in the way. You
 choose the course, chapter, or objective. A candidate needs the same pattern in
 at least three independent dated occurrences: separate reviewed attempts for a
@@ -245,7 +211,7 @@ Mirrored summaries of one occurrence count once.
 
 The result is a chat-only improvement candidate: the exact session plus either
 an attempt or check ID or a dated deep-dive heading; the proposed adjustment;
-expected gain; possible downside; and a fresh quiz or study-check that could
+expected gain; possible downside; and a fresh applied check that could
 prove whether it helped. Sparse or contradictory history produces no candidate
 rather than a guess.
 
@@ -282,12 +248,12 @@ owns its helper-generated HTML under the vault's `Visuals/` folder.
 <vault>/
   STUDY-PROTOCOL.md      # the installed workflow (authoritative)
   STUDY-MANUAL.md        # this manual — open it in Obsidian any time
-  Notes/                 # your study notes — the durable output
+  Notes/                 # complete agent-maintained study material
   Maps/                  # study-map navigation pages (optional)
   _study/
     state.json           # which session is active
-    sessions/            # one file per session: study content, quiz
-                         #   progress, assessments, deep dives, review log
+    sessions/            # source ledger: objectives, state, applied evidence
+    anki/                # source manifests and generated TSV imports
     visuals/             # Markdown and Mermaid study aids
     dives/               # teaching-dive notes (decoupled from Notes/)
     research/            # research-dive workspaces (sources, evidence,
@@ -295,9 +261,13 @@ owns its helper-generated HTML under the vault's `Visuals/` folder.
     workpages/           # note-refresh history archives (one per note)
 ```
 
-The session file is the audit trail: every quiz answer, grade, note write,
-dive, and review lands there with a timestamp. If the chat loses its memory,
-the saved files are enough to pick up where you left off.
+The review board is generated from the active session when requested; there is
+no second board file to become stale. The session file is the audit trail: every
+question asked, its grade, note write, dive, and remediation lands there with a
+timestamp. It keeps the question
+and a short summary of what your answer showed — not your answer word for
+word. If the chat loses its memory, the saved files are enough to pick up
+where you left off.
 <!-- man:section-end id=layout -->
 
 <!-- man:section id=helpers aliases="tools,skills,toolbox,categories,helper skills" -->
@@ -306,12 +276,12 @@ the saved files are enough to pick up where you left off.
 **Mid-session deep dives**
 - `teach-complex-concepts` — teaching dive: adaptive tutoring when material
   hasn't clicked.
-- `evidence-research-loop` — research dive: citation-audited answers whose
-  synthesis you can cite in gap fills.
+- `evidence-research-loop` — research dive: citation-audited answers used to
+  repair a bounded defect in the canonical notes.
 
 **Research planning**
-- `study-research-queries` — turns a gap into search queries, source types,
-  and a capture checklist (you still do the research).
+- `study-research-queries` — creates a focused source plan before a difficult
+  research repair.
 - `literature-review` — formal, citation-backed deep research; heavy, for
   when a topic truly needs it.
 
@@ -335,6 +305,10 @@ the saved files are enough to pick up where you left off.
 - `study-map` — tiered map pages (course → chapter → concept) in `Maps/`,
   built only from links that actually resolve.
 
+**Recall practice**
+- `anki-study-sync` — creates stable, source-anchored Anki text imports from
+  content-ready notes. It never grades competency or changes Anki directly.
+
 **Repair**
 - `undo-obsidian-study-loop` — roll back a mistaken install or false-start
   session safely (inventory and dry-run first).
@@ -351,10 +325,11 @@ All read-only except where noted; all local, no network.
 - `scripts/study_man.py [topic|--list] [--pretty]` — this manual, whole or by
   topic; `--pretty` gives a styled view in a terminal (on automatically when
   you run it by hand).
+- `scripts/study_board.py <vault>` — renders the current chapter board from the
+  session ledger without writing a second state file.
 - `scripts/validate_study_vault.py <vault>` — integrity check: session
-  structure, recoverable quiz attempts, score notation, learner-source markers,
-  statuses, and the visual-artifact contract. Run after anything odd; errors
-  mean something needs deliberate repair.
+  structure, version 2 completion gates, clean publications, recoverable legacy
+  attempts, statuses, and the visual-artifact contract.
 - `scripts/sync_study_protocol.py <vault> [--apply]` — compares your
   installed protocol and manual to the skill's bundled sources. Preview-only
   by default; `--apply` refreshes both installed copies while preserving notes,
@@ -366,14 +341,15 @@ All read-only except where noted; all local, no network.
 
 - Your vault is treated as precious: nothing is deleted or overwritten
   without asking.
-- Your answers are evidence. They're never rewritten — corrections and model
-  answers live beside them, and grammar cleanup (if you ask for it) adds a
-  copy, never replaces.
+- Your answers live in the session evidence ledger, not inside published notes.
+  Legacy learner answers are preserved byte-for-byte during migration.
 - Asking for hints is always welcome. Assisted evidence is labeled honestly and
   capped; a later fresh canonical check can demonstrate independent mastery.
-- The agent is the tutor. No API keys, no external quiz services; the only
+- The agent is the tutor. No API keys or external grading services; the only
   external-model calls are the opt-in advisory consult and research-dive
   source reading, both verified before use.
+- The Anki handoff is a local text file. Anki reviews are practice and never
+  silently alter competency or chapter state.
 - Every state-, evidence-, or mastery-changing action is recorded in the
   session file with a real date and time. Read-only reflection changes none of
   them and is not logged.
@@ -382,10 +358,10 @@ All read-only except where noted; all local, no network.
 <!-- man:section id=recovery aliases="stuck,resume,interrupted,undo,broken,help" -->
 ## Getting unstuck
 
-- **Quiz died mid-way?** Say "resume" or "quiz me" — the disk-backed attempt
+- **Check died mid-way?** Say "resume" — the disk-backed attempt
   restores an asked question first, then the earliest planned question.
 - **Came back days later?** Just talk; the active session is read from
-  `_study/state.json`. A session that says `reviewed` staying active is
+  `_study/state.json`. A session that says `complete` staying active is
   normal — it's context for whatever you do next.
 - **No active session but you had one?** The agent inspects the most recent
   session file and asks whether to resume it — nothing is silently discarded.

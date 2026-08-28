@@ -1,6 +1,6 @@
 ---
 name: project-name-consult
-description: "Consult Kimi K2.7 Code and MiMo v2.5 Pro for a domain-accurate, professional project name during project-build-loop bootstrap. Use when the user gives a rough project description and needs a clean title, slug, and category that captures the right technical concepts (Kimi), reads well for a portfolio (MiMo), and benefits from conductor-led synthesis. Runs both models sealed and bounded via the tuned OpenCode wrapper exposed by agent-orchestra, then the conductor independently selects, rewrites, or creates the final ranked shortlist. Do not trigger for naming skills (use name-skill), for renaming variables (use naming-analyzer), or outside a project-build-loop context."
+description: "Generate a domain-accurate, professional project name during project-build-loop bootstrap using the current harness, bounded web research, and conductor synthesis. Use when the user gives a rough project description and needs a clean title, slug, and category. External model wrappers are optional and never a prerequisite. Do not trigger for naming skills (use name-skill), for renaming variables (use naming-analyzer), or outside a project-build-loop context."
 # --- provenance ---
 category: productivity
 source: self-authored; part of the project orchestra (docs/plans/project-orchestra-plan.md)
@@ -11,19 +11,23 @@ retrieved: 2026-06-27
 
 # Project Name Consult
 
-Get a proper project name by routing through two specialist models:
+Get a proper project name by combining bounded native-harness advice, targeted
+research, and conductor judgment:
 
-- **Kimi K2.7 Code** (technical lane): does the name capture the right domain
-  concepts, protocols, tools, and archetype? Is it technically accurate and
-  unambiguous to a practitioner?
-- **MiMo v2.5 Pro** (prose lane): is the name clean, professional, readable,
-  and discoverable for a portfolio? Does it avoid jargon overload while staying
-  specific?
+- **Technical lane:** checks domain concepts, protocols, tools, and archetype
+  accuracy.
+- **Security lane:** checks trust-boundary, defensive, least-privilege, and
+  audit terminology.
+- **Portfolio lane:** checks readability, discoverability, and repository fit.
+- **Research lane:** runs five bounded searches for adjacent terminology and
+  naming patterns. Search results are vocabulary input, not authority for the
+  final name.
 
-Both run **sealed and timeout-bounded** via the tuned `agent-orchestra` OpenCode wrapper
-(no repo access, advisory only). The conductor treats their output as raw signal,
-adds its own naming judgment, and presents a refined ranked shortlist: title,
-slug, category, and the recommended pick.
+Native-harness agents are advisory, bounded, and must not write project files.
+The conductor treats their output and search results as raw signal, adds its own
+naming judgment, and presents a refined ranked shortlist: title, slug, category,
+and the recommended pick. If native agents or web search are unavailable, the
+conductor proceeds with local inference rather than blocking bootstrap.
 
 ## When to use
 
@@ -35,12 +39,14 @@ invoked standalone when naming or renaming a project.
 
 1. **Collect context.** The user's project description, intended archetype, key
    technologies/protocols, and environment (e.g. EVE-NG, cloud, app).
-2. **Build two prompts** from the context — one per lane. Each receives the same
-   description; the technical prompt asks for domain accuracy, the prose prompt
-   asks for clarity and portfolio readability.
-3. **Run sequentially** (opencode shares one SQLite DB). Both sealed, both
-   bounded at 120s (naming is a lightweight call).
-4. **Synthesize as conductor.** Treat both model outputs as advisory ingredients,
+2. **Build bounded prompts** from the context for the technical, security, and
+   portfolio lanes. Each receives the same sanitized description.
+3. **Run native-harness lanes** when available, then make five focused web search
+   calls. Suggested search themes are: the project's core capability, adjacent
+   operations terminology, security/trust-boundary language, audit/provenance
+   language, and homelab or portfolio naming patterns. Do not include secrets,
+   real infrastructure names, addresses, credentials, or private URLs.
+4. **Synthesize as conductor.** Treat agent outputs and search results as advisory ingredients,
    not ballot results. Identify the real engineering story in the project
    description, then select, rewrite, combine, or create names that better carry
    that story. The conductor may introduce names absent from both consults when
@@ -57,15 +63,10 @@ invoked standalone when naming or renaming a project.
 
 ## Invocation
 
-```text
-# Technical naming (Kimi) — domain accuracy
-agent-orchestra/scripts/consult-opencode.sh --sealed --timeout 120 \
-  --model openrouter/moonshotai/kimi-k2.7-code -- "<naming prompt>"
-
-# Prose naming (MiMo) — readability and portfolio fit
-agent-orchestra/scripts/consult-opencode.sh --sealed --timeout 120 \
-  --model openrouter/xiaomi/mimo-v2.5-pro -- "<naming prompt>"
-```
+Use the current harness's bounded agent tool for the technical, security, and
+portfolio lanes. Run five separate web searches with sanitized, project-specific
+queries. Do not require OpenCode, a provider wrapper, or a plugin. Keep all lanes
+read-only and pass only the project description and non-sensitive terminology.
 
 ## Prompt template
 
@@ -94,5 +95,7 @@ non-specialist hiring manager scanning the portfolio."
 
 - No secrets or real infrastructure names in the naming prompt.
 - Advisory only; the conductor picks the final name. Models never write to disk.
-- Graceful skip: if the wrapper or models are unavailable, the conductor falls
-  back to its own inference (as it does today).
+- Graceful skip: if native agents or web search are unavailable, the conductor
+  falls back to its own inference and records the missing advisory lanes.
+- No external wrapper is a lifecycle prerequisite. A naming failure must not
+  block a safe, local bootstrap when the user confirms a title.
