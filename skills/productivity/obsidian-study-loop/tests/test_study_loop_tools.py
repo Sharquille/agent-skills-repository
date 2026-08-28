@@ -1403,12 +1403,14 @@ class ProtocolAlignmentTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("validate_study_vault.py", text, path)
 
-    def test_note_refresh_is_documented_in_both_protocol_sources(self) -> None:
+    def test_legacy_refresh_and_clean_publication_are_documented(self) -> None:
         for path in (SKILL_PATH, TEMPLATE_PATH):
             text = path.read_text(encoding="utf-8")
-            self.assertIn("## Note Refresh on Re-quiz", text, path)
+            self.assertIn("## Legacy Note Refresh on Re-quiz", text, path)
             self.assertIn("_study/workpages/", text, path)
             self.assertIn("type: study-workpage", text, path)
+            self.assertIn("complete reference material", text, path)
+            self.assertIn("Never create\nnew gap placeholders", text, path)
         manual = (SKILL_DIR / "references" / "manpage.md").read_text(encoding="utf-8")
         self.assertIn("_study/workpages/", manual)
 
@@ -1447,6 +1449,7 @@ class ProtocolAlignmentTests(unittest.TestCase):
             "retrieval-schedule",
             "teaching-evidence-boundary",
             "external-drill-boundary",
+            "chapter-lifecycle",
             "gap-evidence",
             "visual-artifact",
             "process-reflection",

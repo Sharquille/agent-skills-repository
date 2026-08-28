@@ -1,6 +1,6 @@
 ---
 name: visualize-study-chapter
-description: "Turn an existing study chapter or section into a compact, interactive, visual-first study surface using the Visualize plugin. Use when a learner asks to visualize a chapter, when a chapter's review completes and its visual surface should build automatically as the chapter's closing step, to make dense notes easier to digest, replace long scrolling with concept maps, flows, comparisons, trust boundaries, or timelines, or create one visual surface per chapter from material already present in an obsidian-study-loop vault. Scope-locks every visual to real source notes, protects active quiz and study-check evidence, and never changes mastery. Do not use to invent course content, grade the learner, make generic data charts, or create persistent Obsidian Canvas maps."
+description: "Turn an existing study chapter or section into a compact, interactive, visual-first study surface using the Visualize plugin. Use when a learner asks to visualize a chapter, when a version 2 chapter reaches complete, to make dense notes easier to digest, replace long scrolling with concept maps, flows, comparisons, trust boundaries, or timelines, or create one visual surface per chapter from material already present in an obsidian-study-loop vault. Scope-locks every visual to real source notes, protects active applied-check evidence, and never changes mastery. Do not use to invent course content, grade the learner, make generic data charts, or create persistent Obsidian Canvas maps."
 ---
 
 # Visualize Study Chapter
@@ -32,12 +32,13 @@ not a second note system or an assessment.
    `_study/state.json`, or `.obsidian/`. If no study vault is active, accept
    explicit local notes and operate read-only as a standalone visual study aid.
 2. Resolve phrases such as "this chapter" or "the current chapter" from the
-   active session and `## Unit progress`. If more than one chapter remains
+   active session and its version 2 `## Objective status` table (or legacy
+   `## Unit progress`). If more than one chapter remains
    plausible, ask one short clarification before reading unrelated notes.
 3. Find the existing source note or notes under the configured notes directory.
-   In a study-loop vault, require the requested scope to have an assessment or
-   a `## Notes written` record. Offer the normal quiz/write-notes path when the
-   scope has not been established yet.
+   In a version 2 study-loop vault, require every requested objective's Content
+   gate to be `ready`. Legacy sessions may use an assessment or
+   `## Notes written` record.
 4. After the evidence gate below passes, read the complete in-scope source
    material. Inventory:
    - section and subsection headings;
@@ -64,10 +65,9 @@ that could answer a live question:
    Offer to resume the quiz, explicitly defer the affected question under the
    study-loop rules, or choose a non-overlapping chapter. Do not silently reveal
    the answer through a diagram.
-3. Find unanswered in-scope `study-check` blocks. Offer a clean attempt before
-   visualizing the tested concept. If the learner declines and proceeds, state
-   that the visual is instruction and that a later answer is no longer clean,
-   independent evidence; let `obsidian-study-loop` apply its evidence rules.
+3. In a version 2 session, an active or paused applied attempt is the only live
+   evidence collision. For a legacy note, retain the unanswered in-scope
+   `study-check` collision rule.
 4. Never read, score, mutate, or summarize learner answers as a side effect of
    creating the visual. Never update assessment, confidence, review stage,
    note status, unit progress, or the active-session pointer.
@@ -224,29 +224,30 @@ When the learner asks to visualize every chapter:
 2. Report chapters blocked by missing notes, unestablished scopes, or active
    evidence collisions.
 3. Generate a separate surface for each eligible chapter, starting with the
-   current or most recently reviewed chapter.
+   current or most recently completed chapter.
 4. Keep visual grammar stable where relationships repeat, but let each
    chapter's content determine its dominant diagram.
 
 Do not create an all-course mega-surface. Cross-chapter navigation belongs to
 `study-map`; focused comprehension belongs here.
 
-## Chapter endpoint — build after review, no request needed
+## Chapter endpoint — build after completion, no request needed
 
 The visual surface is the closing step of a completed chapter, not an optional
-follow-up the learner must request. When a scope completes — quiz consumed,
-`## Notes written` recorded, and the review marked `reviewed` in the active
-session's `## Unit progress` — build its surface automatically as the final
-action of that chapter's cycle. Do not wait for the learner to say
+follow-up the learner must request. When every version 2 objective gate passes
+and the active session reaches `complete`, build its surface automatically as
+the final action of that chapter's cycle. A legacy session retains its older
+review endpoint. Do not wait for the learner to say
 "visualize it" as the last step.
 
 - **Trigger:** the scope's completion record itself. If the learner asks for a
   visual at any point during the chapter, build it then too; the endpoint only
   guarantees the build happens even when they do not ask.
 - **Gate first, always:** run "Protect evidence before visualizing" before the
-  build. If a fresh active/paused quiz attempt or an unanswered study-check
-  overlaps the scope, the endpoint reports the collision under the gate rules
-  and defers the build — it never leaks an answer through a diagram.
+  build. If a fresh active/paused applied attempt overlaps the scope, the
+  endpoint reports the collision under the gate rules and defers the build —
+  it never leaks an answer through a diagram. Unanswered `study-check` blocks
+  remain a collision only in legacy notes.
 - **Rebuild when the source changed:** regenerate a chapter's surface when its
   source note changed since the last surface; keep one surface per chapter and
   reuse the established visual grammar for that chapter.
@@ -273,13 +274,13 @@ action of that chapter's cycle. Do not wait for the learner to say
 - If the learner asks for a spatial Canvas or durable map stack, hand off to
   `mind-map-obsidian` or `study-map` and obey their integrity gates.
 - A saved or inline visual remains a study aid. It never changes mastery until
-  the learner answers a fresh question through the canonical quiz or reviewed
-  `study-check` path.
+  the learner answers a fresh question through the canonical applied-check
+  path. Legacy sessions retain their preserved quiz or reviewed-check path.
 
 ## Completion check
 
 - [ ] Chapter and source headings resolved from real files.
-- [ ] No overlapping active quiz or unanswered study-check was leaked.
+- [ ] No overlapping active applied attempt or legacy unanswered study-check was leaked.
 - [ ] Every visual relation is source-traceable.
 - [ ] One chapter, one dominant canvas, and no long-scroll prose dump.
 - [ ] Essential distinctions and limitations survived compression.
