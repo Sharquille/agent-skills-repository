@@ -74,6 +74,10 @@ This skill is the study orchestrator. Use these helper skills when available:
   not clicked and the learner needs adaptive tutoring rather than another notes
   pass. Session-integrated per Mid-Session Deep Dives below: relevance-check the
   topic, persist under the deep-dive rules, and keep the mastery boundary.
+  When version 2 routing hands off `needs-remediation` objectives, scaffold
+  the dive with `scripts/study_dive.py` and complete its writing chain
+  (technical-writing draft, unslop pass, humanizer final rewrite) before
+  persisting; `study_dive.py --check` gates the session record.
 - `evidence-research-loop`: run a **research dive** when a question needs
   citation-audited, primary-source research. Session-integrated per Mid-Session
   Deep Dives below: the workspace roots at

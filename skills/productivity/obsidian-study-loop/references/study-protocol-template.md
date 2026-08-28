@@ -1536,6 +1536,15 @@ contaminate:
   study note, that happens only through the mastery flow (Write Notes or
   Review), citing the dive note as a source — never by the dive writing
   `Notes/` directly.
+- Dive handoff: when version 2 routing hands off `needs-remediation`
+  objectives after publication, scaffold the dive with
+  `<skill-dir>/scripts/study_dive.py <VAULT_PATH>`. The script writes
+  `_study/dives/<YYYY-MM-DD>-<scope-slug>-handoff.md` carrying the routed gap
+  topics, the teaching flow, and the writing chain (technical-writing draft,
+  unslop pass, humanizer final rewrite, portable-markdown lint). Run
+  `study_dive.py <VAULT_PATH> --check <handoff-file>` after authoring; record
+  the dive in the session only once the check passes. The script never writes
+  to `Notes/`, the session ledger, or `state.json`.
 - Research dives root their workspace at
   `_study/research/<YYYY-MM-DD>-<question-slug>/` (create the directory if
   missing). Every `evidence-research-loop` stage file and gate applies
