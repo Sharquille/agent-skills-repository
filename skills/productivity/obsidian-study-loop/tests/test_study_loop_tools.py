@@ -1403,16 +1403,84 @@ class ProtocolAlignmentTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8")
             self.assertIn("validate_study_vault.py", text, path)
 
-    def test_legacy_refresh_and_clean_publication_are_documented(self) -> None:
+    def test_legacy_refresh_and_diagnostic_publication_are_documented(self) -> None:
         for path in (SKILL_PATH, TEMPLATE_PATH):
             text = path.read_text(encoding="utf-8")
+            flat = " ".join(text.split())
             self.assertIn("## Legacy Note Refresh on Re-quiz", text, path)
             self.assertIn("_study/workpages/", text, path)
             self.assertIn("type: study-workpage", text, path)
-            self.assertIn("complete reference material", text, path)
-            self.assertIn("Never create\nnew gap placeholders", text, path)
+            self.assertIn("Publish complete canonical notes", text, path)
+            self.assertIn(
+                "regardless of whether Competency is `passed` or `needs-remediation`",
+                flat,
+                path,
+            )
+            self.assertIn("Never create new gap placeholders", flat, path)
         manual = (SKILL_DIR / "references" / "manpage.md").read_text(encoding="utf-8")
         self.assertIn("_study/workpages/", manual)
+
+    def test_version_two_is_diagnostic_first_and_scope_anchored(self) -> None:
+        headings = [
+            "### Prepare the scope",
+            "### Diagnose competency",
+            "### Publish notes and Anki",
+            "### Learn from the publication",
+            "### Recheck unresolved objectives",
+            "### Complete and reopen",
+        ]
+        required = [
+            "study-flow: diagnostic-first",
+            "chapter breakdown is the scope authority",
+            "rejects Content `ready` while Competency is `pending`",
+            "rejects Drill `ready` while Content is not `ready`",
+            "do not mark Content `ready`",
+            "Do not require prior reading, prior Anki practice",
+            "Learner answers diagnose emphasis only",
+            "Do not preserve the learner's mistake",
+            "`technical-writing`",
+            "`unslop` preservation-first pass",
+            "`humanizer`'s draft-audit-final pass",
+            "Persist only the checked final note",
+            "Invoke `anki-study-sync` only after the final note headings exist",
+            "only for objectives at `needs-remediation`",
+        ]
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            start = text.index("<!-- shared-contract:start id=chapter-lifecycle -->")
+            end = text.index("<!-- shared-contract:end id=chapter-lifecycle -->", start)
+            lifecycle = text[start:end]
+            lifecycle_flat = " ".join(lifecycle.split())
+            positions = [lifecycle.index(heading) for heading in headings]
+            self.assertEqual(positions, sorted(positions), path)
+            for phrase in required:
+                self.assertIn(phrase, lifecycle_flat, (path, phrase))
+
+        manual = (SKILL_DIR / "references" / "manpage.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("## Quickstart — diagnose, publish, learn, complete", manual)
+        self.assertIn("The chapter breakdown controls scope", manual)
+        self.assertIn("Anki cards are generated from that note", manual)
+
+    def test_version_two_does_not_require_chat_confidence(self) -> None:
+        for path in (SKILL_PATH, TEMPLATE_PATH):
+            text = path.read_text(encoding="utf-8")
+            self.assertIn(
+                "Version 2 diagnostic and targeted recheck attempts do not prompt",
+                text,
+                path,
+            )
+            self.assertIn(
+                "For version 2, do not prompt for a confidence label",
+                text,
+                path,
+            )
+            self.assertIn(
+                "do not describe the learner as overconfident or underconfident",
+                text,
+                path,
+            )
 
     def test_visual_contract_is_shared(self) -> None:
         required = [
@@ -1565,7 +1633,7 @@ class ProtocolAlignmentTests(unittest.TestCase):
 
         manual = (references / "manpage.md").read_text(encoding="utf-8")
         self.assertIn("`unslop`", manual)
-        self.assertIn("not the default note-authoring pass", manual)
+        self.assertIn("runs the final draft-audit-rewrite pass", manual)
 
         study_man = (SKILL_DIR / "scripts" / "study_man.py").read_text(encoding="utf-8")
         self.assertIn("keyword in its id, aliases, or title", study_man)

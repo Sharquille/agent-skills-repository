@@ -405,6 +405,7 @@ def validate_objective_status(
     section: str,
     session_status: str | None,
     expected_objectives: list[str],
+    diagnostic_first: bool,
     issues: list[Issue],
 ) -> dict[str, tuple[str, str, str]]:
     try:
@@ -477,6 +478,22 @@ def validate_objective_status(
             issues.append(Issue("ERROR", path, f"{objective} has unsupported drill state"))
         if competency not in COMPETENCY_STATES:
             issues.append(Issue("ERROR", path, f"{objective} has unsupported competency state"))
+        if diagnostic_first and content == "ready" and competency == "pending":
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{objective} ready content requires a completed diagnostic state",
+                )
+            )
+        if diagnostic_first and drill == "ready" and content != "ready":
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    f"{objective} ready drill requires ready content",
+                )
+            )
         if (
             content in CONTENT_STATES
             and drill in DRILL_STATES
@@ -1110,6 +1127,7 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
         return
     block = frontmatter(text)
     version = frontmatter_value(block, "study-loop-version")
+    study_flow = frontmatter_value(block, "study-flow")
     status = frontmatter_value(block, "status")
     objectives = frontmatter_list(block, "objectives")
     if block is None:
@@ -1120,6 +1138,8 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
                 issues.append(Issue("ERROR", path, f"frontmatter is missing {key}"))
         if version not in {None, "2"}:
             issues.append(Issue("ERROR", path, f"unsupported study-loop-version: {version}"))
+        if version == "2" and study_flow not in {None, "diagnostic-first"}:
+            issues.append(Issue("ERROR", path, f"unsupported study-flow: {study_flow}"))
         allowed_statuses = (
             V2_SESSION_STATUSES if version == "2" else LEGACY_SESSION_STATUSES
         )
@@ -1166,7 +1186,13 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
         for title, start, end in headings:
             if title == "Objective status":
                 objective_states = validate_objective_status(
-                    path, vault, text[start:end], status, objectives, issues
+                    path,
+                    vault,
+                    text[start:end],
+                    status,
+                    objectives,
+                    study_flow == "diagnostic-first",
+                    issues,
                 )
         anki_ready = False
         for title, start, end in headings:

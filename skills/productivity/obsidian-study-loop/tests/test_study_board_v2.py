@@ -57,28 +57,38 @@ Complete explanation.
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
-    def write_session(self, status: str, competency: str = "pending") -> None:
+    def write_session(
+        self, status: str, competency: str = "needs-remediation"
+    ) -> None:
         applied_evidence = ""
-        if competency == "passed":
+        if competency in {"passed", "needs-remediation"}:
+            mastery = "solid" if competency == "passed" else "partial"
+            score = "8/8" if competency == "passed" else "4/8"
+            evidence = (
+                "Correct application and reasoning."
+                if competency == "passed"
+                else "Application exposed a bounded gap for publication."
+            )
             applied_evidence = """
 ## Quiz progress — Topic — attempt 2026-08-27-01
 
 - Budget: minimum 1; target 1; maximum 1; mode adaptive
 - Attempt status: completed — updated: 2026-08-27T10:10:00-0400
-- Q1 [application] — Objective A — status: scored — prompt: Apply Objective A. — score: 8/8 — assistance: none — learner confidence: High — evidence: Correct application and reasoning.
+- Q1 [application] — Objective A — status: scored — prompt: Apply Objective A. — score: {score} — assistance: none — learner confidence: unknown — evidence: {evidence}
 - Consumed by Assessment — Topic — attempt 2026-08-27-01 on 2026-08-27T10:11:00-0400
 
 ## Assessment — Topic — attempt 2026-08-27-01
 
-- Objective A — mastery: solid — evidence question: Q1 — score: 8/8 — assistance: none — evidence: Correct application and reasoning. — tutor confidence: high — learner confidence: High — calibration: well-calibrated
+- Objective A — mastery: {mastery} — evidence question: Q1 — score: {score} — assistance: none — evidence: {evidence} — tutor confidence: medium — learner confidence: unknown — calibration: unknown
 
-"""
+""".format(mastery=mastery, score=score, evidence=evidence)
         self.session.write_text(
             f"""---
 topic: Topic
 created: 2026-08-27T10:00:00-0400
 status: {status}
 study-loop-version: 2
+study-flow: diagnostic-first
 objectives:
   - Objective A
 ---
@@ -125,7 +135,7 @@ Source outline.
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Topic — review board", result.stdout)
         self.assertIn(
-            "Objective A | Notes/Topic.md#Objective A | ready | ready | pending",
+            "Objective A | Notes/Topic.md#Objective A | ready | ready | needs-remediation",
             result.stdout,
         )
         self.assertFalse((self.vault / "_study" / "review-board.md").exists())
@@ -133,6 +143,42 @@ Source outline.
     def test_version_two_vault_is_valid(self) -> None:
         result = self.run_cli(VALIDATOR)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_ready_content_requires_completed_diagnostic_state(self) -> None:
+        self.write_session("learning", "pending")
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(
+            "ready content requires a completed diagnostic state", result.stdout
+        )
+
+    def test_older_version_two_session_without_flow_marker_is_preserved(self) -> None:
+        self.write_session("learning", "pending")
+        text = self.session.read_text(encoding="utf-8").replace(
+            "study-flow: diagnostic-first\n", ""
+        )
+        self.session.write_text(text, encoding="utf-8")
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_version_two_rejects_unknown_flow_marker(self) -> None:
+        text = self.session.read_text(encoding="utf-8").replace(
+            "study-flow: diagnostic-first", "study-flow: notes-first"
+        )
+        self.session.write_text(text, encoding="utf-8")
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unsupported study-flow: notes-first", result.stdout)
+
+    def test_ready_drill_requires_ready_content(self) -> None:
+        text = self.session.read_text(encoding="utf-8").replace(
+            "| Objective A | Notes/Topic.md#Objective A | ready | ready | needs-remediation |",
+            "| Objective A | pending | pending | ready | needs-remediation |",
+        )
+        self.session.write_text(text, encoding="utf-8")
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("ready drill requires ready content", result.stdout)
 
     def test_drill_ready_requires_ready_handoff(self) -> None:
         text = self.session.read_text(encoding="utf-8")

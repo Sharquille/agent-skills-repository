@@ -52,11 +52,17 @@ When available, use these helper skills while following this protocol:
 
 - `knowledge-capture-obsidian` for frontmatter, tags, `[[wikilinks]]`, MOC/index
   hygiene, and clean Obsidian note structure.
-- `unslop` for the preservation-first prose pass on completed `solid` and
-  `partial` note sections. Keep technical reference notes neutral, direct, and
-  accurate.
-- `humanizer` only when the learner asks for a deeper, voice-matched rewrite of
-  finished note prose.
+- `technical-writing` to choose one Diátaxis mode per canonical note, structure
+  each objective for first-read understanding, keep one thought per sentence,
+  and remove ambiguous instructions. Concept notes normally use explanation;
+  procedure-only notes use how-to. Split and link when both are substantial.
+- `unslop` for the preservation-first prose pass during every version 2 note
+  publication. Preserve technical accuracy, exact terms, commands, citations,
+  and the note's neutral technical register.
+- `humanizer` to run its draft-audit-final rewrite on finished version 2 note
+  prose after the technical draft and unslop pass. Persist only the final
+  rewrite. Keep reference material neutral and never add opinions, first person,
+  invented examples, or personality to factual content.
 - `study-research-queries` when a bounded content defect needs a source-aware
   query plan before the research dive. It is planning, not publication or
   competency evidence.
@@ -511,6 +517,11 @@ Keep two confidence signals separate:
   - `low`: evidence is weak, contradictory, below the mastery threshold on its
     applicable denominator, or absent.
 
+Version 2 diagnostic and targeted recheck attempts do not prompt for learner
+confidence. Record `unknown` unless the learner volunteers a value before
+feedback. The learner self-judges readiness while reviewing the published notes
+and Anki cards; that choice is not mastery evidence and never changes a score.
+
 Calibration compares learner confidence with that evidence item's mastery band,
 not with tutor confidence: `gap` maps to Low, `partial` to Medium, and `solid`
 to High. Matching bands are `well-calibrated`; learner confidence above the
@@ -561,10 +572,19 @@ are never mastery evidence.
 <!-- shared-contract:start id=chapter-lifecycle -->
 ## Chapter Lifecycle — Version 2
 
-Version 2 reverses the old worksheet model. The agent publishes complete study
-material; the learner reads, drills, and demonstrates competence. Never create
-new gap placeholders, learner-edit regions, required learner research fields, or
-graded in-note study checks. Those structures are legacy evidence only.
+Version 2 is diagnostic-first. The agent checks the learner against the supplied
+chapter breakdown, then immediately publishes complete study material shaped by
+the results. The learner reads the finished notes, uses Anki, and returns only
+for unresolved applied objectives. The lifecycle is:
+
+```text
+prepare scope -> diagnose competency -> publish notes and Anki -> learn -> recheck unresolved objectives -> complete
+```
+
+Never require the learner to read agent-written notes or review Anki before the
+initial diagnostic. Never create new gap placeholders, learner-edit regions,
+required learner research fields, or graded in-note study checks. Those
+structures are legacy evidence only.
 
 ### State and source of truth
 
@@ -576,6 +596,7 @@ topic: <topic>
 created: <local ISO datetime>
 status: preparing
 study-loop-version: 2
+study-flow: diagnostic-first
 objectives:
   - <objective 1>
   - <objective 2>
@@ -586,6 +607,12 @@ The allowed states are `preparing`, `learning`, `assessing`, and
 `complete`. Keep `_study/state.json` exactly
 `{"active_session": "<vault-relative session path>"}`; do not add phase, board,
 or Anki keys.
+
+New version 2 sessions must set `study-flow: diagnostic-first`. A version 2
+session without `study-flow` predates this order and remains compatibility
+state. Preserve it. Add the field only in the same ordered write that consumes
+its first diagnostic and republishes its notes; never relabel prepared history
+without that evidence.
 
 The session file is the ledger. It contains exactly one live objective table:
 
@@ -605,7 +632,14 @@ learner-facing board shows readiness, the reason for a block, note locations,
 and the next action; it does not expose raw answers or a punitive composite
 score.
 
-Maintain this H2 order for version 2 sessions:
+For sessions marked `study-flow: diagnostic-first`, the validator rejects
+Content `ready` while Competency is `pending`. It also rejects Drill `ready`
+while Content is not `ready`. These gates enforce diagnostic-first publication
+and keep Anki downstream of the final note without invalidating earlier version
+2 sessions.
+
+Maintain this H2 storage order for version 2 sessions. Storage order does not
+change the lifecycle order above:
 
 1. `## Study content`
 2. `## Objective status`
@@ -616,90 +650,150 @@ Maintain this H2 order for version 2 sessions:
 7. `## Mastery evidence` when present
 8. `## Session log` last
 
-### Prepare
+### Prepare the scope
 
 1. Resolve the active vault and preserve an existing active session unless the
    learner clearly confirms a replacement.
-2. Normalize the supplied chapter outline into stable objectives. When the
-   course packet is incomplete, say what is missing. Continue from the supplied
-   outline only when the learner says to proceed or when bounded, cited research
-   can establish the missing factual content.
+2. Normalize the supplied chapter breakdown into stable objectives. The chapter
+   breakdown is the scope authority: section headings, learning outcomes, key
+   terms, certification mappings, labs, activities, and already enriched
+   chapter material. An objective label alone does not authorize unrelated or
+   later-chapter content.
 3. Create the version 2 session and initialize every objective row to
    `pending`.
-4. Search the vault before writing. For every objective, create or enrich the
-   canonical note as complete reference material: a plain explanation, exact key
-   terms, boundaries or common confusions, a worked example, exam or practical
-   focus when supported, and verified links. Use
-   `study-loop-version: 2` and `status: ready` in new note frontmatter.
-5. A factual omission, contradiction, stale claim, or thin source is a content
-   defect. Route only that defect through a scoped research dive, verify the
-   sources, then publish the corrected synthesis in the canonical note. An
-   unclear concept for the learner is a teaching need, not a reason to withhold
-   the note.
-6. Never infer competence from the quality or completeness of an agent-written
-   note. Note publication sets only the Content column to `ready`.
-7. When every card source resolves to a content-ready note heading, invoke
-   `anki-study-sync` to create a manifest and deterministic TSV under
-   `_study/anki/`. Record paths and status under `## Anki handoff`. If the
-   helper is unavailable or generation fails, record
-   `Anki deferred — <reason>`; note publication still succeeds and Drill may
-   be `not-required` only when the learner explicitly declines Anki.
-8. Set the session to `learning` once each objective is content-ready or has a
-   precise blocking reason. Show the generated board and send the learner to
-   the exact note headings and Anki import/review action.
+4. Search the vault and record the existing canonical note for each objective,
+   but do not mark Content `ready`, publish rewritten notes, or generate Anki
+   before the initial diagnostic. Existing notes are source material, not proof
+   of learning.
+5. When the course packet is incomplete, name the missing scope. Continue only
+   when the learner says to proceed from the available breakdown or bounded,
+   cited research can establish the missing factual content.
+6. Set the session to `assessing` when every objective has enough in-scope
+   material for a fair diagnostic.
 
-### Learn
+### Diagnose competency
 
-The learner reads the published locations and uses Anki for recall volume.
-Anki owns recurrence, random card selection, manual recall practice, and its
-own scheduler. The portable Basic-card handoff does not provide automatic
-typed-answer comparison. The study loop neither predicts nor mirrors Anki due
-dates.
-
-If the learner reports confusion, run one focused teaching intervention. Persist
-the dive, let this orchestrator incorporate any verified clarification into the
-canonical note and card manifest, then set one fresh applied check as the next
-action. Teaching responses and immediate teach-back are learning activity, not
-competency evidence.
-
-A reported Anki lapse or leech may nominate an objective for explanation or a
-fresh later check. It never changes Content, Competency, mastery, confidence,
-assistance, calibration, or a protocol review date.
-
-### Assess
-
-Set the session to `assessing` and ask a small applied competency check: one
-question at a time, normally one diagnostic scenario per objective and no more
-than three prompts in one action. Anki already owns repetitive definition and
-recognition practice.
+Ask a small applied competency check before note publication: one question at a
+time, normally one diagnostic scenario per objective and no more than three
+prompts in one action. Do not require prior reading, prior Anki practice, or a
+confidence label.
 
 Use the canonical question-design, scoring, assistance, confidence, and
 attempt-recovery contracts below. Every attempt has a fresh
 `<YYYY-MM-DD>-<NN>` ID. Write the complete prompt before showing it, preserve
 scored evidence in the session, and consume it into exactly one matching
-assessment. A post-teaching check must use a fresh surface. The teaching answer
-itself never counts.
+assessment. For version 2, record learner confidence as `unknown` unless the
+learner volunteers Low, Medium, or High before feedback. Do not ask after the
+answer and do not describe the learner as overconfident or underconfident in
+learner-facing feedback.
 
 Version 2 assessment rows stop after `calibration`; do not add legacy
 `review stage`, `next review`, or `next action` fields. The objective table owns
 the next action, while Anki owns recurring recall dates.
 
-After scoring, route the result by cause:
+After scoring, update each objective once:
 
 - Correct, unassisted applied evidence: Competency `passed`.
 - Conceptual misunderstanding or weak reasoning: Competency
-  `needs-remediation`; return to Learn for one focused teaching intervention,
-  then schedule a fresh attempt.
-- Missing, contradictory, or weakly sourced canonical content: Content
-  `blocked`; return to Prepare for one bounded research repair, republish the
-  note and affected cards, then schedule a fresh attempt.
-- A recall miss without an applied defect: recommend Anki practice; do not
-  manufacture a mastery downgrade from an external rating.
+  `needs-remediation`.
+- A prompt that depended on missing, contradictory, stale, or weakly sourced
+  material identifies a Content defect. Exclude that item from competency and
+  record Content `blocked` until a bounded research repair verifies the fact.
+- An out-of-scope item is a prompt defect. Exclude it from competency and do not
+  let it expand the note.
 
-One learner action may trigger at most one intervention and one fresh check.
-Persist the trigger and outcome. If the same failure repeats, stop the automatic
-loop, keep the row at `needs-remediation`, and present the learner with the
-specific unresolved issue rather than repeating an identical dive.
+After the initial attempt is consumed, proceed directly to publication. Do not
+insert a teaching dive, another quiz, learner research, or a pass requirement
+between the diagnostic and the notes.
+
+### Publish notes and Anki
+
+Publish complete canonical notes for every assessed objective, regardless of
+whether Competency is `passed` or `needs-remediation`. A gap changes the depth
+and emphasis of the note. It never withholds the note.
+
+1. Build a publication brief per objective from this source order:
+   - the supplied chapter breakdown and its already enriched content;
+   - verified existing vault material inside the same scope;
+   - verified primary or authoritative sources from a bounded research repair.
+   Learner answers diagnose emphasis only. They are not factual sources and do
+   not authorize new topics.
+2. Classify every candidate section as `in-scope`, `brief cross-reference`, or
+   `out-of-scope`. Write full content only for `in-scope` material. Each
+   objective row must resolve to one exact note heading that covers the matching
+   chapter breakdown item.
+3. Write complete material: a plain explanation, exact key terms, boundaries or
+   common confusions, a worked example, exam or practical focus when supported,
+   and verified links. Add command or lab steps only when the chapter breakdown
+   requires them.
+4. Turn diagnosed gaps into ordinary teaching content. State the correct model,
+   contrast confusable terms, and add a concrete worked example where it helps.
+   Do not preserve the learner's mistake, raw answer, score, confidence,
+   calibration, or `needs-remediation` label in the note.
+5. Apply the writing pipeline in this order:
+   - use `technical-writing` to choose one Diátaxis mode per note and structure
+     each objective for first-read understanding;
+   - draft the technically exact content, preserving official terms, commands,
+     citations, and course wording;
+   - run the `unslop` preservation-first pass;
+   - run `humanizer`'s draft-audit-final pass in a neutral technical voice;
+   - recheck every fact, link, heading, and Markdown construct, then run the
+     `portable-markdown` linter.
+   Drafts and the humanizer audit are transient. Persist only the checked final
+   note. If a helper is unavailable, apply its documented rules locally and log
+   the unavailable helper under `## Notes written — <scope>`.
+6. Use `study-loop-version: 2` and `status: ready` in new note frontmatter.
+   Mark Content `ready` only after the objective-to-heading coverage check and
+   writing pipeline pass. Never infer competence from note quality.
+7. Record the note path, heading, chapter-breakdown source, diagnosed emphasis,
+   and completed prose passes under `## Notes written — <scope>`.
+8. Invoke `anki-study-sync` only after the final note headings exist. Create the
+   manifest and deterministic TSV under `_study/anki/` from those headings.
+   Record paths and status under `## Anki handoff`. If generation fails, record
+   `Anki deferred — <reason>`; note publication still succeeds. Drill may be
+   `not-required` only when the learner explicitly declines Anki.
+9. Set the session to `learning`, render the board, and send the learner to the
+   exact note headings and Anki import or review action.
+
+### Learn from the publication
+
+The learner reads the published locations and uses Anki for recall volume. This
+is where the learner decides whether the material feels clear enough to request
+a targeted recheck. The study loop does not require or grade a separate chat
+confidence label.
+
+Anki owns recurrence, random card selection, manual recall practice, and its
+own scheduler. The portable Basic-card handoff does not provide automatic
+typed-answer comparison. The study loop neither predicts nor mirrors Anki due
+dates.
+
+If the learner reports confusion, run one focused teaching intervention.
+Persist the dive, then let this orchestrator fold verified clarification into
+the canonical note and update the affected stable cards. Teaching responses and
+immediate teach-back are learning activity, not competency evidence.
+
+A reported Anki lapse or leech may nominate an objective for explanation or a
+fresh later check. It never changes Content, Competency, mastery, confidence,
+assistance, calibration, or a protocol review date.
+
+### Recheck unresolved objectives
+
+When the learner returns after reviewing the notes and Anki, ask fresh applied
+questions only for objectives at `needs-remediation`. Do not repeat objectives
+that already passed and do not rerun the whole chapter unless the learner asks.
+A post-teaching check must use a fresh surface. The teaching answer itself never
+counts.
+
+If a fresh unassisted applied response passes, update Competency to `passed`. If
+the same defect remains, allow at most one focused intervention and one further
+fresh check in that learner action. Then stop, keep the row at
+`needs-remediation`, and show the exact note location and unresolved issue. The
+canonical note stays complete and available throughout remediation.
+
+If the recheck exposes a factual note defect, set Content `blocked`, run one
+bounded research repair, republish the note and affected cards, and return to
+learning. A recall miss without an applied defect routes to Anki practice; it
+does not manufacture a mastery downgrade from an external rating.
 
 ### Complete and reopen
 
@@ -725,6 +819,12 @@ contradicts the prior competency decision. Ordinary Anki reviews, lapses,
 interval changes, or card edits do not reopen it.
 
 ### Legacy preservation
+
+A version 2 session without `study-flow: diagnostic-first` remains a valid
+pre-diagnostic-order session. Preserve its notes, cards, attempts, and objective
+rows. On its next learner-requested competency attempt, follow the new order and
+add the field only after the attempt is consumed and the complete notes are
+republished.
 
 A session without `study-loop-version: 2` remains version 1. Validate and
 preserve its historical statuses, gap markers, learner-edit regions, in-note
@@ -992,8 +1092,10 @@ When the user asks to be quizzed:
     independent applied item required for high tutor confidence. A deep dive
     that reveals a planned answer changes the record to `deferred` with the
     reason `revealed by deep dive`.
-11. Collect Low, Medium, or High learner confidence before feedback when
-    practical. Ask once if omitted, honor opt-out, and store `unknown`.
+11. For version 1, collect Low, Medium, or High learner confidence before
+    feedback when practical. Ask once if omitted, honor opt-out, and store
+    `unknown`. For version 2, do not prompt for a confidence label. Store
+    `unknown` unless the learner volunteers a value before feedback.
 12. After each answer, say what was right, what was missing, and the correct
     answer. A clarification probe may precede grading when the response is
     genuinely ambiguous; it must not teach the answer.
@@ -1270,7 +1372,7 @@ chat quiz or review exchange and score that learner-produced answer in the
 session file. The canonical mastery path remains:
 
 ```text
-chat quiz -> assessment -> notes/gaps -> review -> mastery evidence
+diagnostic chat check -> assessment -> complete notes -> note and Anki review -> targeted recheck when needed
 ```
 
 Legacy files from the old HTML quiz flow may still exist in `_study/quizzes/`,
@@ -1284,9 +1386,10 @@ For version 2, a dive is a bounded Prepare/Learn remediation action governed by
 the Chapter Lifecycle. The older gap-stub and embedded-check instructions below
 are retained only to recover or finish version 1 sessions.
 
-Chat quiz, assessment, notes, and review remain the canonical mastery path. A
-**deep dive** is a mid-session learning activity run by a helper skill under
-this protocol's persistence and mastery rules:
+For version 2, the diagnostic, publication, learning, and targeted-recheck path
+remains canonical. Legacy quiz, assessment, notes, and review remain canonical
+for version 1. A **deep dive** is a mid-session learning activity run by a helper
+skill under this protocol's persistence and mastery rules:
 
 - **Teaching dive** — `teach-complex-concepts` runs its adaptive tutoring loop
   when covered material has not clicked and the learner needs more than
@@ -1421,11 +1524,12 @@ contaminate:
   A second same-scope entry that revisits the same topic states whether it
   supersedes or complements the earlier entry.
 - Teaching dives are decoupled from the canonical study notes. `Notes/`
-  belongs to the mastery flow — only Phase 5 Write Notes, after a quiz and
-  assessment, authors a study note there — and a dive never writes into
-  `Notes/`. A teaching dive persists the distilled explanation and any Mermaid
-  diagrams to `_study/dives/<YYYY-MM-DD>-<topic-slug>.md` (create the file and
-  the `_study/dives/` directory if missing). Give it light frontmatter
+  belongs to the orchestrator: version 2 uses Publish notes and Anki after the
+  initial diagnostic, while version 1 uses Legacy Phase 5 Write Notes. A dive
+  never writes into `Notes/`. A teaching dive persists the distilled
+  explanation and any Mermaid diagrams to
+  `_study/dives/<YYYY-MM-DD>-<topic-slug>.md` (create the file and the
+  `_study/dives/` directory if missing). Give it light frontmatter
   (`type: teaching-dive`, `scope`, `created`, `source: teaching-dive`), never
   the `type: learning` graded-note contract. The session `## Deep dive` entry
   points at this file. If the learner later wants dive content folded into a
@@ -1436,10 +1540,11 @@ contaminate:
   `_study/research/<YYYY-MM-DD>-<question-slug>/` (create the directory if
   missing). Every `evidence-research-loop` stage file and gate applies
   unchanged, including capture status and the citation audit. The synthesis
-  is citable provenance for the learner's own gap fill — cite
-  `_study/research/<slug>/synthesis.md` plus the named primary sources, which
-  satisfies the Phase 7 provenance gate. If the user explicitly asks the
-  agent to fill a gap from the research, label the fill
+  is citable provenance. In version 2, the orchestrator may incorporate its
+  verified result during publication or note repair. In version 1, cite
+  `_study/research/<slug>/synthesis.md` plus the named primary sources for a
+  learner gap fill, which satisfies the Phase 7 provenance gate. If the user
+  explicitly asks the agent to fill a legacy gap from the research, label it
   `agent-filled on user request` in the dive entry and session log; the
   objective's mastery stays unchanged until the learner demonstrates it.
 - Append a session-log line for every dive.
@@ -1448,8 +1553,8 @@ contaminate:
 
 - A dive never changes `## Assessment`, `## Unit progress`,
   `## Mastery evidence`, session frontmatter status, or note status, and never
-  writes a study note in `Notes/` — that directory is authored only by the
-  mastery flow (Phase 5 Write Notes).
+  writes a study note in `Notes/`. Only the version 2 publication step or
+  Legacy Phase 5 Write Notes authors canonical notes.
 - The teaching skill's internal mastery labels (emerging, developing, secure,
   transfer-ready) are tutor observations for the dive entry only. They are not
   applicable-dimension evidence and are not inputs to tutor-confidence or

@@ -9,10 +9,10 @@ protocol, the protocol wins. Print any topic with
 ## What this is
 
 A study system saved as ordinary files inside your Obsidian vault. The agent
-builds and enriches complete chapter notes, shows a live board of what to read
-and what still needs proof, prepares Anki recall cards, and grades short applied
-checks. Weak areas route to focused teaching or cited research and then a fresh
-check. You do not have to fill note placeholders to make the loop move.
+first runs a short diagnostic against the chapter breakdown. It then publishes
+complete notes shaped by what the check exposed, shows the exact sections to
+read, and prepares Anki recall cards from those finished notes. You do not have
+to fill note placeholders or pass every question before the notes are written.
 
 Your vault is the database. Routine tutoring, quizzing, grading, and note work
 stay local. Only an explicit advisory consult or research dive may send bounded
@@ -21,20 +21,21 @@ until the tutor verifies them.
 <!-- man:section-end id=what -->
 
 <!-- man:section id=quickstart aliases="start,begin,first-night,how do i start,typical" -->
-## Quickstart — prepare, learn, assess, complete
+## Quickstart — diagnose, publish, learn, complete
 
 1. **Name the chapter.** Paste its outline, objectives, key terms, labs, or
    course pages when you have them.
-2. **Let the tutor prepare it.** The agent writes complete notes for every
-   objective, researches only factual defects, and prepares an Anki import.
-3. **Follow the board.** Read the exact note headings it names and import or
-   review the Anki cards. The board always gives one immediate next action.
-4. **Return for a competency check.** The tutor asks a few applied scenario
-   questions, one at a time. Anki handles repetitive recall; this check tests
-   whether you can use the material.
-5. **Repair and retry.** A misunderstanding gets focused teaching; a content
-   defect gets cited research and note enrichment. Then you receive a fresh
-   check, not the same question again.
+2. **Take the diagnostic.** The tutor asks a few applied questions before it
+   rewrites the notes or generates Anki cards. No prior reading is required.
+3. **Receive the publication.** The agent writes complete notes for every
+   assessed objective, including the areas you missed, then prepares Anki from
+   the final note headings.
+4. **Follow the board.** Read the exact note headings it names and import or
+   review the Anki cards. This is where you decide when the material feels clear
+   enough for another check.
+5. **Recheck only unresolved objectives.** Passed objectives stay passed. A
+   fresh question covers only a remaining applied gap unless you request a full
+   chapter test.
 6. **Complete the chapter.** Completion requires ready notes, ready or declined
    Anki practice, and passed applied competency for every relevant objective.
 
@@ -66,24 +67,30 @@ Anki reviews continue after chapter completion without reopening it.
 <!-- man:section id=phases aliases="loop,workflow,lifecycle,how it works" -->
 ## The loop
 
-1. **Prepare** — the agent turns the supplied chapter into complete, verified
-   notes and a stable Anki handoff. A content defect loops back here for repair.
-2. **Learn** — you read the board's note locations and use Anki for recall. A
-   misunderstanding gets one focused teaching intervention.
-3. **Assess** — you answer a small number of applied questions in chat. The
-   session ledger preserves the evidence, hints, confidence, and score.
-4. **Complete** — every objective has ready content, a ready or explicitly
-   declined drill path, and passed competency where application is meaningful.
+1. **Prepare the scope** — the agent turns the supplied chapter breakdown into
+   stable objectives. It does not publish notes or Anki yet.
+2. **Diagnose** — you answer a small number of applied questions in chat. The
+   session ledger preserves the evidence, hints, and score.
+3. **Publish** — the agent writes complete notes for every assessed objective,
+   whether it passed or exposed a gap. It then generates Anki from those final
+   note sections.
+4. **Learn** — you read the board's note locations and use Anki for recall. A
+   reported confusion can trigger one focused teaching intervention and a note
+   update.
+5. **Recheck and complete** — only unresolved applied objectives receive fresh
+   questions. The chapter completes after every relevant competency gate passes.
 
 The board is generated from the session file, so there is no second checklist
-to drift. Anki ratings never count as mastery. A failed applied check returns to
-Learn; a faulty note returns to Prepare; both end in a fresh check.
+to drift. Anki ratings never count as mastery. A failed initial check never
+withholds the notes; it tells the publication what to explain more clearly.
 <!-- man:section-end id=phases -->
 
 <!-- man:section id=quiz aliases="quizzing,questions,hints,test me" -->
 ## How the competency check works
 
 - One question at a time, in chat. No walls of lettered questions.
+- The first check happens before note publication and Anki. It is diagnostic,
+  so you do not need to study the agent's material first.
 - Normally one diagnostic scenario per objective and no more than three prompts
   in one action. Anki handles the repeated definitions and recognition work.
 - Expect application, comparison, classification, or transfer prompts where you
@@ -94,8 +101,9 @@ Learn; a faulty note returns to Prepare; both end in a fresh check.
   `partial` — honest evidence beats flattering evidence.
 - **"show me" / "skip"** reveals the answer with reasoning; only what you
   produced before the reveal is scored.
-- You'll be asked for confidence (Low/Medium/High) before feedback when
-  practical. You may opt out; the record then says `unknown`.
+- Version 2 does not ask for a Low/Medium/High confidence label. The ledger uses
+  `unknown` unless you volunteer a label before feedback. Your readiness is a
+  decision you make while reviewing the finished notes and Anki cards.
 - `pause`, `resume`, `rephrase`, `shorter`, and `deeper` are first-class
   controls. Rephrasing changes wording without a hint penalty; shorter/deeper
   adjusts question density without silently expanding scope.
@@ -116,10 +124,10 @@ dimensions the question genuinely exercises.
 - `solid` = at least 87.5% of applicable points · `partial` = 50% to below
   87.5% · `gap` = below 50%.
 - Each objective's assessment names one scored **evidence question** and copies
-  that question's raw score, assistance, and your recorded confidence. The most
-  diagnostic unassisted answer is preferred when available. That selected
-  answer controls numeric mastery and calibration; all the other evidence can
-  still affect the tutor's accumulated confidence and explanation.
+  that question's raw score, assistance, and recorded confidence or `unknown`.
+  The most diagnostic unassisted answer is preferred when available. That
+  selected answer controls numeric mastery and calibration; all the other
+  evidence can still affect the tutor's accumulated confidence and explanation.
 - Question kinds are deliberately finite. Definition, recall, free-production,
   fill-in-the-blank, and recognition variants stay `solid (recall-only)` when
   solid; application, scenario, comparison, classification, discrimination,
@@ -134,9 +142,9 @@ dimensions the question genuinely exercises.
 - The tutor schedules a fresh applied check only after remediation or a
   substantive chapter revisit. Version 2 does not run a second spaced schedule
   alongside Anki.
-- Two confidence signals stay separate: **yours** (before feedback) and the
-  **tutor's** (from accumulated evidence). Calibration compares your confidence
-  with that answer's mastery band; tutor confidence remains a separate judgment.
+- The tutor's confidence comes from the accumulated evidence. Version 2 does
+  not turn a required self-confidence label into learner-facing praise or
+  criticism. A volunteered label can remain in the ledger for history.
 - Evidence-quality rules are strict on purpose: recognizing an answer counts
   for less than producing it from memory, hint-assisted answers cap at
   `partial`, and a `solid` built only on recall stays flagged `recall-only`
@@ -146,11 +154,22 @@ dimensions the question genuinely exercises.
 <!-- man:section id=notes aliases="notes,enrichment,publication,content ready" -->
 ## Complete notes and enrichment
 
-Notes are clean, agent-maintained study material—not worksheets. Every objective
-gets a complete section with a plain explanation, exact terms, useful
-boundaries, a worked example, and supported exam or practical context. A weak
-test result does not make the note incomplete and does not create homework
+Notes are clean, agent-maintained study material, not worksheets. They are
+published immediately after the first competency attempt. Every assessed
+objective gets a complete section even when the result was `partial` or `gap`.
+A weak result changes the explanation and examples; it never creates homework
 fields for you to fill.
+
+The chapter breakdown controls scope. The agent uses its enriched content first,
+then verified material already in the vault, and cited research only when a
+factual defect needs repair. Your answer tells the agent what needs emphasis; it
+does not become a source and it does not add unrelated material.
+
+Each note passes the same writing pipeline: `technical-writing` sets the mode
+and structure, `unslop` removes filler without changing technical meaning,
+`humanizer` runs a neutral draft-audit-final rewrite, and
+`portable-markdown` checks the finished Markdown. Only the final checked note is
+saved. Anki cards are generated from that note, not from raw answers or mistakes.
 
 If the canonical material is thin, contradictory, or weakly sourced, the tutor
 runs bounded cited research and enriches the same note. If the material is
@@ -286,12 +305,15 @@ where you left off.
   when a topic truly needs it.
 
 **Note quality**
+- `technical-writing` — chooses one document mode per note and keeps the
+  structure, instructions, and sentences unambiguous.
 - `unslop` — preservation-first prose authoring; keeps technical terms and
   learner-owned wording intact while removing unnecessary filler.
 - `portable-markdown` — keeps notes in standard Markdown that renders
   everywhere: callout boxes, clean tables, invisible markers.
-- `humanizer` — only for an explicit, deeper voice-matched rewrite of finished
-  prose; it is not the default note-authoring pass.
+- `humanizer` — runs the final draft-audit-rewrite pass for version 2 notes in a
+  neutral technical voice. Drafts stay transient; only the checked final prose
+  is saved.
 - `knowledge-capture-obsidian` — vault hygiene: frontmatter, tags, wikilinks,
   index links.
 
