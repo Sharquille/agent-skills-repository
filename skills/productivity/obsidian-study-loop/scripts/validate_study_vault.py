@@ -266,6 +266,19 @@ def parse_args() -> argparse.Namespace:
             "vault and must stay inside it."
         ),
     )
+    parser.add_argument(
+        "--active-only",
+        action="store_true",
+        help=(
+            "Validate the active session and its referenced notes instead of "
+            "unrelated historical sessions and notes."
+        ),
+    )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Print only the final summary while preserving the validator exit code.",
+    )
     return parser.parse_args()
 
 
@@ -341,6 +354,64 @@ def frontmatter_list(block: str | None, key: str) -> list[str]:
         item.strip()
         for item in re.findall(r"^[ \t]+- (.+?)\s*$", match.group("body"), flags=re.MULTILINE)
     ]
+
+
+def validate_frontmatter_keys(
+    path: Path, block: str | None, issues: list[Issue]
+) -> None:
+    if block is None:
+        return
+    counts = Counter(
+        re.findall(r"^(?P<key>[A-Za-z0-9_-]+):", block, flags=re.MULTILINE)
+    )
+    for key, count in sorted(counts.items()):
+        if count > 1:
+            issues.append(Issue("ERROR", path, f"duplicate frontmatter key: {key}"))
+
+
+def validate_adjacent_prose_duplicates(
+    path: Path, text: str, issues: list[Issue]
+) -> None:
+    body = text
+    line_offset = 0
+    if text.startswith("---\n"):
+        end = text.find("\n---\n", 4)
+        if end != -1:
+            line_offset = text[: end + 5].count("\n")
+            body = text[end + 5 :]
+
+    in_fence = False
+    previous: tuple[int, str] | None = None
+    for line_number, raw in enumerate(body.splitlines(), start=line_offset + 1):
+        stripped = raw.strip()
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            previous = None
+            continue
+        if (
+            in_fence
+            or not stripped
+            or stripped.startswith(("#", ">", "-", "*", "|", "<", "["))
+        ):
+            previous = None
+            continue
+        if previous is not None:
+            previous_line, previous_text = previous
+            repeated = previous_text == stripped or (
+                len(previous_text) >= 24
+                and previous_text.endswith((".", ":", ";"))
+                and stripped.startswith(previous_text)
+            )
+            if repeated:
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        path,
+                        "adjacent prose appears duplicated at lines "
+                        f"{previous_line}-{line_number}",
+                    )
+                )
+        previous = (line_number, stripped)
 
 
 def heading_group(title: str) -> int | None:
@@ -882,6 +953,53 @@ def validate_quiz_attempt(
     return valid_consumed, attempt_status, question_evidence
 
 
+def validate_initial_diagnostic_coverage(
+    path: Path,
+    title: str,
+    section: str,
+    objectives: list[str],
+    issues: list[Issue],
+) -> None:
+    records = list(QUIZ_RECORD.finditer(section))
+    covered = {match.group("objective") for match in records}
+    expected = set(objectives)
+    missing = sorted(expected - covered)
+    unexpected = sorted(covered - expected)
+    if missing:
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                f"{title} initial diagnostic is missing objectives: "
+                + ", ".join(missing),
+            )
+        )
+    if unexpected:
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                f"{title} initial diagnostic has out-of-scope objectives: "
+                + ", ".join(unexpected),
+            )
+        )
+
+    budget_line = next(
+        (line for line in section.splitlines() if line.startswith("- Budget:")),
+        None,
+    )
+    budget_match = BUDGET_RECORD.fullmatch(budget_line or "")
+    if budget_match is not None and int(budget_match.group("minimum")) < len(objectives):
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                f"{title} initial diagnostic minimum Budget must cover all "
+                f"{len(objectives)} objectives",
+            )
+        )
+
+
 def mastery_band(score: int, denominator: int) -> str:
     if score * 8 >= denominator * 7:
         return "solid"
@@ -1133,6 +1251,7 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
     if block is None:
         issues.append(Issue("ERROR", path, "missing or unterminated frontmatter"))
     else:
+        validate_frontmatter_keys(path, block, issues)
         for key in ("topic", "created", "status", "objectives"):
             if not re.search(rf"^{key}:\s*", block, flags=re.MULTILINE):
                 issues.append(Issue("ERROR", path, f"frontmatter is missing {key}"))
@@ -1259,6 +1378,13 @@ def validate_session(path: Path, vault: Path, issues: list[Issue]) -> None:
         tuple[str, str],
         list[tuple[bool, str | None, dict[str, tuple[str, str, str, str, str]]]],
     ] = defaultdict(list)
+    if version == "2" and study_flow == "diagnostic-first" and quiz_attempts:
+        first_attempts = next(iter(quiz_attempts.values()))
+        if first_attempts:
+            first_title, first_section = first_attempts[0]
+            validate_initial_diagnostic_coverage(
+                path, first_title, first_section, objectives, issues
+            )
     for key, attempts in quiz_attempts.items():
         scope, attempt_id = key
         for title, section in attempts:
@@ -1572,6 +1698,7 @@ def validate_note(
     block = frontmatter(text)
     status = frontmatter_value(block, "status")
     version = frontmatter_value(block, "study-loop-version")
+    validate_frontmatter_keys(path, block, issues)
     if version not in {None, "2"}:
         issues.append(Issue("ERROR", path, f"unsupported study-loop-version: {version}"))
     if version == "2":
@@ -1598,6 +1725,7 @@ def validate_note(
                     "version 2 note contains legacy learner-work scaffolding",
                 )
             )
+        validate_adjacent_prose_duplicates(path, text, issues)
     marker_counts(path, STUDY_CHECK_START, STUDY_CHECK_END, text, "study-check", issues)
     marker_counts(path, LEARNER_EDIT_START, LEARNER_EDIT_END, text, "learner-edit", issues)
 
@@ -2054,7 +2182,7 @@ def validate_visual_artifact(
         issues.append(Issue("ERROR", path, "interactive content lacks a focus-visible style"))
 
 
-def validate_state(vault: Path, issues: list[Issue]) -> None:
+def validate_state(vault: Path, issues: list[Issue]) -> Path | None:
     path = vault / "_study" / "state.json"
     if not path.exists():
         issues.append(Issue("ERROR", path, "missing study state file"))
@@ -2111,6 +2239,39 @@ def validate_state(vault: Path, issues: list[Issue]) -> None:
             return
         if not resolved_session.is_relative_to(vault / "_study" / "sessions"):
             issues.append(Issue("ERROR", path, "active session resolves outside _study/sessions/"))
+            return None
+        return resolved_session
+    return None
+
+
+def referenced_note_paths(session: Path, vault: Path) -> set[Path]:
+    try:
+        text = session.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return set()
+    paths: set[Path] = set()
+    for title, start, end in heading_blocks(text):
+        if title != "Objective status":
+            continue
+        try:
+            rows = parse_objective_status_rows(text[start:end])
+        except ValueError:
+            return set()
+        for _, note, _, _, _, _, _ in rows:
+            if note == "pending" or note.count("#") != 1:
+                continue
+            raw_path, _ = note.split("#", 1)
+            relative = PurePosixPath(raw_path)
+            if relative.is_absolute() or ".." in relative.parts:
+                continue
+            candidate = vault.joinpath(*relative.parts)
+            try:
+                resolved = candidate.resolve()
+            except (OSError, RuntimeError):
+                continue
+            if resolved.is_relative_to(vault) and resolved.is_file():
+                paths.add(resolved)
+    return paths
 
 
 def notes_dir_from_protocol(vault: Path, override: Path | None) -> Path:
@@ -2131,13 +2292,26 @@ def notes_dir_from_protocol(vault: Path, override: Path | None) -> Path:
     return (vault / "Notes").resolve()
 
 
-def validate_vault(vault: Path, notes_dir: Path) -> list[Issue]:
+def validate_vault(
+    vault: Path, notes_dir: Path, *, active_only: bool = False
+) -> list[Issue]:
     issues: list[Issue] = []
-    validate_state(vault, issues)
+    active_session = validate_state(vault, issues)
 
     sessions_dir = vault / "_study" / "sessions"
     if not sessions_dir.is_dir():
         issues.append(Issue("ERROR", sessions_dir, "missing sessions directory"))
+    elif active_only:
+        if active_session is None:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    vault / "_study" / "state.json",
+                    "--active-only requires a valid active session",
+                )
+            )
+        else:
+            validate_session(active_session, vault, issues)
     else:
         for session in sorted(sessions_dir.glob("*.md")):
             validate_session(session, vault, issues)
@@ -2145,6 +2319,10 @@ def validate_vault(vault: Path, notes_dir: Path) -> list[Issue]:
     check_locations: dict[str, list[Path]] = defaultdict(list)
     if not notes_dir.is_dir():
         issues.append(Issue("WARN", notes_dir, "notes directory does not exist"))
+    elif active_only:
+        if active_session is not None:
+            for note in sorted(referenced_note_paths(active_session, vault)):
+                validate_note(note, vault, issues, check_locations)
     else:
         for note in sorted(notes_dir.rglob("*.md")):
             validate_note(note, vault, issues, check_locations)
@@ -2187,13 +2365,14 @@ def main() -> int:
     try:
         vault = resolve_vault(args.vault_path)
         notes_dir = notes_dir_from_protocol(vault, args.notes_dir)
-        issues = validate_vault(vault, notes_dir)
+        issues = validate_vault(vault, notes_dir, active_only=args.active_only)
     except (ValidationError, OSError, UnicodeDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
-    for issue in issues:
-        print(f"{issue.severity}: {display_path(issue.path, vault)}: {issue.message}")
+    if not args.summary:
+        for issue in issues:
+            print(f"{issue.severity}: {display_path(issue.path, vault)}: {issue.message}")
     errors = sum(issue.severity == "ERROR" for issue in issues)
     warnings = sum(issue.severity == "WARN" for issue in issues)
     if errors:

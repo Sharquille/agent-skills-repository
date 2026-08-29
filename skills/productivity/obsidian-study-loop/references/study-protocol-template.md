@@ -610,9 +610,11 @@ or Anki keys.
 
 New version 2 sessions must set `study-flow: diagnostic-first`. A version 2
 session without `study-flow` predates this order and remains compatibility
-state. Preserve it. Add the field only in the same ordered write that consumes
-its first diagnostic and republishes its notes; never relabel prepared history
-without that evidence.
+state. Preserve it. For a compatibility session, add the field only as the
+final session write of a successfully validated first publication bundle,
+after the diagnostic is consumed and the notes and cards are ready. If that
+bundle is interrupted, leave the field absent and recover the unfinished
+publication; never relabel prepared history or a partial write.
 
 The session file is the ledger. It contains exactly one live objective table:
 
@@ -650,6 +652,78 @@ change the lifecycle order above:
 7. `## Mastery evidence` when present
 8. `## Session log` last
 
+### Safe mutation and interrupted-action recovery
+
+Treat every state-changing learner action as a coherence checkpoint. A chat
+message, unconditional success print, command completion, or Git commit message
+is not proof that the checkpoint landed.
+
+Before writing:
+
+1. Read `_study/state.json`, the complete active-session frontmatter, the full
+   objective table, and every record in the current attempt. Do not use
+   truncated output, `head`, `tail`, or a fixed line range to discover the
+   objective count or current question states.
+2. Inventory the exact files the action may change. Read each target completely
+   enough to preserve its structure, including the note frontmatter and the
+   existing Anki manifest's ID namespace.
+3. Run the current-chapter preflight without a pipeline:
+
+   ```text
+   scripts/validate_study_vault.py <VAULT_PATH> --active-only --summary
+   ```
+
+   The command must return exit code `0`. `--summary` exists so an agent never
+   needs `| tail`, which would replace the validator's failure code with the
+   downstream command's success. A full-vault validation may still report
+   unrelated legacy defects; record them separately and never describe a
+   nonzero result as a clean baseline.
+4. Get the real local datetime and date immediately before the mutation. Pass
+   those exact command outputs into the edit. Never type, round, or infer a
+   timestamp inside an ad hoc script.
+
+During the write:
+
+- Use a structural parser or an exact-match mutation whose expected match count
+  is asserted to be exactly one. A zero-match or multi-match edit is failure:
+  stop before subsequent writes, report it, and re-read the target. Never print
+  success unconditionally after an unchecked `replace`.
+- After each file write, re-read the changed structure and verify the requested
+  transition occurred once. For Markdown publications, inspect the final diff
+  for duplicated frontmatter keys, repeated prose, malformed tables, and
+  accidental learner-evidence text.
+- Keep checkpoints small. A question turn changes only the session ledger:
+  resolve the current `asked` record, optionally issue the next existing
+  `planned` record, then run the active-only validator. Do not mix that turn
+  with note publication, deck regeneration, state-pointer replacement, or an
+  unrelated chapter switch.
+- Complete and consume an attempt only after every planned question is
+  terminal (`scored` or explicitly `deferred`). Build its assessment and
+  objective-table changes from the verified terminal records, not chat memory.
+  A learner who skips one asked question has declined only that question. Do
+  not infer fatigue, shorten scope, or defer an unseen objective unless the
+  learner explicitly asks to stop, shorten, or change scope; pause the attempt
+  when they stop with planned work remaining.
+- Publish as a second checkpoint: checked note files first, then the verified
+  Anki manifest and deterministic TSV, then the session's Content, Drill,
+  Anki-handoff, status, log, and compatibility `study-flow` marker. Never mark
+  publication complete before the note linter, card build, and active-only
+  validator all succeed.
+
+If the user aborts, a command fails, an assertion fails, or validation returns
+nonzero, stop the remaining mutation immediately. Do not commit, consume an
+attempt, advance status, or claim completion. On the next action, recover
+read-only: inspect Git status when available, re-read the full state pointer,
+active session, changed note frontmatter/body, manifest, and TSV metadata, then
+run the active-only validator. Finish or safely restore only the incomplete
+checkpoint from known pre-action bytes; never use destructive Git recovery or
+invent missing evidence.
+
+Commit or hand off only after the relevant linters/builders succeed and the
+un-piped active-only validator returns `0`. Then run the full validator for
+historical visibility and report any remaining unrelated legacy findings as
+open findings, not as success.
+
 ### Prepare the scope
 
 1. Resolve the active vault and preserve an existing active session unless the
@@ -670,6 +744,12 @@ change the lifecycle order above:
    cited research can establish the missing factual content.
 6. Set the session to `assessing` when every objective has enough in-scope
    material for a fair diagnostic.
+
+Derive the objective count from the complete parsed frontmatter and verify it
+against the complete objective table before creating the attempt. The initial
+diagnostic Budget minimum must cover every objective, and the persisted planned
+records must name every objective at least once. The validator rejects a
+diagnostic that silently omits an objective.
 
 ### Diagnose competency
 
@@ -749,6 +829,9 @@ and emphasis of the note. It never withholds the note.
    and completed prose passes under `## Notes written — <scope>`.
 8. Invoke `anki-study-sync` only after the final note headings exist. Create the
    manifest and deterministic TSV under `_study/anki/` from those headings.
+   When updating an existing manifest, preserve its established ID namespace
+   and verify each addition against the finished note rather than hand-building
+   a second naming pattern.
    Record paths and status under `## Anki handoff`. If generation fails, record
    `Anki deferred — <reason>`; note publication still succeeds. Drill may be
    `not-required` only when the learner explicitly declines Anki.

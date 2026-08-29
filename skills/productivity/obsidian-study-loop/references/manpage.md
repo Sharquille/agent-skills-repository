@@ -351,7 +351,9 @@ All read-only except where noted; all local, no network.
   session ledger without writing a second state file.
 - `scripts/validate_study_vault.py <vault>` — integrity check: session
   structure, version 2 completion gates, clean publications, recoverable legacy
-  attempts, statuses, and the visual-artifact contract.
+  attempts, statuses, and the visual-artifact contract. Add `--active-only`
+  with `--summary` for a concise current-chapter release gate; it preserves the
+  validator's failure exit code without piping through another command.
 - `scripts/sync_study_protocol.py <vault> [--apply]` — compares your
   installed protocol and manual to the skill's bundled sources. Preview-only
   by default; `--apply` refreshes both installed copies while preserving notes,
@@ -382,6 +384,18 @@ All read-only except where noted; all local, no network.
 
 - **Check died mid-way?** Say "resume" — the disk-backed attempt
   restores an asked question first, then the earliest planned question.
+- **A command or edit was aborted?** The next action is read-only recovery:
+  inspect the active pointer, complete objective list, current question states,
+  and changed note/card files before writing again. Nothing is marked complete
+  or committed until the active-only validator passes.
+- **The validator prints too much?** Use `--active-only --summary`. Do not pipe
+  it through `tail`; a pipeline can hide the validator's nonzero exit code.
+- **Old chapters already have known errors?** The active-only gate isolates the
+  current chapter. The full validator still reports historical findings, which
+  remain open until repaired; a nonzero full result is never called clean.
+- **One question was skipped?** Only that asked question is skipped. Later
+  objectives remain planned unless you explicitly shorten, pause, or change the
+  scope.
 - **Came back days later?** Just talk; the active session is read from
   `_study/state.json`. A session that says `complete` staying active is
   normal — it's context for whatever you do next.

@@ -152,6 +152,60 @@ Source outline.
             "ready content requires a completed diagnostic state", result.stdout
         )
 
+    def test_summary_preserves_failure_exit_code_without_issue_dump(self) -> None:
+        self.write_session("learning", "pending")
+        result = self.run_cli(VALIDATOR, "--summary")
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn("ERROR:", result.stdout)
+        self.assertRegex(result.stdout, r"^FAILED: \d+ error\(s\), \d+ warning\(s\)\.\n$")
+
+    def test_active_only_ignores_unrelated_invalid_history(self) -> None:
+        historical = self.vault / "_study" / "sessions" / "2026-08-01-broken.md"
+        historical.write_text("not a valid session\n", encoding="utf-8")
+        full = self.run_cli(VALIDATOR)
+        active = self.run_cli(VALIDATOR, "--active-only")
+        self.assertEqual(full.returncode, 1)
+        self.assertEqual(active.returncode, 0, active.stdout + active.stderr)
+
+    def test_initial_diagnostic_must_cover_every_frontmatter_objective(self) -> None:
+        text = self.session.read_text(encoding="utf-8")
+        text = text.replace(
+            "  - Objective A\n---",
+            "  - Objective A\n  - Objective B\n---",
+        )
+        text = text.replace(
+            "| Objective A | Notes/Topic.md#Objective A | ready | ready | needs-remediation | Ready | Run applied check |",
+            "| Objective A | Notes/Topic.md#Objective A | ready | ready | needs-remediation | Ready | Run applied check |\n"
+            "| Objective B | pending | pending | pending | pending | Awaiting diagnostic | Run diagnostic |",
+        )
+        self.session.write_text(text, encoding="utf-8")
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("initial diagnostic is missing objectives: Objective B", result.stdout)
+        self.assertIn("minimum Budget must cover all 2 objectives", result.stdout)
+
+    def test_version_two_note_rejects_duplicate_frontmatter_keys(self) -> None:
+        note = self.vault / "Notes" / "Topic.md"
+        text = note.read_text(encoding="utf-8").replace(
+            "status: ready\n", "status: ready\nstatus: ready\n"
+        )
+        note.write_text(text, encoding="utf-8")
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("duplicate frontmatter key: status", result.stdout)
+
+    def test_version_two_note_rejects_adjacent_duplicate_prose(self) -> None:
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            note.read_text(encoding="utf-8")
+            + "\nThe response records the accepted operational risk.\n"
+            + "The response records the accepted operational risk. It also names the owner.\n",
+            encoding="utf-8",
+        )
+        result = self.run_cli(VALIDATOR)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("adjacent prose appears duplicated", result.stdout)
+
     def test_older_version_two_session_without_flow_marker_is_preserved(self) -> None:
         self.write_session("learning", "pending")
         text = self.session.read_text(encoding="utf-8").replace(

@@ -1422,6 +1422,7 @@ class ProtocolAlignmentTests(unittest.TestCase):
 
     def test_version_two_is_diagnostic_first_and_scope_anchored(self) -> None:
         headings = [
+            "### Safe mutation and interrupted-action recovery",
             "### Prepare the scope",
             "### Diagnose competency",
             "### Publish notes and Anki",
@@ -1444,6 +1445,11 @@ class ProtocolAlignmentTests(unittest.TestCase):
             "Persist only the checked final note",
             "Invoke `anki-study-sync` only after the final note headings exist",
             "only for objectives at `needs-remediation`",
+            "--active-only --summary",
+            "asserted to be exactly one",
+            "Do not infer fatigue",
+            "initial diagnostic Budget minimum must cover every objective",
+            "preserve its established ID namespace",
         ]
         for path in (SKILL_PATH, TEMPLATE_PATH):
             text = path.read_text(encoding="utf-8")
@@ -1462,6 +1468,8 @@ class ProtocolAlignmentTests(unittest.TestCase):
         self.assertIn("## Quickstart — diagnose, publish, learn, complete", manual)
         self.assertIn("The chapter breakdown controls scope", manual)
         self.assertIn("Anki cards are generated from that note", manual)
+        self.assertIn("Do not pipe", manual)
+        self.assertIn("Only that asked question is skipped", manual)
 
     def test_version_two_does_not_require_chat_confidence(self) -> None:
         for path in (SKILL_PATH, TEMPLATE_PATH):
