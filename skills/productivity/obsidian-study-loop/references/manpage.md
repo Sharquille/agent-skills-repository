@@ -260,6 +260,21 @@ changes. The automatic chapter endpoint is separate: `visualize-study-chapter`
 owns its helper-generated HTML under the vault's `Visuals/` folder.
 <!-- man:section-end id=visuals -->
 
+<!-- man:section id=maps aliases="map,mind map,seeds,related,navigation,canvas" -->
+## Maps and mind-map seeds
+
+`related:` and `## Mind map seeds` help the map builder navigate finished
+notes; they do not add study content or competency evidence. A `[[note]]` or
+`[[note#heading]]` seed must resolve to one real note in `Notes/` or `Maps/`.
+Plain-text seeds are ideas for the map gap report, not links or file nodes.
+
+Maps refresh when a chapter reaches `complete`, not after every note edit. The
+release check rejects missing or ambiguous note links, renamed heading anchors,
+links into workflow scaffolding, duplicate Canvas node or edge IDs, and malformed
+Canvas structures. If a note is renamed, update its related links and seeds
+before refreshing the map.
+<!-- man:section-end id=maps -->
+
 <!-- man:section id=layout aliases="files,disk,structure,vault,where,folders" -->
 ## What's on disk
 

@@ -926,6 +926,25 @@ and emphasis of the note. It never withholds the note.
 9. Set the session to `learning`, render the board, and send the learner to the
    exact note headings and Anki import or review action.
 
+#### Mind-map metadata
+
+Treat `related:` and an optional `## Mind map seeds` block as derived navigation
+metadata, never as a second source of chapter content. A seed may be either a
+verified `[[note]]` or `[[note#heading]]` link, or a plain-text concept that the
+notes genuinely name. Plain text remains a gap-report candidate; `study-map`
+must not turn it into a file node, wikilink, or asserted edge until a matching
+in-scope note exists.
+
+Before Content becomes `ready`, verify every seed wikilink against the current
+vault. The target must resolve unambiguously inside the configured notes root or
+`Maps/`; a heading anchor must exist in the target. Never link seeds to
+`_study/`, agent pointer files, the protocol, or other scaffolding. Use only the
+labels `Parent`, `Related`, and `Children` in newly published notes, omit an
+empty label instead of leaving a placeholder, and keep `related:` plus
+`## Related` synchronized. A note or heading rename requires updating affected
+seed links before map refresh. Seed changes alone do not trigger refresh; maps
+remain derived artifacts refreshed at the chapter completion gate.
+
 ### Learn from the publication
 
 The learner reads the published locations and uses Anki for recall volume. This
@@ -2023,8 +2042,12 @@ Add a short discovery block near the end of the note when useful:
 
 - Parent: [[<verified existing course or domain note>]]
 - Related: [[<verified existing note>]], <plain-text concept without a note yet>
-- Children:
+- Children: [[<verified existing child note>]]
 ```
+
+Omit a seed line when it has no value. Plain-text concepts are advisory gaps,
+not permission to create links or map nodes. Every seed wikilink and heading
+anchor must pass the Mind-map metadata contract in the version 2 lifecycle.
 
 Append a scoped `## Notes written` entry. `<notes-dir>` is the vault-relative
 configured notes directory (`NOTES_DIR` in `STUDY-PROTOCOL.md`, `Notes` by

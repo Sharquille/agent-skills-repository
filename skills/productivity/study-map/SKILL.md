@@ -33,10 +33,10 @@ A node, edge, or tag is written **only** if it resolves to something real:
 
 If a desired connection has no real backing, **omit it and report it as a gap to
 fill** — never invent a tag, link, or node to make a map look complete. Reuse the
-`obsidian-study-loop` rules rather than reinventing them: verify a wikilink target
-exists before writing it (`SKILL.md:122-126`), keep a verified list of existing
-note basenames and avoid orphans (`:622-626`), and use lowercase kebab-case tags
-matched to the vault's existing vocabulary (`:649`).
+`obsidian-study-loop` rules rather than reinventing them: follow **Timestamp and
+Link Discipline** for wikilinks, **Mind-map metadata** for seeds, and **Publish
+notes and Anki** for the canonical note boundary. Section names are stable;
+line-number references are not.
 
 ## Map scope — what is mappable
 
@@ -69,7 +69,7 @@ DANGLING reference that points at nothing). Both fail the gate.
 | Tier | Map | Derived only from |
 |---|---|---|
 | 1 | **Home / index MOC** | every chapter note that exists |
-| 2 | **Chapter map** (Canvas) | the chapter note's `##` sections + its `related:` and links to other existing chapters |
+| 2 | **Chapter map** (Canvas) | the chapter note's `##` sections + verified `related:` and seed links to other existing chapters |
 | 3 | **Section sub-map** | a section's `###` subsections / key terms inside an existing note |
 | 4 | **Concept map** (labeled edges) | relationships the notes explicitly assert (e.g. "preventive *is-a* control type") |
 | 5 | **Tag-lens map** | notes grouped by a tag that already exists in frontmatter |
@@ -84,8 +84,11 @@ from propositions and prerequisites the notes actually state.
    `STUDY-PROTOCOL.md`, or `_study/state.json` marks it). Ask if unknown.
 2. **Inventory the real graph — content scope only.** List in-scope note basenames
    (default `Notes/`), the `##`/`###` headings per note, all frontmatter tags
-   actually in use, every `related:` and inline `[[wikilink]]`, and any stated
-   prerequisites. Exclude scaffolding (see Map scope). This is the allow-list.
+   actually in use, every `related:`, `## Mind map seeds`, inline
+   `[[wikilink]]`, and any stated prerequisites. Seed wikilinks are candidates
+   only after the note and optional heading resolve inside the content scope.
+   Plain-text seeds go to the gap report; never promote them into nodes, links,
+   or edges. Exclude scaffolding (see Map scope). This is the allow-list.
 3. **Plan each requested tier from the allow-list only.** Drop anything that would
    need a non-existent note/tag/relationship; collect those as a **gap report**.
 4. **Render via `mind-map-obsidian`.** Use `file` nodes for real notes; labeled
@@ -93,9 +96,10 @@ from propositions and prerequisites the notes actually state.
    MOC `.md` (wikilink outline) for the Home index and tag-lens maps. Write only
    inside a `Maps/` folder.
 5. **Run the integrity lint** (`scripts/integrity-lint.sh <vault>`): every Canvas
-   `file` node and MOC `[[wikilink]]` must resolve, every edge must join two real
-   nodes, every referenced tag must exist. Fix or drop any finding before
-   reporting. Zero dangling references is the release gate.
+   `file` node and optional `subpath`, plus every MOC `[[wikilink]]` and heading
+   anchor, must resolve; every edge must join two unique real nodes; every
+   referenced tag must exist. Fix or drop any finding before reporting. Zero
+   dangling, ambiguous, or unwarranted references is the release gate.
 6. **Report** the maps written, and the **gap report** — the missing notes/links
    that would complete the brain — so the user can fill them with real notes (via
    `obsidian-study-loop`) rather than fabricating.
@@ -134,6 +138,7 @@ the gatekeeper.
 ## Done checklist
 
 - [ ] Vault inventoried; allow-list of real notes/tags/links built.
+- [ ] Plain-text mind-map seeds remain gap-report items, not fabricated nodes.
 - [ ] Each tier planned only from the allow-list; gaps reported, not invented.
 - [ ] Maps rendered via `mind-map-obsidian` into `Maps/`, portable formats.
 - [ ] `integrity-lint.sh` passes — zero DANGLING and zero UNWARRANTED references.

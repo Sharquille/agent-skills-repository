@@ -30,6 +30,12 @@ CONTENT_STATES = {"pending", "ready", "blocked"}
 DRILL_STATES = {"pending", "ready", "not-required"}
 COMPETENCY_STATES = {"pending", "passed", "needs-remediation", "not-required"}
 HEADING_PATTERN = re.compile(r"^## (.+)$", flags=re.MULTILINE)
+ANY_HEADING_PATTERN = re.compile(
+    r"^(?P<level>#{1,6})[ \t]+(?P<title>.+?)[ \t]*$", flags=re.MULTILINE
+)
+WIKILINK_PATTERN = re.compile(
+    r"\[\[(?P<target>[^\]|]*?)(?:\|(?P<alias>[^\]]*))?\]\]"
+)
 STUDY_CHECK_START = re.compile(
     r"<!-- study-check:start\s+id=([^\s>]+)[^>]*-->", flags=re.MULTILINE
 )
@@ -649,6 +655,224 @@ def heading_blocks(text: str) -> list[tuple[str, int, int]]:
         )
         for index, match in enumerate(matches)
     ]
+
+
+def markdown_headings(text: str) -> set[str]:
+    """Return normalized Markdown heading text for Obsidian anchor checks."""
+
+    return {
+        re.sub(r"[ \t]+#+[ \t]*$", "", match.group("title")).strip().casefold()
+        for match in ANY_HEADING_PATTERN.finditer(text)
+    }
+
+
+def link_target_candidates(
+    raw_target: str,
+    path: Path,
+    vault: Path,
+    content_roots: tuple[Path, ...],
+) -> tuple[list[Path], str | None]:
+    """Resolve an Obsidian note target within the configured map content roots."""
+
+    normalized = raw_target.strip().replace("\\", "/")
+    if not normalized:
+        return [path.resolve()], None
+    relative = PurePosixPath(normalized)
+    if relative.is_absolute() or ".." in relative.parts:
+        return [], "unsafe path"
+
+    def safe_file(candidate: Path) -> Path | None:
+        try:
+            resolved = candidate.resolve()
+        except (OSError, RuntimeError):
+            return None
+        if not resolved.is_file() or not resolved.is_relative_to(vault):
+            return None
+        return resolved
+
+    if len(relative.parts) > 1:
+        candidate = vault.joinpath(*relative.parts)
+        if candidate.suffix.lower() != ".md":
+            candidate = candidate.with_suffix(".md")
+        resolved = safe_file(candidate)
+        return ([resolved] if resolved else []), None
+
+    stem = relative.stem if relative.suffix.lower() == ".md" else relative.name
+    candidates: set[Path] = set()
+    for candidate in vault.rglob("*.md"):
+        if candidate.stem != stem:
+            continue
+        resolved = safe_file(candidate)
+        if resolved is not None:
+            candidates.add(resolved)
+    in_scope = {
+        candidate
+        for candidate in candidates
+        if any(candidate.is_relative_to(root) for root in content_roots)
+    }
+    return sorted(in_scope or candidates), None
+
+
+def validate_wikilinks(
+    source: Path,
+    vault: Path,
+    text: str,
+    content_roots: tuple[Path, ...],
+    context: str,
+    issues: list[Issue],
+) -> set[str]:
+    """Validate note and heading targets, returning canonical note paths."""
+
+    resolved_targets: set[str] = set()
+    for match in WIKILINK_PATTERN.finditer(text):
+        full_target = match.group("target").strip()
+        raw_note, separator, raw_anchor = full_target.partition("#")
+        if not raw_note and not separator:
+            issues.append(Issue("ERROR", source, f"{context} contains an empty wikilink"))
+            continue
+        candidates, reason = link_target_candidates(
+            raw_note, source, vault, content_roots
+        )
+        rendered = f"[[{full_target}]]"
+        if reason is not None:
+            issues.append(Issue("ERROR", source, f"{context} {rendered} has an {reason}"))
+            continue
+        if not candidates:
+            issues.append(
+                Issue("ERROR", source, f"{context} {rendered} does not resolve to a note")
+            )
+            continue
+        if len(candidates) > 1:
+            locations = ", ".join(
+                str(display_path(candidate, vault)) for candidate in candidates
+            )
+            issues.append(
+                Issue(
+                    "ERROR",
+                    source,
+                    f"{context} {rendered} is ambiguous: {locations}",
+                )
+            )
+            continue
+        candidate = candidates[0]
+        if not any(candidate.is_relative_to(root) for root in content_roots):
+            issues.append(
+                Issue(
+                    "ERROR",
+                    source,
+                    f"{context} {rendered} points outside Notes/ or Maps/",
+                )
+            )
+            continue
+        if separator:
+            anchor = raw_anchor.strip()
+            if not anchor:
+                issues.append(
+                    Issue("ERROR", source, f"{context} {rendered} has an empty heading anchor")
+                )
+                continue
+            target_text = read_utf8(candidate, issues)
+            if target_text is None:
+                continue
+            if anchor.casefold() not in markdown_headings(target_text):
+                issues.append(
+                    Issue(
+                        "ERROR",
+                        source,
+                        f"{context} {rendered} points to a missing heading",
+                    )
+                )
+                continue
+        resolved_targets.add(candidate.relative_to(vault).as_posix())
+    return resolved_targets
+
+
+def validate_mind_map_metadata(
+    path: Path,
+    vault: Path,
+    notes_dir: Path,
+    block: str | None,
+    version: str | None,
+    text: str,
+    issues: list[Issue],
+) -> None:
+    """Keep map-facing note metadata resolvable without inventing concepts."""
+
+    roots = tuple(
+        root.resolve()
+        for root in (notes_dir, vault / "Maps")
+        if root.exists() and root.is_dir()
+    )
+    if not roots:
+        return
+
+    seed_blocks = [
+        text[start:end]
+        for title, start, end in heading_blocks(text)
+        if title == "Mind map seeds"
+    ]
+    if len(seed_blocks) > 1:
+        issues.append(Issue("ERROR", path, "duplicate Mind map seeds heading"))
+    for seed_block in seed_blocks:
+        validate_wikilinks(
+            path, vault, seed_block, roots, "Mind map seeds", issues
+        )
+
+    if version != "2":
+        return
+    related_items = frontmatter_list(block, "related")
+    related_targets: set[str] = set()
+    metadata_error_count = sum(
+        issue.severity == "ERROR" and issue.path == path for issue in issues
+    )
+    for item in related_items:
+        matches = list(WIKILINK_PATTERN.finditer(item))
+        unquoted = item.strip().strip('"\'').strip()
+        if len(matches) != 1 or matches[0].group(0) != unquoted:
+            issues.append(
+                Issue(
+                    "ERROR",
+                    path,
+                    "version 2 related frontmatter items must each be one wikilink",
+                )
+            )
+            continue
+        related_targets.update(
+            validate_wikilinks(
+                path, vault, item, roots, "related frontmatter", issues
+            )
+        )
+
+    related_blocks = [
+        text[start:end]
+        for title, start, end in heading_blocks(text)
+        if title == "Related"
+    ]
+    if len(related_blocks) > 1:
+        issues.append(Issue("ERROR", path, "duplicate Related heading"))
+    section_targets: set[str] = set()
+    for related_block in related_blocks:
+        section_targets.update(
+            validate_wikilinks(path, vault, related_block, roots, "Related section", issues)
+        )
+    current_error_count = sum(
+        issue.severity == "ERROR" and issue.path == path for issue in issues
+    )
+    has_related_metadata = frontmatter_value(block, "related") is not None or bool(
+        related_blocks
+    )
+    if (
+        has_related_metadata
+        and current_error_count == metadata_error_count
+        and related_targets != section_targets
+    ):
+        issues.append(
+            Issue(
+                "ERROR",
+                path,
+                "version 2 related frontmatter and Related section must list the same notes",
+            )
+        )
 
 
 def quiz_heading_parts(title: str) -> tuple[str, str | None] | None:
@@ -1681,6 +1905,7 @@ def check_is_answered(block: str) -> bool:
 def validate_note(
     path: Path,
     vault: Path,
+    notes_dir: Path,
     issues: list[Issue],
     check_locations: dict[str, list[Path]],
 ) -> None:
@@ -1699,6 +1924,7 @@ def validate_note(
     status = frontmatter_value(block, "status")
     version = frontmatter_value(block, "study-loop-version")
     validate_frontmatter_keys(path, block, issues)
+    validate_mind_map_metadata(path, vault, notes_dir, block, version, text, issues)
     if version not in {None, "2"}:
         issues.append(Issue("ERROR", path, f"unsupported study-loop-version: {version}"))
     if version == "2":
@@ -2322,10 +2548,10 @@ def validate_vault(
     elif active_only:
         if active_session is not None:
             for note in sorted(referenced_note_paths(active_session, vault)):
-                validate_note(note, vault, issues, check_locations)
+                validate_note(note, vault, notes_dir, issues, check_locations)
     else:
         for note in sorted(notes_dir.rglob("*.md")):
-            validate_note(note, vault, issues, check_locations)
+            validate_note(note, vault, notes_dir, issues, check_locations)
     for marker_id, paths in sorted(check_locations.items()):
         unique = sorted(set(paths))
         if len(unique) > 1:

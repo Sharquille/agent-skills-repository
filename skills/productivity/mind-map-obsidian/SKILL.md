@@ -39,6 +39,9 @@ If the user just says "mind map," default to **JSON Canvas**.
 ### 1) Gather the material
 Topic from the user, an existing note (read it first), the conversation, or a set
 of vault notes (Grep/Glob to find them). Identify the **one central concept**.
+When a study note contains `## Mind map seeds`, treat verified wikilinks as
+navigation candidates and plain-text seeds as ideas only. A plain-text seed does
+not authorize a file node, wikilink, or asserted cross-edge.
 
 ### 2) Build the structure before drawing
 - Central node → main branches (3–7 is ideal) → sub-branches.
@@ -75,8 +78,11 @@ renders the relationships. Best when the map should double as editable content.
 
 ### 4) Connect, don't orphan
 Prefer linking to existing notes (`file` nodes / `[[wikilinks]]`) over duplicating
-their content. Add the new canvas/note to a relevant MOC or the source note so it's
-discoverable.
+their content. Verify every file node and optional heading subpath immediately
+before writing. When this skill is called by `study-map`, write only in `Maps/`
+and let `study-map` run its integrity lint before release. Add a standalone new
+canvas/note to a relevant existing MOC or source note so it is discoverable;
+never create a dangling backlink merely to avoid an orphan.
 
 ### 5) Report
 Tell the user the file path, the format, and how to open it (Canvas files open on

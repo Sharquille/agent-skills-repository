@@ -412,6 +412,137 @@ class ValidatorTests(VaultFixture):
         issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
         self.assertEqual(issues, [])
 
+    def test_mind_map_seeds_allow_verified_heading_links_and_plain_text(self) -> None:
+        self.make_valid_vault()
+        related = self.vault / "Notes" / "Related.md"
+        related.write_text("# Related\n\n## Exact heading\n\nContent.\n", encoding="utf-8")
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            note.read_text(encoding="utf-8")
+            + "\n## Mind map seeds\n\n"
+            + "- Parent: [[Related#Exact heading]]\n"
+            + "- Related: a concept without a note yet\n",
+            encoding="utf-8",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
+    def test_mind_map_seeds_reject_dangling_note(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            note.read_text(encoding="utf-8")
+            + "\n## Mind map seeds\n\n- Parent: [[Missing note]]\n",
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "Mind map seeds [[Missing note]] does not resolve to a note",
+            [issue.message for issue in self.errors()],
+        )
+
+    def test_mind_map_seeds_reject_missing_heading(self) -> None:
+        self.make_valid_vault()
+        related = self.vault / "Notes" / "Related.md"
+        related.write_text("# Related\n\n## Existing heading\n", encoding="utf-8")
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            note.read_text(encoding="utf-8")
+            + "\n## Mind map seeds\n\n- Parent: [[Related#Renamed heading]]\n",
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "Mind map seeds [[Related#Renamed heading]] points to a missing heading",
+            [issue.message for issue in self.errors()],
+        )
+
+    def test_mind_map_seeds_reject_scaffolding_link(self) -> None:
+        self.make_valid_vault()
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            note.read_text(encoding="utf-8")
+            + "\n## Mind map seeds\n\n- Parent: [[STUDY-PROTOCOL]]\n",
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "Mind map seeds [[STUDY-PROTOCOL]] points outside Notes/ or Maps/",
+            [issue.message for issue in self.errors()],
+        )
+
+    def test_mind_map_seeds_reject_ambiguous_note_basename(self) -> None:
+        self.make_valid_vault()
+        (self.vault / "Maps").mkdir()
+        (self.vault / "Notes" / "Shared.md").write_text("# Notes copy\n", encoding="utf-8")
+        (self.vault / "Maps" / "Shared.md").write_text("# Map copy\n", encoding="utf-8")
+        note = self.vault / "Notes" / "Topic.md"
+        note.write_text(
+            note.read_text(encoding="utf-8")
+            + "\n## Mind map seeds\n\n- Related: [[Shared]]\n",
+            encoding="utf-8",
+        )
+        self.assertTrue(
+            any(
+                issue.message.startswith("Mind map seeds [[Shared]] is ambiguous:")
+                for issue in self.errors()
+            )
+        )
+
+    def test_version_two_related_metadata_must_stay_synchronized(self) -> None:
+        self.make_valid_vault()
+        (self.vault / "Notes" / "Related.md").write_text(
+            "# Related\n", encoding="utf-8"
+        )
+        (self.vault / "Notes" / "Other.md").write_text(
+            "# Other\n", encoding="utf-8"
+        )
+        (self.vault / "Notes" / "Ready.md").write_text(
+            """---
+title: Ready
+type: learning
+status: ready
+study-loop-version: 2
+related:
+  - "[[Related]]"
+---
+
+# Ready
+
+## Related
+
+- [[Other]]
+""",
+            encoding="utf-8",
+        )
+        self.assertIn(
+            "version 2 related frontmatter and Related section must list the same notes",
+            [issue.message for issue in self.errors()],
+        )
+
+    def test_version_two_related_metadata_accepts_matching_notes(self) -> None:
+        self.make_valid_vault()
+        (self.vault / "Notes" / "Related.md").write_text(
+            "# Related\n", encoding="utf-8"
+        )
+        (self.vault / "Notes" / "Ready.md").write_text(
+            """---
+title: Ready
+type: learning
+status: ready
+study-loop-version: 2
+related:
+  - "[[Related]]"
+---
+
+# Ready
+
+## Related
+
+- [[Related]]
+""",
+            encoding="utf-8",
+        )
+        issues = validator.validate_vault(self.vault.resolve(), self.vault / "Notes")
+        self.assertEqual(issues, [])
+
     def test_valid_visual_artifact_has_no_findings(self) -> None:
         self.make_valid_vault()
         self.write_valid_visual()
@@ -1450,6 +1581,9 @@ class ProtocolAlignmentTests(unittest.TestCase):
             "Do not infer fatigue",
             "initial diagnostic Budget minimum must cover every objective",
             "preserve its established ID namespace",
+            "#### Mind-map metadata",
+            "Plain text remains a gap-report candidate",
+            "a heading anchor must exist in the target",
         ]
         for path in (SKILL_PATH, TEMPLATE_PATH):
             text = path.read_text(encoding="utf-8")
