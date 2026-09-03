@@ -172,6 +172,48 @@ class BuildAnkiImportTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("must not contain tabs", result.stderr)
 
+    def test_rejects_deictic_active_prompt(self) -> None:
+        manifest = self.manifest()
+        manifest["cards"][0]["prompt"] = "What topics does this chapter cover?"
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("mixed-review quality", result.stderr)
+        self.assertIn("section or course context", result.stderr)
+
+    def test_allows_deictic_prompt_on_retired_card(self) -> None:
+        manifest = self.manifest()
+        retired = manifest["cards"][1]
+        retired["status"] = "retired"
+        retired["prompt"] = "What topics does this chapter cover?"
+        replacement = dict(retired)
+        replacement["id"] = "course.ch1.first-current.basic"
+        replacement["prompt"] = "Name the first retrieval target."
+        replacement["status"] = "active"
+        manifest["cards"].append(replacement)
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_rejects_duplicate_active_answers(self) -> None:
+        manifest = self.manifest()
+        manifest["cards"][1]["answer"] = manifest["cards"][0]["answer"]
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("duplicate active answer", result.stderr)
+
+    def test_rejects_duplicate_active_prompts(self) -> None:
+        manifest = self.manifest()
+        manifest["cards"][1]["prompt"] = manifest["cards"][0]["prompt"]
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("duplicate active prompt", result.stderr)
+
+    def test_rejects_numbered_lab_prompt(self) -> None:
+        manifest = self.manifest()
+        manifest["cards"][0]["prompt"] = "What does Lab 3.2 ask you to hash?"
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("numbered lab or exercise", result.stderr)
+
     def test_rejects_undeclared_card_objective(self) -> None:
         manifest = self.manifest()
         manifest["cards"][0]["objective"] = "Unknown objective"

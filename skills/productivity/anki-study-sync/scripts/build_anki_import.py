@@ -12,6 +12,8 @@ import sys
 import tempfile
 from pathlib import Path, PurePosixPath
 
+from anki_quality import quality_errors
+
 
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 CARD_TYPES = {"basic", "typed"}
@@ -202,6 +204,9 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
 
 
 def render(data: dict[str, object], vault: Path) -> str:
+    quality = quality_errors(data["cards"])
+    if quality:
+        raise ManifestError("mixed-review quality: " + "; ".join(quality))
     cards = [
         validate_card(raw, index, vault) for index, raw in enumerate(data["cards"])
     ]

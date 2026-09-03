@@ -93,7 +93,8 @@ When available, use these helper skills while following this protocol:
   `<vault>/Visuals/` when available and evidence-gated. Explicit Markdown/Mermaid
   visual reviews remain this workflow's `_study/visuals/` lane; do not mix them.
 - `anki-study-sync` after every objective is content-ready, to generate a
-  stable, source-anchored text-import handoff under `_study/anki/`. It never
+  stable, source-anchored text-import handoff under `_study/anki/`. The builder
+  rejects deictic or duplicate-answer active cards. It never
   grades the learner, reads review history, or mutates an Anki collection.
 
 Helper skills do not change the safety rules: do not invent facts or citations,
@@ -832,6 +833,14 @@ and emphasis of the note. It never withholds the note.
    When updating an existing manifest, preserve its established ID namespace
    and verify each addition against the finished note rather than hand-building
    a second naming pattern.
+   Generate with `scripts/build_anki_import.py` so heading checks and
+   mixed-review quality checks fail the handoff instead of shipping
+   unanswerable cards. Active fronts must name the retrieval target without
+   "this section", "this chapter", "this course", or a numbered lab or
+   exercise. Do not keep two active cards that share the same prompt or the
+   same answer. Sweep remaining manifests with
+   `scripts/lint_anki_quality.py --vault <VAULT_PATH>` before recording the
+   handoff as ready.
    Record paths and status under `## Anki handoff`. If generation fails, record
    `Anki deferred — <reason>`; note publication still succeeds. Drill may be
    `not-required` only when the learner explicitly declines Anki.

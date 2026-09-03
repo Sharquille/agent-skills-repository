@@ -344,7 +344,9 @@ where you left off.
 
 **Recall practice**
 - `anki-study-sync` — creates stable, source-anchored Anki text imports from
-  content-ready notes. It never grades competency or changes Anki directly.
+  content-ready notes. The builder rejects fronts that depend on "this
+  chapter" or a numbered lab, and rejects duplicate active answers. It never
+  grades competency or changes Anki directly.
 
 **Repair**
 - `undo-obsidian-study-loop` — roll back a mistaken install or false-start

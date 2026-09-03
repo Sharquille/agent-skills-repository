@@ -1,6 +1,6 @@
 ---
 name: anki-study-sync
-description: "Generate a deterministic, question-first Anki text-import file from completed Obsidian study notes. Use when obsidian-study-loop has made a chapter content-ready and the learner wants high-volume recall practice in Anki. Preserve stable card identities across revisions, cite every card back to a vault-relative note heading, and treat Anki activity as practice rather than competency evidence. Do not use for grading mastery, changing study-loop status, reading Anki review history, deleting cards, or exporting cards from unverified learner mistakes."
+description: "Generate a deterministic, question-first Anki text-import file from completed Obsidian study notes. Use when obsidian-study-loop has made a chapter content-ready and the learner wants high-volume recall practice in Anki. Preserve stable card identities across revisions, cite every card back to a vault-relative note heading, reject mixed-review deictic or duplicate-answer active cards, and treat Anki activity as practice rather than competency evidence. Do not use for grading mastery, changing study-loop status, reading Anki review history, deleting cards, or exporting cards from unverified learner mistakes."
 # --- provenance ---
 category: productivity
 source: self-authored companion to obsidian-study-loop
@@ -94,7 +94,8 @@ scripts/build_anki_import.py <manifest.json> --vault <VAULT_PATH> --output <chap
 ```
 
 Without `--output`, the TSV is written to standard output. The generator sorts
-by stable ID, verifies every exact note heading, escapes multiline content as
+by stable ID, verifies every exact note heading, rejects deictic or
+duplicate-answer active prompts, escapes multiline content as
 HTML, rejects unsafe sources and duplicate IDs, and replaces a vault-local
 output file atomically.
 
@@ -116,11 +117,18 @@ does not change deck options.
 
 ## Card quality
 
+Active cards must survive mixed review: shuffled into unrelated cards from the
+same course, a competent learner still knows what to retrieve.
+
 - Cover each objective broadly enough for recall practice: normally a core
   concept card, a condition or contrast card, and an example cue when the note
   supports them. Add more only for genuinely distinct retrieval targets; never
   pad a chapter to a fixed quota.
 - One retrieval target per card.
+- Name that target on the front. Do not use "this section", "this chapter",
+  "this course", "listed in", or a numbered lab/exercise as the cue.
+- The answer must be supported by the cited note heading. If the heading and
+  the answer disagree, change the card or the note before import.
 - Prefer production over recognition. Use `typed` only as metadata for a prompt
   whose answer is an exact short response; the portable TSV still renders it as
   a normal `Basic` card.
@@ -128,8 +136,21 @@ does not change deck options.
   otherwise use the canonical note wording.
 - Keep source context in the answer when it prevents a misleading absolute.
 - Do not add trivia merely to increase card count.
+- Two active cards may not share the same prompt or the same answer. A wording
+  fix keeps the id and increments `revision`. A new retrieval target gets a
+  new id; retire the old row.
 - Visual and image-occlusion cards are a later media workflow. This text
   generator must not invent a media path or copy files into Anki media.
+
+`scripts/build_anki_import.py` rejects deictic and duplicate-answer active
+cards. After publication, also run:
+
+```text
+scripts/lint_anki_quality.py --vault <VAULT_PATH>
+```
+
+That read-only sweep covers every manifest under `_study/anki/`. Fix findings
+before recording `## Anki handoff` as ready.
 
 ## Completion report
 

@@ -99,7 +99,8 @@ This skill is the study orchestrator. Use these helper skills when available:
   It writes only into `Maps/` and never touches `_study/` or note bodies. Refresh
   affected maps when a version 2 chapter reaches `complete`.
 - `anki-study-sync`: after every objective is content-ready, generate a stable,
-  source-anchored text-import handoff under `_study/anki/`. It never grades the
+  source-anchored text-import handoff under `_study/anki/`. The builder rejects
+  deictic or duplicate-answer active cards. It never grades the
   learner, reads review history, or mutates an Anki collection.
 - `visualize-study-chapter`: own the automatic chapter-end HTML surface under
   `<vault>/Visuals/` when available and when its evidence gate passes. This
@@ -920,6 +921,14 @@ and emphasis of the note. It never withholds the note.
    When updating an existing manifest, preserve its established ID namespace
    and verify each addition against the finished note rather than hand-building
    a second naming pattern.
+   Generate with `scripts/build_anki_import.py` so heading checks and
+   mixed-review quality checks fail the handoff instead of shipping
+   unanswerable cards. Active fronts must name the retrieval target without
+   "this section", "this chapter", "this course", or a numbered lab or
+   exercise. Do not keep two active cards that share the same prompt or the
+   same answer. Sweep remaining manifests with
+   `scripts/lint_anki_quality.py --vault <VAULT_PATH>` before recording the
+   handoff as ready.
    Record paths and status under `## Anki handoff`. If generation fails, record
    `Anki deferred — <reason>`; note publication still succeeds. Drill may be
    `not-required` only when the learner explicitly declines Anki.
