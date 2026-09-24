@@ -335,11 +335,8 @@ def map_label(section: str, path: Path) -> str:
         return f"{section} Concept Map"
     if lower.endswith("decision-flow"):
         return f"{section} Quiz Sort"
-    rest = stem
-    for prefix in (f"stats-{section}-", f"{section}-"):
-        if rest.lower().startswith(prefix.lower()):
-            rest = rest[len(prefix) :]
-            break
+    # Drop an optional course tag plus the section: stats-1.1-, it-3.1-, 2.1-.
+    rest = re.sub(rf"^(?:[a-z]+-)?{re.escape(section)}-", "", stem, flags=re.I)
     rest = re.sub(r"-?flow$", "", rest, flags=re.I)
     pretty = rest.replace("-", " ").strip().title() or path.stem
     return f"{section} {pretty}"

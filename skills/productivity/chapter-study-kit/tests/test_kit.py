@@ -349,6 +349,11 @@ class KitTests(unittest.TestCase):
         (self.kit / 'hub.json').write_text(json.dumps({'prefix': 'IT'}))
         self.assertEqual(hub.load_hub_meta(self.kit)['goodnotes_course'], 'IT')
 
+    def test_map_label_drops_any_course_tag(self):
+        for name in ('it-3.1-address-flow.mmd', 'stats-3.1-address-flow.mmd', '3.1-address-flow.mmd'):
+            self.assertEqual(hub.map_label('3.1', Path(name)), '3.1 Address')
+        self.assertEqual(hub.map_label('3.1', Path('it-3.1-secure-lan-flow.mmd')), '3.1 Secure Lan')
+
     def test_section_folder_name_never_repeats_number(self):
         self.assertEqual(hub.section_folder_name('1.1', '1.1'), '1.1')
         self.assertEqual(hub.section_folder_name('1.1', ''), '1.1')
