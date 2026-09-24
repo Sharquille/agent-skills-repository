@@ -4,7 +4,7 @@
 
 ## Build the outcome inventory
 
-Before writing questions, make `practice-plan.md` beside `Practice.md`. Use the ledger and Core notes to list **atomic, testable outcomes**: one decision or explanation that a reader can answer from the supplied source alone. A heading may hold several decisions (sampling methods); several headings may repeat one decision. Split or merge by the response the learner must produce, then record the Core heading and source locator. Exclude orientation headings, unrevealed keys, checklist names without explanatory body, unreadable material, and later sections. A name-only list may earn a recall item, but not an invented application question.
+Before writing questions, make `practice-plan.md` beside `Practice.md`. Use the ledger and Core notes to list **atomic, testable outcomes**: one decision or explanation that a reader can answer from the supplied source alone. A heading may hold several decisions (sampling methods); several headings may repeat one decision. Split or merge by the response the learner must produce, then record the Core heading and source locator. Exclude orientation headings, unrevealed keys, checklist names without explanatory body, unreadable material, and later sections. A name-only list may earn a recall item, but not an invented application question. Mark an outcome whose only ledger support is legacy/unverified (an unavailable source) as `unverified` in its anchor cell. Keep its item, but a miss on it routes to rechecking the source, not to another drill; it is not evidence of a learner gap.
 
 For each outcome `i`, record a risk flag `r_i`:
 
@@ -60,7 +60,18 @@ example.
 
 Put the full, answerable prompt in the folded `[!question]-` title; its body stays hidden until tap. Group items by the source's sections. Use consecutive `Q01`, `Q02`, … IDs and short groups of about 6–8 questions per study round. `ceil(Q_min / 8)` is only a **planning estimate** for rounds; stop a round after about 10–15 minutes or when attention fails. A large bank is available across days, not one compulsory sitting.
 
-Every revealed answer must state the decision, give the source-based reason, resolve offered alternatives, and point to a specific numbered Core topic. Reject a card if its stem states the verdict, names the answer category before the learner chooses it, contains several unrelated tasks, uses unexplained shorthand, or its key hedges with “maybe.” Review technical corrections against a primary source and note the source conflict in the ledger. Preserve exact course terminology where it matters.
+Every revealed answer must state the decision, give the source-based reason, resolve offered alternatives, and point to a specific numbered Core topic. Before counting a card, reject or rewrite it if any answer is yes:
+
+1. Does it ask about more than one concept, or chain parts with `(a)/(b)` or "then… next"?
+2. Does the stem contain the answer's key term, or state the verdict it asks for?
+3. Does it name the answer category before the learner chooses it?
+4. Does the stem list every member of a set but one, or use "not", "except", "the other", or "remaining" to narrow the answer?
+5. Does it say how many items the answer holds when counting is not the task?
+6. Strip the scenario's concrete nouns: does every constraint on the answer survive? Then the scenario is decoration and the item is recall; say so or give the scenario a real constraint.
+7. Does it use unexplained shorthand, or does its key hedge with “maybe”?
+8. Does its revealed answer give away another question in the same round?
+
+Review technical corrections against a primary source and note the source conflict in the ledger. Preserve exact course terminology where it matters.
 
 In `practice-plan.md`, use a table with `Outcome ID | Core/source anchor | Learner decision | r_i and reason | Primary item | Extra item`. Write the role beside each question ID, for example `Q01 foundation` or `Q02 discriminate`. Reconcile the total: each earned outcome has one eligible item; every flagged outcome has a second eligible, varied item. Record unavailable objectives separately so a missing chapter page never silently inflates or shrinks `A`.
 

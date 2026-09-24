@@ -1,10 +1,10 @@
 {
   "files": {
-    "SKILL.md": "d39a9f5b47d19a41e4365486cae9120c3c248e25d471627fbb25c1d206659b33",
+    "SKILL.md": "9df1cbc2fb32c0cfa074da1ac0ea8890e166294ea6a7ef5683c675c9dc7ee003",
     "references/expanding-map.md": "ece9a674bbaab5e536ca6d61d3fe078d31b3c46109c9dd81532dda6866290c6f",
-    "references/notes-contract.md": "2cbab5f9bf8c12de7ed8a6c009b2b614cddfcc1692992a9506a9ce6f4d5f0729",
+    "references/notes-contract.md": "6973b17142f88177dac66fae316ce622b0880e70cc66c45825a33063cd0b87d0",
     "references/overwhelm-scaffold.md": "1ddaed62c43c038e1ef529979cffcbc18874dcb00059427e52138a99e48bd265",
-    "references/practice-planning.md": "f4e49db94596d7b8f351d9e7f8b3f4d91d82bf6eada7b850278405e985980429",
+    "references/practice-planning.md": "9d7270303eb1d54ed6fcc5e4b3b9edd8c2e5da123bfd17823515b1b7a208cef2",
     "references/source-and-batch-contract.md": "2981285ae3cea94fab1d3eed4c24f339bd27c2881be3bc003f572b7637885f7b",
     "references/visual-language.md": "ac32624147b3eb793fd70f91024bed8061735e4e7e1e710bfe06f262e61f8881",
     "scripts/build_goodnotes_hub.py": "b867b291508166dbd8ebdc9b468e3e39c4ad86e6229359b927ff69a74a8c8562",
@@ -15,5 +15,5 @@
     "scripts/validate_kit.py": "b7fc750014405c58651e8fa4a39636aa191685ae02b2df9bb7a788bf66a360a2",
     "tests/test_kit.py": "a52a720af49a8459a81fe708fcec5e45688fef7c7e9c4e92acf57407a5fbe332"
   },
-  "version": "2.8.0"
+  "version": "2.8.1"
 }

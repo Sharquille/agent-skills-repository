@@ -15,7 +15,7 @@ description: >-
 
 # Chapter study kit
 
-Workflow version: **2.8.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.8.1**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: GoodNotes maps + Core notes, Obsidian
 `Practice.md` for self-test, hub HTML. Grow the overall course map only with

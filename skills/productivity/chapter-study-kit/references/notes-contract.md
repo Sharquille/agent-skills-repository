@@ -48,7 +48,8 @@ For a source-based question count and the Practice quality check, read
    cap. Group a large bank into short rounds. Keep answers concise but complete.
 9. Day 1 / 3 / 7 restudy `Practice.md` after the first actual study attempt,
    not after file creation. A miss routes back to the relevant Core heading,
-   then a different item later. Record actual attempts only when supplied.
+   then a different item later; a miss on an `unverified` outcome routes to a
+   source recheck instead. Record actual attempts only when supplied.
 10. Canonical `*Study-Notes.md` callouts: `> [!NOTE]` / `TIP` / `IMPORTANT` /
     `WARNING` / `CAUTION` only. `Practice.md` may use `[!question]-`.
 
