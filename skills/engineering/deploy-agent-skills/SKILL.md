@@ -50,6 +50,11 @@ regardless of this repo's category nesting (`skills/<category>/<name>/`).
 | **Codex CLI** | `~/.codex/skills/` | Flat per-skill symlinks (same 1-deep discovery) |
 | **OpenCode / shared agents** | `~/.agents/skills/` | Flat per-skill symlinks independent of Claude's user-data directory |
 
+Only a symlink or an empty path is replaced. A real folder or file at a skill's
+destination (for example chapter-study-kit's `sync_skill.py` copy in
+`~/.agents/skills`) is skipped with a warning and left untouched; `tests/test_deploy.sh`
+checks this against a temporary `HOME`.
+
 ### 3) Safety And Orchestration Guardrails
 By default, deployment installs safety and Agent Orchestra routing rules from `assets/safety/` through `scripts/install-agent-safety.py`.
 

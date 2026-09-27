@@ -49,6 +49,19 @@ for arg in "$@"; do
   esac
 done
 
+# Link one skill into a flat destination. Only a symlink or an empty path is
+# replaced. A real folder or file there is a managed copy (chapter-study-kit's
+# sync_skill.py keeps one in ~/.agents/skills), and `ln -sfn` onto a real
+# directory would nest the new link inside it instead of replacing it.
+link_one() {
+  local src="$1" dest="$2"
+  if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+    echo "  Skipping $(basename "$dest"): real folder or file at $dest (managed copy?); left untouched."
+    return 1
+  fi
+  ln -sfn "$src" "$dest"
+}
+
 deploy_claude() {
   local SKILLS_DEST="$HOME/.claude/skills"
   echo "--- Deploying to Claude Code / Desktop ---"
@@ -85,8 +98,9 @@ deploy_claude() {
 
     local abs_path
     abs_path="$(cd "$skill_dir" && pwd)"
-    ln -sfn "$abs_path" "$SKILLS_DEST/$skill_name"
-    linked_count=$((linked_count + 1))
+    if link_one "$abs_path" "$SKILLS_DEST/$skill_name"; then
+      linked_count=$((linked_count + 1))
+    fi
   done
 
   # Prune stale links that no longer resolve to a skill (e.g. renamed/removed).
@@ -123,13 +137,11 @@ deploy_gemini() {
     abs_path="$(cd "$skill_dir" && pwd)"
     local dest_link="$GEMINI_DEST/$skill_name"
 
-    # Remove existing link/file if any
-    [ -L "$dest_link" ] || [ -e "$dest_link" ] && rm -rf "$dest_link"
-
-    # Create individual symlink conforming to Gemini's 1-directory deep nesting limit
-    ln -s "$abs_path" "$dest_link"
-    echo "  Linked: ~/.gemini/skills/$skill_name -> $skill_dir"
-    linked_count=$((linked_count + 1))
+    # Individual symlink conforming to Gemini's 1-directory deep nesting limit
+    if link_one "$abs_path" "$dest_link"; then
+      echo "  Linked: ~/.gemini/skills/$skill_name -> $skill_dir"
+      linked_count=$((linked_count + 1))
+    fi
   done
 
   # Prune stale links that no longer resolve to a skill (e.g. renamed/removed).
@@ -163,8 +175,9 @@ deploy_codex() {
 
     local abs_path
     abs_path="$(cd "$skill_dir" && pwd)"
-    ln -sfn "$abs_path" "$CODEX_DEST/$skill_name"
-    linked_count=$((linked_count + 1))
+    if link_one "$abs_path" "$CODEX_DEST/$skill_name"; then
+      linked_count=$((linked_count + 1))
+    fi
   done
 
   # Prune stale links that no longer resolve to a skill.
@@ -199,8 +212,9 @@ deploy_opencode() {
 
     local abs_path
     abs_path="$(cd "$skill_dir" && pwd)"
-    ln -sfn "$abs_path" "$OPENCODE_DEST/$skill_name"
-    linked_count=$((linked_count + 1))
+    if link_one "$abs_path" "$OPENCODE_DEST/$skill_name"; then
+      linked_count=$((linked_count + 1))
+    fi
   done
 
   # Prune stale links that no longer resolve to a skill.
