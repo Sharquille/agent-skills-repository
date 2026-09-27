@@ -96,16 +96,30 @@ copy its text or trademarked marks.
 1. Resolve the topic and its sources. For a study kit, read the section
    `ledger.md` and Core notes; the Earned list is the content boundary.
 2. Plan the steps: one idea each, in teaching order, with the picture you will
-   draw. Check the plan against the sources before drawing.
-3. Write the file to the output location.
-4. Check it:
+   draw. Check the plan against the sources before drawing. Recompute every
+   number a picture shows (a mean, a median, a scaled bar) before building, and
+   draw printed values to scale. Data invented only to show a pattern is a
+   sketch or teaching example; say so in the footer.
+3. Write a spec in the scratchpad, not in a course folder. A spec is a Python
+   file that imports the SVG helpers (`svg`, `box`, `text`, `arrow`, `line`,
+   `person`) from `eli5_page` and defines `PAGE`; copy the shape of
+   [`references/example_spec.py`](references/example_spec.py). The shared shell
+   supplies the CSP, both themes, the five category colors, and watch mode, so
+   a spec holds only the pictures and words.
+4. Build it. The builder renders the page, runs `eli5.py check` on it, and
+   writes nothing if the check fails:
 
    ```sh
-   python3 "$SKILL_DIR/scripts/eli5.py" check "$FILE"
+   python3 "$SKILL_DIR/scripts/eli5_page.py" "$SPEC" --root "<term folder>"   # course topic
+   python3 "$SKILL_DIR/scripts/eli5_page.py" "$SPEC" --out "$FILE"            # any other topic
    ```
 
-   Fix every error. `--max-words N` changes the budget only when the user asks
-   for a longer page.
+   `--root` resolves `<course>/Week-XX_*/Work/<slug>-eli5.html` from the spec's
+   `course`, `week`, and `slug`, and adds the Work README line from `blurb`. It
+   refuses a missing or ambiguous week folder and never replaces a file that is
+   not an ELI5 page. Fix every reported error. For a hand-written page, run
+   `python3 "$SKILL_DIR/scripts/eli5.py" check "$FILE"`; `--max-words N`
+   changes the budget only when the user asks for a longer page.
 5. Look at it once in a browser (one screenshot at desktop width), fix what that
    shows, and do not loop.
 6. Optional publish as a claude.ai Artifact: convert, then publish the fragment
