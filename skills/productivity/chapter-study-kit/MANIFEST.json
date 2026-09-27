@@ -1,10 +1,10 @@
 {
   "files": {
-    "SKILL.md": "9df1cbc2fb32c0cfa074da1ac0ea8890e166294ea6a7ef5683c675c9dc7ee003",
+    "SKILL.md": "977555fbc073517c211dad4ae93b799ad860c9899120dfa956d88e72900f7f79",
     "references/expanding-map.md": "ece9a674bbaab5e536ca6d61d3fe078d31b3c46109c9dd81532dda6866290c6f",
     "references/notes-contract.md": "6973b17142f88177dac66fae316ce622b0880e70cc66c45825a33063cd0b87d0",
     "references/overwhelm-scaffold.md": "1ddaed62c43c038e1ef529979cffcbc18874dcb00059427e52138a99e48bd265",
-    "references/practice-planning.md": "9d7270303eb1d54ed6fcc5e4b3b9edd8c2e5da123bfd17823515b1b7a208cef2",
+    "references/practice-planning.md": "8722fe32370ede8d147e33db3c5379df3ddcc9127522aaa68190c5b63c6d313f",
     "references/source-and-batch-contract.md": "2981285ae3cea94fab1d3eed4c24f339bd27c2881be3bc003f572b7637885f7b",
     "references/visual-language.md": "ac32624147b3eb793fd70f91024bed8061735e4e7e1e710bfe06f262e61f8881",
     "scripts/build_goodnotes_hub.py": "b867b291508166dbd8ebdc9b468e3e39c4ad86e6229359b927ff69a74a8c8562",
@@ -12,8 +12,8 @@
     "scripts/new_section.py": "0ff48030f13cbc184be46e0f0eaf2148cf3348b1e8e1eaba794b6c7a55412fc8",
     "scripts/ocr_pdf.swift": "9ca7fc099e5326f879d19d307034e777b6bb0030c9bf2bf03ec7f7ca925f6524",
     "scripts/sync_skill.py": "aa42424eb86465910f93f23f62df191fd651a0657edf0768629538d379134a61",
-    "scripts/validate_kit.py": "b7fc750014405c58651e8fa4a39636aa191685ae02b2df9bb7a788bf66a360a2",
-    "tests/test_kit.py": "a52a720af49a8459a81fe708fcec5e45688fef7c7e9c4e92acf57407a5fbe332"
+    "scripts/validate_kit.py": "1866e33cb9ab851e17ead63465155dbefd97fd81d2be7f9a9b28d56979c2f700",
+    "tests/test_kit.py": "e28f99b744e99cb7adb829dbb667fc8b659a14f6a7f56371e6f892d2bf1b92a4"
   },
-  "version": "2.8.1"
+  "version": "2.8.2"
 }

@@ -70,6 +70,7 @@ Every revealed answer must state the decision, give the source-based reason, res
 6. Strip the scenario's concrete nouns: does every constraint on the answer survive? Then the scenario is decoration and the item is recall; say so or give the scenario a real constraint.
 7. Does it use unexplained shorthand, or does its key hedge with “maybe”?
 8. Does its revealed answer give away another question in the same round?
+9. Does the stem or answer name where the idea was taught (a deck, slide, figure, page, printed example, or "the lecture")? That tests memory of the source, not understanding. Ask about the idea in a situation, and give the reason in the idea's own terms. Keep source locators in the ledger and Core; `validate_kit.py` rejects them in Practice items outside the **Review** pointer.
 
 Review technical corrections against a primary source and note the source conflict in the ledger. Preserve exact course terminology where it matters.
 

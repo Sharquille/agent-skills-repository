@@ -19,6 +19,12 @@ STATUSES = {"collecting", "partial", "ready", "complete"}
 COVERAGES = {"partial", "full"}
 SOURCE_ROW = re.compile(r"^\|\s*S\d+\s*\|", re.M)
 OUTCOME_ROW = re.compile(r"^\| (?:\d+[a-z]?) \|")
+# A Practice item that names where something was taught (deck, slide, figure, page)
+# tests memory of the source, not understanding. Review pointers are exempt.
+SOURCE_LOCATOR = re.compile(
+    r"\b(?:PP\d+|slides?\s+\d+|(?:the|this|these|that)\s+(?:slides?|deck|lecture|textbook|handout|figure)"
+    r"|on\s+this\s+deck|fig(?:ure|\.)?\s*\d+(?:-\d+)?|page\s+\d+|printed\s+(?:example|answer|key|list)"
+    r"|according\s+to\s+the)\b", re.I)
 
 
 def missing_links(path: Path) -> list[str]:
@@ -95,6 +101,10 @@ def check_practice(practice: Path, plan: Path) -> list[str]:
         for marker in ('**Answer:**', '**Why:**', '**Review:**'):
             if marker not in block:
                 errors.append(f'Q{number:02d} needs {marker}')
+        locator = SOURCE_LOCATOR.search(block.split('**Review:**')[0])
+        if locator:
+            errors.append(f'Q{number:02d} cites the source ("{locator.group(0)}"); '
+                          'ask about the idea in a situation instead')
 
     planned = plan.read_text()
     match = re.search(r'Q_min\s*=\s*A\s*\+\s*H\s*=\s*(\d+)\s*\+\s*(\d+)\s*=\s*(\d+)', planned)

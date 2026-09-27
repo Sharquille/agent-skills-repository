@@ -309,6 +309,24 @@ class KitTests(unittest.TestCase):
         self.assertIn('Q04 needs **Why:**', errors)
         self.assertIn('map each question ID exactly once', errors)
 
+    def test_practice_items_ask_about_ideas_not_source_locations(self):
+        practice = self.section / 'Practice.md'
+        plan = self.section / 'practice-plan.md'
+        plan.write_text(
+            'Q_min = A + H = 2 + 0 = 2\n'
+            '| Outcome | Core/source anchor | Learner decision | Extra reason | Primary | Varied extra |\n'
+            '| --- | --- | --- | --- | --- | --- |\n'
+            '| 1 | Core 1 | Decide one | — | Q01 | — |\n'
+            '| 2 | Core 2 | Decide two | — | Q02 | — |\n')
+        practice.write_text(
+            '> [!question]- Q01. Which cues does PP4 list?\n'
+            '> **Answer:** Face. **Why:** Slide 2 lists them. **Review:** Core 1, Figure 2-19.\n'
+            '> [!question]- Q02. A clerk rings you up in a lecture hall. Which distance?\n'
+            '> **Answer:** Social. **Why:** Impersonal business, not a printed letter. **Review:** Core 2.\n')
+        errors = validate.check_practice(practice, plan)
+        self.assertEqual(len(errors), 1)
+        self.assertIn('Q01 cites the source ("PP4")', errors[0])
+
     def fill_live_contract(self):
         (self.kit / 'hub.json').write_text(json.dumps({
             'title': 'T', 'editable_stem': 'T-Editable-GoodNotes',
