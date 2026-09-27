@@ -42,6 +42,18 @@ class BuilderTest(unittest.TestCase):
         self.assertEqual(sum("median-eli5.html" in ln for ln in readme.splitlines()), 1)
         self.assertEqual(readme.count("## ELI5 explainers"), 1)
 
+    def test_readme_line_goes_into_the_eli5_section_not_a_later_one(self):
+        work = self.make_week()
+        (work / "README.md").write_text(
+            "# Week 3 Work\n\n## ELI5 explainers\n\n- [`old-eli5.html`](old-eli5.html) — old.\n\n"
+            "## Practice exam\n\n- exam line\n")
+        eli5_page.build(self.page, root=str(self.root))
+        readme = (work / "README.md").read_text()
+        eli5_part, exam_part = readme.split("## Practice exam")
+        self.assertIn("median-eli5.html", eli5_part)
+        self.assertNotIn("median-eli5.html", exam_part)
+        self.assertIn("- exam line", exam_part)
+
     def test_week_must_match_exactly_one_folder(self):
         (self.root / "MA-235").mkdir()
         with self.assertRaises(ValueError):  # no Week-03 folder

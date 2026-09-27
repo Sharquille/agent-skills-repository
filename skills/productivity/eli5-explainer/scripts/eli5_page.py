@@ -250,9 +250,18 @@ def add_readme_line(work, fname, blurb):
     body = open(readme, encoding="utf-8").read() if os.path.exists(readme) else ""
     if fname in body:
         return
-    if "## ELI5 explainers" not in body:
-        body = body.rstrip("\n") + "\n\n## ELI5 explainers\n\n"
-    body += f"- [`{fname}`]({fname}) — {blurb} Review aid only, not graded work.\n"
+    entry = f"- [`{fname}`]({fname}) — {blurb} Review aid only, not graded work.\n"
+    heading = "## ELI5 explainers\n"
+    if heading not in body:
+        body = body.rstrip("\n") + "\n\n" + heading + "\n" + entry
+    else:
+        # Insert at the end of the ELI5 section, before any later "## " section.
+        start = body.index(heading) + len(heading)
+        nxt = body.find("\n## ", start)
+        end = len(body) if nxt == -1 else nxt + 1
+        section = body[start:end].rstrip("\n") + "\n"
+        rest = body[end:]
+        body = body[:start] + section + entry + ("\n" + rest if rest else "")
     with open(readme, "w", encoding="utf-8") as fh:
         fh.write(body)
 
