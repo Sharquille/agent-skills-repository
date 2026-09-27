@@ -34,6 +34,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [study-consult-panel](skills/productivity/study-consult-panel/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [study-map](skills/productivity/study-map/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [chapter-study-kit](skills/productivity/chapter-study-kit/) | productivity | Sharquille Andrew (self-authored) | this repo (canonical; migrated from Education/.cursor/skills) | MIT | 2026-09-23 |
+| [eli5-explainer](skills/productivity/eli5-explainer/) | productivity | Sharquille Andrew (self-authored; feature list modeled on the ELI5 plugin description) | this repo | MIT | 2026-09-27 |
 | [study-research-queries](skills/productivity/study-research-queries/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
 | [evidence-research-loop](skills/productivity/evidence-research-loop/) | productivity | Sharquille Andrew (self-authored on top of agent-orchestra) | this repo | MIT | 2026-07-06 |
 | [task-steps-ledger](skills/productivity/task-steps-ledger/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-28 |
