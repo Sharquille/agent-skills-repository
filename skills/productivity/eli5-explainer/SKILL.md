@@ -34,9 +34,19 @@ SKILL_DIR=/Users/sharquilleandrew/Documents/development/github-local/agent-skill
 
 ## Output location
 
-Write to the path the user names. Otherwise use the session scratchpad. Never
-write into a course kit (`Chapter-Kits/`), a week folder, or a vault unless the
-user asks for that folder. Name the file `<topic-slug>-eli5.html`.
+Name the file `<topic-slug>-eli5.html`. A path the user names always wins.
+
+- **Course topic** (the source lives in a course folder with `Week-XX_<dates>/`
+  folders, such as `Monroe-University/<TERM>/<COURSE>/`): save to that course's
+  `Week-XX_<dates>/Work/` for the week the source belongs to, so every subject
+  keeps its explainers beside that week's review work. Take the week from the
+  section's `state.json` `"week"` (chapter-study-kit) or from the week folder
+  that holds the source; never infer it from `Chapter-NN`. If the week is
+  unclear, ask. Add one line to that `Work/README.md` naming the file and what
+  it covers. Never save into `Chapter-Kits/` or `Materials/`.
+- **Any other topic:** the session scratchpad, and tell the user it is temporary.
+- If a file with that name already exists, read it first and replace it only
+  when it is an earlier version of the same explainer.
 
 ## Reference mode
 
