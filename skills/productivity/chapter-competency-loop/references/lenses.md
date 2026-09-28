@@ -46,9 +46,12 @@ recall with a calculator.
 - **Diagnostic sweep (unassessed concepts):** one question per concept, using
   **real-world map** for ideas and **compute** + **read the result** (as one
   item) for formulas. Those two reveal the most in one answer.
-- **After a miss (fragile):** hand the miss to `teach-complex-concepts`, then
-  re-check with a *different* lens and a *different* scenario. Repeating the
-  same stem tests memory of the stem.
+- **After a miss (fragile):** break it down with `teach-complex-concepts`,
+  then queue **two** twins at least 3 questions later: same logic, different
+  scenarios. Repeating the same stem, numbers, or picture tests memory of the
+  card, not understanding.
+- **Twin after a confident correct answer:** harder, with the same deciding
+  cues. Add a step, a distractor, or a depth lens; keep the decision the same.
 - **Developing concepts:** push toward **why it matters**, **anatomy**, **stress
   test**, or **contrast**, the lenses that show depth.
 - **Near-secure concepts:** finish with **teach-back** or a **real-world map**

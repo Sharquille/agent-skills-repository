@@ -110,6 +110,43 @@ class CompetencyTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             c.log_attempt(self.kit, "Core 2", "correct", "r", "n")
 
+    def make_weeks(self):
+        course = self.kit.parent
+        for name in ("Week-03_2026-09-21_to_2026-09-27", "Week-04_2026-09-28_to_2026-10-04",
+                     "Weeks-14-15_Finals_2026-12-07_to_2026-12-17"):
+            (course / name / "Work").mkdir(parents=True, exist_ok=True)
+        return course
+
+    def test_week_for_a_date_including_finals(self):
+        course = self.make_weeks()
+        self.assertEqual(c.week_for(course, "2026-09-28")["week"], 4)
+        self.assertEqual(c.week_for(course, "2026-09-27")["week"], 3)
+        self.assertEqual(c.week_for(course, "2026-12-15")["week"], 14)
+        with self.assertRaises(ValueError):
+            c.week_for(course, "2027-01-05")
+
+    def test_tracker_set_resolves_the_work_folder_and_rejects_unknown_keys(self):
+        course = self.make_weeks()
+        data = c.tracker_set(course, ["goal=Exam 1 prep", "chapters=1-3", "week=4"])
+        self.assertTrue(data["work"].endswith("Week-04_2026-09-28_to_2026-10-04/Work"))
+        self.assertEqual(c.load_tracker(course)["goal"], "Exam 1 prep")
+        self.assertTrue(c.tracker_set(course, ["week=15"])["work"].endswith("Finals_2026-12-07_to_2026-12-17/Work"))
+        with self.assertRaises(ValueError):
+            c.tracker_set(course, ["color=blue"])
+
+    def test_queue_waits_for_the_gap(self):
+        course = self.make_weeks()
+        c.queue_cmd(course, "add", section="1.2", core=4, kind="twin", count=2, gap=3)
+        c.queue_cmd(course, "add", section="1.1", core=7, kind="harder", gap=3)
+        for _ in range(2):
+            c.queue_cmd(course, "tick")
+        self.assertEqual(c.queue_cmd(course, "due"), [])
+        c.queue_cmd(course, "tick")
+        due = c.queue_cmd(course, "due")
+        self.assertEqual(len(due), 3)
+        c.queue_cmd(course, "done", qid=due[0]["id"])
+        self.assertEqual(len(c.load_tracker(course)["queue"]), 2)
+
     def test_cli(self):
         self.assertEqual(c.main(["scope", "--kit", str(self.kit), "--chapters", "1-3"]), 0)
         self.assertEqual(c.main(["scope", "--kit", str(self.kit), "--chapters", "7"]), 1)

@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Scope a competency loop over a chapter-study-kit, and log attempts.
+"""Scope a competency loop over a chapter-study-kit, log attempts, and keep the session tracker.
 
   competency.py scope --kit <course>/Chapter-Kits --chapters 1-3 [--sections 2.1,3.2]
   competency.py log --section <section dir> --item "Core 5 · read the result" \
       --result correct|partial|missed --reason "..." --next "2026-09-30, Core 5 · compute"
+  competency.py week --course <course dir> [--date YYYY-MM-DD]
+  competency.py tracker show|set --course <course dir> [key=value ...]
+  competency.py queue add|tick|due|done --course <course dir> [...]
+
+The tracker (<course>/competency-tracker.json) records what the loop is for (goal,
+goal date, chapters), where this session saves files (week and Work folder), the
+round, and the re-check queue. Change it only after the learner confirms.
 
 Concepts are a section's numbered Core headings. study-log.md rows (the kit's
 attempt log) map to a concept by "Core N" in the Item cell, or by a Practice
@@ -196,6 +203,71 @@ def log_attempt(section, item, result, reason, next_review, date=None):
     return row
 
 
+WEEK_DIR = re.compile(r"^Weeks?-(\d+)(?:-\d+)?_(?:[A-Za-z]+_)?(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})$")
+TRACKER = "competency-tracker.json"
+TRACKER_KEYS = {"goal", "goal_date", "chapters", "week", "work"}
+
+
+def week_for(course, date=None):
+    """The week folder whose date range contains `date` (default today)."""
+    day = date or dt.date.today().isoformat()
+    for d in sorted(Path(course).iterdir()):
+        m = WEEK_DIR.match(d.name)
+        if d.is_dir() and m and m.group(2) <= day <= m.group(3):
+            return dict(week=int(m.group(1)), folder=str(d), work=str(d / "Work"), start=m.group(2), end=m.group(3))
+    raise ValueError(f"no week folder in {course} covers {day}")
+
+
+def load_tracker(course):
+    path = Path(course) / TRACKER
+    if not path.is_file():
+        return {"course": Path(course).name, "queue": []}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def save_tracker(course, data):
+    data["updated"] = dt.date.today().isoformat()
+    (Path(course) / TRACKER).write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def tracker_set(course, pairs):
+    data = load_tracker(course)
+    for pair in pairs:
+        key, _, value = pair.partition("=")
+        if key not in TRACKER_KEYS or not value:
+            raise ValueError(f"set takes key=value with key in {sorted(TRACKER_KEYS)}")
+        if key == "week":
+            value = int(value)
+            match = []
+            for d in sorted(Path(course).iterdir()):
+                m = re.match(r"^Weeks?-(\d+)(?:-(\d+))?_", d.name)
+                if d.is_dir() and m and int(m.group(1)) <= value <= int(m.group(2) or m.group(1)):
+                    match.append(str(d))
+            if len(match) != 1:
+                raise ValueError(f"expected one folder for week {value}, found {match}")
+            data["work"] = str(Path(match[0]) / "Work")
+        data[key] = value
+    save_tracker(course, data)
+    return data
+
+
+def queue_cmd(course, action, section=None, core=None, kind="twin", count=1, gap=3, qid=None):
+    """Re-check queue: twins wait until `gap` other questions have been asked."""
+    data = load_tracker(course)
+    q = data.setdefault("queue", [])
+    if action == "add":
+        for _ in range(count):
+            nid = max([i["id"] for i in q], default=0) + 1
+            q.append(dict(id=nid, section=section, core=int(core), kind=kind, gap=gap, since=0))
+    elif action == "tick":
+        for item in q:
+            item["since"] += 1
+    elif action == "done":
+        data["queue"] = [i for i in q if i["id"] != int(qid)]
+    save_tracker(course, data)
+    return [i for i in data["queue"] if i["since"] >= i["gap"]] if action == "due" else data["queue"]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Scope a competency loop, or log an attempt.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -211,8 +283,39 @@ def main(argv=None):
     lg.add_argument("--reason", required=True)
     lg.add_argument("--next", required=True, dest="next_review")
     lg.add_argument("--date")
+    wk = sub.add_parser("week")
+    wk.add_argument("--course", required=True)
+    wk.add_argument("--date")
+    tr = sub.add_parser("tracker")
+    tr.add_argument("action", choices=["show", "set"])
+    tr.add_argument("--course", required=True)
+    tr.add_argument("pairs", nargs="*", help="key=value, keys: goal goal_date chapters week work")
+    qu = sub.add_parser("queue")
+    qu.add_argument("action", choices=["add", "tick", "due", "done"])
+    qu.add_argument("--course", required=True)
+    qu.add_argument("--section")
+    qu.add_argument("--core")
+    qu.add_argument("--kind", default="twin", help="harder | same | twin")
+    qu.add_argument("--count", type=int, default=1)
+    qu.add_argument("--gap", type=int, default=3)
+    qu.add_argument("--id")
     args = ap.parse_args(argv)
     try:
+        if args.cmd == "week":
+            print(json.dumps(week_for(args.course, args.date), indent=2))
+            return 0
+        if args.cmd == "tracker":
+            data = tracker_set(args.course, args.pairs) if args.action == "set" else load_tracker(args.course)
+            print(json.dumps(data, indent=2))
+            return 0
+        if args.cmd == "queue":
+            if args.action == "add" and not (args.section and args.core):
+                raise ValueError("queue add needs --section and --core")
+            if args.action == "done" and not args.id:
+                raise ValueError("queue done needs --id")
+            print(json.dumps(queue_cmd(args.course, args.action, args.section, args.core, args.kind,
+                                       args.count, args.gap, args.id), indent=2))
+            return 0
         if args.cmd == "scope":
             secs = set(args.sections.split(",")) if args.sections else None
             data = scope(args.kit, chapter_range(args.chapters) if args.chapters else None, secs)
