@@ -32,10 +32,19 @@ def text(x, y, s, cls="", anchor="middle", extra=""):
     return f'<text x="{x}" y="{y}"{c}{a}{extra}>{esc(s)}</text>'
 
 
+# Labels estimated wider than their box. A clipped label misleads a reader, so
+# builders report these: the round board refuses to build, ELI5 pages warn.
+LABEL_WARNINGS = []
+
+
 def box(x, y, w, h, lines, cls="card", tcls="", r=8, lh=16):
     """Rect with centered lines of text. Use cls "fill k2" with tcls "on" for a colored box."""
     if isinstance(lines, str):
         lines = [lines]
+    per_char = 6.0 if "sm" in tcls.split() else 7.2  # 11px vs 13px, weight 600
+    for ln in lines:
+        if len(ln) * per_char > w - 6:
+            LABEL_WARNINGS.append(f"label '{ln}' (~{len(ln) * per_char:.0f}px) is wider than its {w}px box")
     out = [f'<rect class="{cls}" x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}"/>']
     top = y + h / 2 - (len(lines) - 1) * lh / 2 + 5
     for i, ln in enumerate(lines):
@@ -247,7 +256,9 @@ def work_folder(root, course, week):
 
 def add_readme_line(work, fname, blurb):
     readme = os.path.join(work, "README.md")
-    body = open(readme, encoding="utf-8").read() if os.path.exists(readme) else ""
+    # A new README gets a title naming its week folder, like the kit's own Work READMEs.
+    body = (open(readme, encoding="utf-8").read() if os.path.exists(readme)
+            else f"# {os.path.basename(os.path.dirname(os.path.abspath(work)))} Work\n")
     if fname in body:
         return
     entry = f"- [`{fname}`]({fname}) — {blurb} Review aid only, not graded work.\n"
@@ -310,8 +321,11 @@ def main(argv=None):
     status = 0
     for spec in args.spec:
         try:
+            LABEL_WARNINGS.clear()
             path, summary = build(load_page(spec), root=args.root, out=args.out)
             print(f"OK {path}: {summary}")
+            for warning in LABEL_WARNINGS:
+                print(f"WARN {warning}")
         except (ValueError, KeyError, OSError) as exc:
             print(f"FAIL {spec}: {exc}")
             status = 1

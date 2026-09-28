@@ -71,6 +71,16 @@ copy its text or trademarked marks.
   it on every step where that category appears.
 - Visible words default to **900** or fewer. Pictures do the explaining.
 
+## Decision trees and taxonomies
+
+Only when a step's picture is a classification ("which kind is this?") or a
+branching decision, build it with `scripts/eli5_flow.py`'s `tree()` instead of
+placing boxes by hand. It lays out every node without overlaps, centers
+parents over children, labels edges, and draws a captioned band around each
+real grouping. Keep every layer that teaches something: a band for each
+boundary the course draws, and each leaf's mechanism in its text. Other
+pictures (dot plots, bars, worked numbers) stay hand-drawn with the helpers.
+
 ## Build contract
 
 - One file: `<!doctype html>`, `<html lang>`, charset and viewport meta, a
@@ -122,8 +132,10 @@ copy its text or trademarked marks.
    changes the budget only when the user asks for a longer page.
 5. Look at it once in a browser (one screenshot at desktop width), fix what that
    shows, and do not loop.
-6. Optional publish as a claude.ai Artifact: convert, then publish the fragment
-   with the Artifact tool under that host's page contract.
+6. Optional, and only when the user asks for a hosted link: publish as a
+   claude.ai Artifact. The local file is the default, because it works
+   offline and doesn't tie study material to one app. Convert, then publish
+   the fragment with the Artifact tool under that host's page contract.
 
    ```sh
    python3 "$SKILL_DIR/scripts/eli5.py" artifact "$FILE" > "$SCRATCH/<topic-slug>-eli5.artifact.html"
