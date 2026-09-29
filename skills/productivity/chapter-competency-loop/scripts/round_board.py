@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build a competency round board: one question card per answered question.
 
-  round_board.py SPEC.py --work <course>/Week-XX_*/Work [--course <course dir>]
-  round_board.py SPEC.py --out FILE [--course <course dir>]
+  round_board.py SPEC.py|RECORD.json --work <course>/Week-XX_*/Work [--course <course dir>]
+  round_board.py SPEC.py|RECORD.json --out FILE [--course <course dir>]
 
 Each card reads top to bottom: the question exactly as asked, the learner's
 answer mapped part by part to the correct answer, the reasoning with a picture,
@@ -12,8 +12,10 @@ offline; it reuses eli5-explainer's theme tokens and checker (CSP, both themes,
 accessible SVGs). Standard library only.
 """
 import argparse
+import copy
 import html
 import importlib.util
+import json
 import os
 import re
 import sys
@@ -40,6 +42,7 @@ CSS = ep.CSS + """
 .tile.v-missed { background: var(--c4); border-color: var(--c4); color: var(--surface); }
 .tile.v-unscored { background: var(--bg); color: var(--muted); border-style: dotted; }
 .tile.now { border: 2px dashed var(--c1); color: var(--c1); }
+.tile.v-moved { background: var(--surface); border: 2px solid var(--c3); color: var(--c3); }
 .tile:focus-visible { outline: 3px solid var(--c1); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 0.95rem; }
 .qcard { --v: var(--base); background: var(--surface); border: 1px solid var(--line); border-top: 5px solid var(--v);
@@ -73,13 +76,15 @@ CSS = ep.CSS + """
 .explain p { max-width: 60ch; }
 .remember { border-left: 4px solid var(--v); padding: 6px 12px; background: var(--bg); border-radius: 0 8px 8px 0; margin-top: 10px; }
 .terms { background: var(--bg); border-radius: 10px; padding: 10px 14px; }
-.terms dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; }
+.terms dl { margin: 0; display: grid; grid-template-columns: fit-content(40%) 1fr; gap: 6px 14px; }
 .terms dt { font-weight: 700; } .terms dd { margin: 0; }
 .context { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 0.95rem; }
 .context b { color: var(--ink); }
 details.help { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 18px; }
 details.help summary { cursor: pointer; font-weight: 700; }
-details.help dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 12px 0 4px; }
+/* fit-content caps the term column so a long command wraps instead of pushing the page sideways on a phone */
+details.help dl { display: grid; grid-template-columns: fit-content(40%) 1fr; gap: 6px 14px; margin: 12px 0 4px; }
+.terms dt, details.help dt { overflow-wrap: anywhere; }
 details.help dt { font: 600 0.9rem ui-monospace, "SF Mono", Menlo, monospace; } details.help dd { margin: 0; }
 .tally { display: grid; gap: 8px; }
 .tally div { display: grid; grid-template-columns: 7.5em 1fr 2em; align-items: center; gap: 10px; }
@@ -186,7 +191,10 @@ def render(r):
         if not c.get("step"):
             main += 1
         labels.append(c.get("num") or f"Q{main}")
-    tiles = [f'<a class="tile v-{c["verdict"]}" href="#q{i + 1}">{esc(labels[i])}</a>' for i, c in enumerate(cards)]
+    # A card whose topics are all mastered lives in its chapter's mastery file; its tile links there.
+    tiles = [f'<a class="tile v-moved" href="{esc(c["moved_to"])}" title="moved to chapter mastery">{esc(labels[i])} ✓</a>'
+             if c.get("moved_to") else
+             f'<a class="tile v-{c["verdict"]}" href="#q{i + 1}">{esc(labels[i])}</a>' for i, c in enumerate(cards)]
     nxt = main + 1
     if current:
         tiles.append(f'<a class="tile now" href="#now">{esc(current.get("num", f"Q{nxt}"))}</a>')
@@ -199,7 +207,13 @@ def render(r):
     body = []
     if current:
         body.append(open_card(main + 1, current))
-    body.extend(card_html(i + 1, c, labels[i]) for i, c in reversed(list(enumerate(cards))))  # newest first
+    body.extend(card_html(i + 1, c, labels[i]) for i, c in reversed(list(enumerate(cards)))
+                if not c.get("moved_to"))  # newest first
+    pages = sorted({c["moved_to"].split("#")[0] for c in cards if c.get("moved_to")})
+    moved = sum(bool(c.get("moved_to")) for c in cards)
+    moved_note = (f'<p class="status">✓ {moved} card{"s" if moved != 1 else ""} for mastered topics moved to '
+                  + ", ".join(f'<a href="{esc(pg)}">{esc(Path(pg).stem.replace("-", " "))}</a>' for pg in pages)
+                  + '. Everything still here is for review.</p>') if moved else ""
     if len(body) < 2:  # the checker needs two steps
         body.append('<article class="qcard" data-step="2" id="next"><div class="qhead">'
                     '<span class="meta">The next question appears here.</span></div></article>')
@@ -237,6 +251,7 @@ def render(r):
   {context_html(r.get("context"))}
   <nav class="tiles" aria-label="Jump to a question">{"".join(tiles)}</nav>
   <p class="status">{got} correct of {len(mains)} answered · {planned} planned{waiting}. Tap a tile to jump to its card; the newest card is first.</p>
+  {moved_note}
 </header>
 {chr(10).join(ordered)}
 {queue_html(r.get("queue"))}
@@ -256,6 +271,10 @@ def audit(r):
     for i, c in enumerate(r["cards"], 1):
         parts, v = c.get("parts", []), c["verdict"]
         name = c.get("num") or f"card {i}"
+        cores = c.get("cores")
+        if not cores or not all(isinstance(k, int) for k in cores):
+            # the topics a card teaches; mastery.py moves it once they're all covered
+            issues.append(f"{name}: no 'cores' (the Core numbers it covers in its section)")
         if v == "unscored":
             continue  # a teaching card with no grade; its marks are not a verdict
         if not c.get("step") and not c.get("next"):
@@ -282,6 +301,9 @@ def audit(r):
 
 
 def load_round(spec_path):
+    """A Python spec (authoring) or the JSON record a build saved beside its board."""
+    if str(spec_path).endswith(".json"):
+        return json.loads(Path(spec_path).read_text(encoding="utf-8"))
     sys.path.insert(0, os.path.dirname(os.path.abspath(spec_path)))
     spec = importlib.util.spec_from_file_location("round_spec", spec_path)
     if spec is None or spec.loader is None:
@@ -309,7 +331,17 @@ def add_readme_line(work, fname, r):
     readme.write_text(body, encoding="utf-8")
 
 
-def build(r, work=None, out=None):
+def number_cards(r):
+    """Fix each card's label (Q3, Q2 · step 1) so it survives cards moving off the board."""
+    main = 0
+    for c in r["cards"]:
+        if not c.get("step"):
+            main += 1
+        c.setdefault("num", f"Q{main}")
+
+
+def write_board(r, out):
+    """Audit, render, check, and write one board; returns the visible word count."""
     issues = audit(r)
     if issues:
         raise ValueError("board fails its audit:\n  " + "\n  ".join(issues))
@@ -317,6 +349,24 @@ def build(r, work=None, out=None):
     errors, parsed = eli5.check(text, max_words=MAX_WORDS)
     if errors:
         raise ValueError("board fails eli5 check:\n  " + "\n  ".join(errors))
+    out = Path(out)
+    if out.exists() and "competency round" not in out.read_text(encoding="utf-8"):
+        raise ValueError(f"refusing to replace a file that is not a round board: {out}")
+    out.write_text(text, encoding="utf-8")
+    return parsed.words
+
+
+def save_record(r, out):
+    """The round's cards as JSON beside the board: the lasting record mastery.py reads."""
+    rec = copy.deepcopy({k: v for k, v in r.items() if k != "queue"})
+    for c in rec["cards"]:
+        c.pop("moved_to", None)
+    Path(out).with_suffix(".json").write_text(json.dumps(rec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+def build(r, work=None, out=None):
+    r = copy.deepcopy(r)  # numbering the cards must not change the caller's spec
+    number_cards(r)
     if work:
         work = Path(work)
         if not work.is_dir():
@@ -324,13 +374,19 @@ def build(r, work=None, out=None):
         out = work / f"competency-{r['slug']}.html"
     if out is None:
         raise ValueError("give work (course week folder) or out")
-    out = Path(out)
-    if out.exists() and "competency round" not in out.read_text(encoding="utf-8"):
-        raise ValueError(f"refusing to replace a file that is not a round board: {out}")
-    out.write_text(text, encoding="utf-8")
+    words = write_board(r, out)
+    save_record(r, out)
     if work:
-        add_readme_line(work, out.name, r)
-    return out, f"{len(r['cards'])} cards, {parsed.words} visible words"
+        add_readme_line(work, Path(out).name, r)
+    return Path(out), f"{len(r['cards'])} cards, {words} visible words"
+
+
+def attach_queue(r, course):
+    """Read the re-check queue from the tracker so the board can't drift from it."""
+    tracker = Path(course) / "competency-tracker.json"
+    if tracker.is_file():
+        r["queue"] = json.loads(tracker.read_text(encoding="utf-8")).get("queue", [])
+        name_concepts(Path(course), r["queue"])
 
 
 def name_concepts(course, queue):
@@ -348,21 +404,21 @@ def main(argv=None):
     where = ap.add_mutually_exclusive_group(required=True)
     where.add_argument("--work", help="the current week's Work folder")
     where.add_argument("--out", help="output .html path")
-    ap.add_argument("--course", help="course folder; the re-check count is read from its competency tracker")
+    ap.add_argument("--course", help="course folder: reads the re-check queue from its tracker, then runs mastery sync")
     args = ap.parse_args(argv)
     try:
         ep.LABEL_WARNINGS.clear()
         r = load_round(args.spec)
         if args.course:
-            # Read the count from the tracker so the board can't drift from the real queue.
-            tracker = Path(args.course) / "competency-tracker.json"
-            if tracker.is_file():
-                import json
-                r["queue"] = json.loads(tracker.read_text(encoding="utf-8")).get("queue", [])
-                name_concepts(Path(args.course), r["queue"])
+            attach_queue(r, args.course)
         if ep.LABEL_WARNINGS:
             raise ValueError("labels would be clipped:\n  " + "\n  ".join(ep.LABEL_WARNINGS))
         path, summary = build(r, args.work, args.out)
+        if args.course:
+            # Move cards for mastered topics off every board and into the chapter mastery files.
+            import mastery
+            for line in mastery.sync(args.course):
+                print(f"  {line}")
     except (ValueError, KeyError, OSError) as exc:
         print(f"FAIL {exc}")
         return 1

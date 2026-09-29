@@ -49,6 +49,8 @@ ROUND = dict(
     current=dict(num="Q2 · step 1", meta="1.2 · breaking it down", ask="<p>…full question…</p>"),
     cards=[dict(
         section="1.2", concept="Naming a sampling method", lens="contrast",
+        cores=[4],                              # Core numbers it teaches; it moves to the chapter
+                                                # mastery file once they're all covered
         verdict="missed",                       # correct | partial | missed
         ask="<p>…the question exactly as asked…</p><ul><li>…options…</li></ul>",
         parts=[("Plan A", "", "stratified: some from every server", False), …],
@@ -62,7 +64,10 @@ ROUND = dict(
 ```
 
 Append a card after each answer, update `current` to the next question, and
-rebuild. The board is a local file in the week's Work folder; it opens offline.
+rebuild. Every card, breakdown steps included, needs `cores`; the builder
+refuses one without it. A card that teaches several topics (a compute item
+covering class width, limits and midpoint) lists them all and moves only when
+every one is covered. The board is a local file in the week's Work folder; it opens offline.
 Set `wide=True` on a card whose picture is wide (a whole taxonomy) so the
 picture spans the card above the text instead of shrinking beside it.
 

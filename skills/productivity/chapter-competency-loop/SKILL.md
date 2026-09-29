@@ -150,7 +150,17 @@ Read [references/lenses.md](references/lenses.md) before the first question.
 
    The board is a local HTML file in the week's Work folder, so study
    material stays offline and outside any one app. Don't publish it as a
-   hosted page unless the learner asks.
+   hosted page unless the learner asks. Each build also saves the round's
+   cards as JSON beside the board; that record, not the scratch spec, is
+   what later sessions rebuild from (`round_board.py <record>.json`).
+
+   With `--course`, every build then runs the **mastery sync**: cards whose
+   topics (`cores=[...]`, Core numbers in the card's section) are all
+   `covered` move off the round boards into
+   `<course>/Mastery/chapter-NN-mastery.html`, grouped by section and topic.
+   Their tiles link there. Everything still on a board is for review, and
+   a topic that loses coverage goes back to its board. Run
+   `mastery.py sync --course <course>` on its own after a log fix.
 5. **On `partial` or `missed`:** name what's right, the first thing that went
    wrong, and the fix in a sentence or two. Offer the ELI5 page if one covers
    it. If it's still shaky, hand the concept to `teach-complex-concepts` for
@@ -160,9 +170,9 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    **bug hunt**, not another question like the one it passed. `covered`
    concepts are never asked again, so the outstanding list shrinks and the
    round moves on to other topics.
-7. **Close the round** with a short summary: what's newly covered, what's
-   fragile, how many concepts are still outstanding per chapter, and the
-   single weakest concept. Don't restate every
+7. **Close the round** with a short summary: what's newly covered (and
+   moved to its chapter mastery file), what's fragile, how many concepts are
+   still outstanding per chapter, and the single weakest concept. Don't restate every
    question.
 
 ## Help menu

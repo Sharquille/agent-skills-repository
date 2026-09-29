@@ -10,7 +10,7 @@ CARD = dict(section="1.1", concept="Levels", lens="real-world map", verdict="cor
             ask="<p>Which level is each variable?</p>",
             parts=[("OS", "nominal", "nominal", True), ("Extra: Temp", "ratio", "interval", False)],
             why="Names only; Celsius has no true zero.", remember="Name what each level adds.",
-            next="Core 7 · error hunt (harder), after 3 other questions")
+            next="Core 7 · error hunt (harder), after 3 other questions", cores=[7])
 
 
 MISSED = dict(CARD, verdict="missed", parts=[("Which uses chance?", "", "(b)", False)])
@@ -118,6 +118,14 @@ class RoundBoardTest(unittest.TestCase):
         self.assertIn("ready now", text)
         self.assertIn("after 2 more questions", text)
         self.assertIn("Comes back as:</b> Core 7 · error hunt", text)
+
+    def test_every_card_names_its_topics_and_the_record_is_saved(self):
+        bare = {k: v for k, v in CARD.items() if k != "cores"}
+        self.assertEqual(rb.audit(round_([bare])), ["card 1: no 'cores' (the Core numbers it covers in its section)"])
+        out, _ = rb.build(round_([CARD, dict(MISSED, step=True)]), work=self.work)
+        rec = rb.load_round(out.with_suffix(".json"))
+        self.assertEqual([c["num"] for c in rec["cards"]], ["Q1", "Q1"])  # labels fixed at build time
+        self.assertEqual(rb.build(rec, out=out)[0], out)  # a board rebuilds from its record alone
 
     def test_every_scored_card_says_how_it_comes_back(self):
         bare = {k: v for k, v in CARD.items() if k != "next"}
