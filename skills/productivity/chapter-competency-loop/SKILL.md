@@ -81,9 +81,14 @@ SKILL_DIR=/Users/sharquilleandrew/Documents/development/github-local/agent-skill
    python3 "$SKILL_DIR/scripts/competency.py" scope --kit "<term>/<COURSE>/Chapter-Kits" --chapters 1-3
    ```
 
-   It lists each section's concepts (numbered Core headings) with a status of
-   `unassessed`, `fragile`, `developing`, or `secure`, the next review due,
-   and the ELI5 pages that cover the section.
+   It opens with coverage by chapter (concepts checked, and how many are
+   secure, developing, fragile, or not yet checked), then lists each section's
+   concepts (numbered Core headings) with a status of `unassessed`,
+   `fragile`, `developing`, or `secure`, the **lenses tried** with their
+   results, the **next check** that concept needs, the next review due, and
+   the ELI5 pages that cover the section. Run it at the start of every
+   session and before each round, and pick questions from it; the study logs
+   are the record, not memory of an earlier chat.
 2. **Read before asking.** For each section in scope, read the Core notes and
    the ledger's Earned list. Read `Practice.md` too, so loop questions don't
    duplicate its items.
@@ -119,6 +124,14 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    `Item` is `Core N · lens`. `Next review` names a date and a *different*
    lens for the same concept. Use 1 day after a miss, 3 after a partial or a
    first correct, 7 after a second correct.
+
+   `log` also queues the follow-up that answer earns (see Adaptive checks),
+   using the lens from `Next review`: correct → one harder re-check, partial →
+   one at the same level, missed → two twins. A correct answer is never just
+   checked off; it comes back as an error hunt, stress test, or contrast. Pass
+   `--answers <queue id>` when the question was a queued re-check, so it is
+   closed; `--kind same` for a hedged correct. Breakdown steps and unscored
+   checks queue nothing. Put the same follow-up on the card as `next=`.
 4. **Teach on every answer, right or wrong.** After grading, add a card to the
    round board: the question exactly as asked, the learner's answer mapped
    part by part to the correct answer, *how to get it* with a picture, and
@@ -133,7 +146,7 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    mark on the board misleads exactly the learner who is unsure.
 
    ```sh
-   python3 "$SKILL_DIR/scripts/round_board.py" "$SCRATCH/<round>.py" --work "<course>/Week-XX_*/Work"
+   python3 "$SKILL_DIR/scripts/round_board.py" "$SCRATCH/<round>.py" --work "<course>/Week-XX_*/Work" --course "<course>"
    ```
 
    The board is a local HTML file in the week's Work folder, so study
@@ -143,9 +156,13 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    wrong, and the fix in a sentence or two. Offer the ELI5 page if one covers
    it. If it's still shaky, hand the concept to `teach-complex-concepts` for
    a short teaching turn, then re-check with a new lens and a new scenario.
-6. **Deepen.** For `developing` concepts, use the depth lenses (why it
-   matters, anatomy, stress test, contrast). Save **teach-back** for concepts
-   that are close to secure.
+6. **Check retention, don't repeat.** A concept the learner has answered
+   right is never re-asked with a lens they already passed. Follow the scope's
+   **next check**: `developing` concepts get a retention check (a bug hunt
+   first, meaning an error hunt with a planted mistake to find and fix, then
+   stress test, contrast, and teach-back last). `secure` concepts aren't asked
+   before their review date, and then only as a retention check. Spend the
+   round's questions on `unassessed` and `fragile` concepts first.
 7. **Close the round** with a short summary: what's secure, what's fragile,
    the single weakest concept, and when each is due next. Don't restate every
    question.
@@ -169,10 +186,10 @@ file locations) are proposals: state the exact change and wait for a yes.
 | `fix log …` | correct a logged result (confirm first; never edit silently) |
 | `end round` | close the round with its summary |
 
-The re-check queue lives in the tracker:
-`competency.py queue add --course … --section 1.2 --core 4 --kind twin --count 2`
-after a miss; `queue tick` after each question asked; `queue due` to see which
-twins have waited long enough; `queue done --id N` once asked.
+The re-check queue lives in the tracker. `log` adds and closes entries (see
+Live loop, step 3); run `queue tick` after each question asked and `queue due`
+to see which re-checks have waited long enough. `queue add` and `queue done`
+are for manual fixes only.
 
 ## Adaptive checks
 
@@ -200,6 +217,13 @@ step leans on ("chance," "group," "interval," "deviation") and define each in
 plain words, from the kit's Core notes, before using it. If a step depends on
 an idea the learner hasn't shown, check that idea first with a tiny step 0.
 On the board, put these in the card's "Words used here" box.
+
+**Two misses in a row on one concept, move on.** If a breakdown step also
+gets "idk" or a blank, stop drilling that concept: show the step fully worked
+on its card, keep its twins queued, and switch to a *different* concept. The
+missed concept comes back from the queue once its spacing is met. Don't offer
+to pause as the fix; switching concepts is the change of gears, and the
+learner can still type `pause` or `end round`.
 
 **Space the re-checks.** Queue every twin behind other questions: at least
 **3** other questions later in the round, or at the start of the next round if

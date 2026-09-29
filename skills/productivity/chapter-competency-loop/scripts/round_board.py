@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Build a competency round board: one question card per answered question.
 
-  round_board.py SPEC.py --work <course>/Week-XX_*/Work
-  round_board.py SPEC.py --out FILE
+  round_board.py SPEC.py --work <course>/Week-XX_*/Work [--course <course dir>]
+  round_board.py SPEC.py --out FILE [--course <course dir>]
 
 Each card reads top to bottom: the question exactly as asked, the learner's
 answer mapped part by part to the correct answer, the reasoning with a picture,
@@ -15,6 +15,7 @@ import argparse
 import html
 import importlib.util
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -24,7 +25,8 @@ sys.path.insert(0, str(ELI5))
 import eli5  # noqa: E402
 import eli5_page as ep  # noqa: E402
 
-VERDICT = {"correct": "Correct", "partial": "Partly right", "missed": "Not yet"}
+VERDICT = {"correct": "Correct", "partial": "Partly right", "missed": "Not yet",
+           "unscored": "Not scored"}  # unscored: the question's wording was at fault; teach only
 MAX_WORDS = 8000  # a board holds a whole round: questions, breakdown steps, and twins
 README_HEADING = "## Competency rounds\n"
 
@@ -36,6 +38,7 @@ CSS = ep.CSS + """
 .tile.v-correct { background: var(--c3); border-color: var(--c3); color: var(--surface); }
 .tile.v-partial { background: var(--c5); border-color: var(--c5); color: var(--surface); }
 .tile.v-missed { background: var(--c4); border-color: var(--c4); color: var(--surface); }
+.tile.v-unscored { background: var(--bg); color: var(--muted); border-style: dotted; }
 .tile.now { border: 2px dashed var(--c1); color: var(--c1); }
 .tile:focus-visible { outline: 3px solid var(--c1); outline-offset: 2px; }
 .status { color: var(--muted); font-size: 0.95rem; }
@@ -43,6 +46,7 @@ CSS = ep.CSS + """
   border-radius: 14px; padding: 18px 20px; display: grid; gap: 14px; scroll-margin-top: 80px; }
 .qcard.v-correct { --v: var(--c3); } .qcard.v-partial { --v: var(--c5); } .qcard.v-missed { --v: var(--c4); }
 .qcard.open { --v: var(--c1); border-style: dashed; border-top-style: solid; }
+.qcard.v-unscored { --v: var(--muted); }
 .qcard.is-current { box-shadow: 0 0 0 3px var(--v); }
 .qhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
 .qnum { font: 800 1.1rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--v); }
@@ -54,6 +58,9 @@ CSS = ep.CSS + """
 .ask ul { margin: 6px 0 0; padding-left: 1.2em; }
 .ask p + p, .ask p + ul { margin-top: 6px; }
 .map .tablewrap { overflow-x: auto; }
+.next { margin-top: 10px; color: var(--muted); }
+.coming { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; }
+.coming ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
 .map table { border-collapse: collapse; width: 100%; min-width: 300px; font-variant-numeric: tabular-nums; }
 .map th, .map td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .map th { font-weight: 600; color: var(--muted); font-size: 0.85rem; }
@@ -89,14 +96,34 @@ HELP = [("help", "show this menu in chat"), ("status", "tracker and each concept
         ("fix log …", "correct a logged result (confirmed first)"), ("end round", "close with the summary")]
 
 
+KIND = {"harder": "harder", "same": "same level", "twin": "new scenario"}
+
+
+def queue_html(queue):
+    """Every re-check waiting in the tracker, so a correct answer visibly comes back too."""
+    if not queue:
+        return ""
+    rows = []
+    for i in queue:
+        left = i["gap"] - i["since"]
+        when = "ready now" if left <= 0 else f"after {left} more question{'s' if left != 1 else ''}"
+        what = i.get("lens") or "re-check"
+        due = f" · review by {i['due']}" if i.get("due") else ""
+        title = f" {esc(i['title'])}" if i.get("title") else ""
+        rows.append(f"<li><b>{esc(i['section'])} Core {i['core']}{title}</b> · {esc(what)} "
+                    f"<span class=\"meta\">({KIND.get(i['kind'], i['kind'])}, {when}{esc(due)})</span></li>")
+    return (f'<section class="coming"><div class="label">Coming back ({len(queue)})</div>'
+            f'<ul>{"".join(rows)}</ul></section>')
+
+
 def esc(t):
     return html.escape(t, quote=False)
 
 
-def mapping(parts):
+def mapping(parts, graded=True):
     rows = []
     for label, yours, correct, ok in parts:
-        cls, mark = ("ok", "✓") if ok else ("no", "✗")
+        cls, mark = (("ok", "✓") if ok else ("no", "✗")) if graded else ("", "")
         rows.append(f'<tr class="{cls}"><td>{esc(label)}</td><td class="yours">{esc(yours or "—")}</td>'
                     f'<td class="correct">{esc(correct)}</td><td class="mark" aria-label="{"right" if ok else "wrong"}">{mark}</td></tr>')
     return ('<div class="map"><div class="label">Your answer → correct answer</div><div class="tablewrap"><table>'
@@ -115,16 +142,21 @@ def card_html(n, c, label):
     v = c["verdict"]
     meta = f"{esc(c['section'])} · {esc(c['concept'])} · {esc(c['lens'])}"
     pic = c.get("svg", "")
-    wide = " wide" if c.get("wide") or not pic else ""  # wide: picture above the text, full card width
+    # wide: picture above the text at full card width. Only for genuinely wide drawings
+    # (viewBox wider than 420); a normal 360-wide picture stretched full width looks giant.
+    vb = re.search(r'viewBox="0 0 ([\d.]+) ', pic or "")
+    is_wide = bool(vb) and float(vb.group(1)) > 420
+    wide = " wide" if (c.get("wide") and is_wide) or not pic else ""
     explain = f'<div class="explain{wide}"><div>{pic}</div>'
     return (f'<article class="qcard v-{v}" id="q{n}" data-step="{n}">'
             f'<div class="qhead"><span class="qnum">{esc(label)}</span><span class="meta">{meta}</span>'
             f'<span class="verdict">{VERDICT[v]}</span></div>'
             f'<div class="ask"><div class="label">Question, as asked</div>{c["ask"]}</div>'
-            + mapping(c["parts"]) + terms_html(c.get("terms")) +
+            + mapping(c["parts"], graded=v != "unscored") + terms_html(c.get("terms")) +
             f'{explain}<div><div class="label">How to get it</div><p>{c["why"]}</p>'
-            f'<div class="remember"><b>Remember:</b> {c["remember"]}</div></div></div>'
-            '</article>')
+            f'<div class="remember"><b>Remember:</b> {c["remember"]}</div>'
+            + (f'<p class="next"><b>Comes back as:</b> {esc(c["next"])}</p>' if c.get("next") else "")
+            + '</div></div></article>')
 
 
 def open_card(n, current):
@@ -146,7 +178,7 @@ def context_html(ctx):
 def render(r):
     cards = r["cards"]
     planned = r.get("planned", len(cards))
-    queued = r.get("queued", 0)
+    queued = len(r["queue"]) if "queue" in r else r.get("queued", 0)
     current = r.get("current")
     # Breakdown steps (step=True) get their own tiles and cards but don't count as questions.
     labels, main = [], 0
@@ -176,6 +208,7 @@ def render(r):
     for k, block in enumerate(body, 1):
         ordered.append(block.replace('data-step="', f'data-step="{k}" data-q="', 1))
     tally = []
+    mains = [c for c in mains if c["verdict"] != "unscored"]
     for v, k in (("correct", "c3"), ("partial", "c5"), ("missed", "c4")):
         n = sum(c["verdict"] == v for c in mains)
         pct = 0 if not mains else 100 * n / len(mains)
@@ -206,6 +239,7 @@ def render(r):
   <p class="status">{got} correct of {len(mains)} answered · {planned} planned{waiting}. Tap a tile to jump to its card; the newest card is first.</p>
 </header>
 {chr(10).join(ordered)}
+{queue_html(r.get("queue"))}
 <details class="help"><summary>Help menu: type any of these in chat</summary><dl>{"".join(f"<dt>{esc(k)}</dt><dd>{esc(v)}</dd>" for k, v in HELP)}</dl></details>
 <section class="recap"><span class="tag">Round tally</span><div class="tally">{"".join(tally)}</div></section>
 <footer><span>Questions come from the {esc(r['course'])} kit's Core notes for {esc(r['scope'])}. Every result is logged in that section's study-log.md.</span></footer>
@@ -222,6 +256,11 @@ def audit(r):
     for i, c in enumerate(r["cards"], 1):
         parts, v = c.get("parts", []), c["verdict"]
         name = c.get("num") or f"card {i}"
+        if v == "unscored":
+            continue  # a teaching card with no grade; its marks are not a verdict
+        if not c.get("step") and not c.get("next"):
+            # every scored answer, right or wrong, comes back as a re-check
+            issues.append(f"{name}: no 'next' (the re-check it comes back as)")
         if not parts:
             issues.append(f"{name}: no answer rows")
             continue
@@ -273,7 +312,7 @@ def add_readme_line(work, fname, r):
 def build(r, work=None, out=None):
     issues = audit(r)
     if issues:
-        raise ValueError("board marks contradict their verdicts:\n  " + "\n  ".join(issues))
+        raise ValueError("board fails its audit:\n  " + "\n  ".join(issues))
     text = render(r)
     errors, parsed = eli5.check(text, max_words=MAX_WORDS)
     if errors:
@@ -294,16 +333,33 @@ def build(r, work=None, out=None):
     return out, f"{len(r['cards'])} cards, {parsed.words} visible words"
 
 
+def name_concepts(course, queue):
+    """Give each queued re-check its Core heading, so the board names the idea, not just a number."""
+    import competency
+    for i in queue:
+        found = list((course / "Chapter-Kits").glob(f"Chapter-*/{i.get('section')}"))
+        if found:
+            i["title"] = dict(competency.core_concepts(found[0])).get(i.get("core"), "")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build a competency round board.")
     ap.add_argument("spec")
     where = ap.add_mutually_exclusive_group(required=True)
     where.add_argument("--work", help="the current week's Work folder")
     where.add_argument("--out", help="output .html path")
+    ap.add_argument("--course", help="course folder; the re-check count is read from its competency tracker")
     args = ap.parse_args(argv)
     try:
         ep.LABEL_WARNINGS.clear()
         r = load_round(args.spec)
+        if args.course:
+            # Read the count from the tracker so the board can't drift from the real queue.
+            tracker = Path(args.course) / "competency-tracker.json"
+            if tracker.is_file():
+                import json
+                r["queue"] = json.loads(tracker.read_text(encoding="utf-8")).get("queue", [])
+                name_concepts(Path(args.course), r["queue"])
         if ep.LABEL_WARNINGS:
             raise ValueError("labels would be clipped:\n  " + "\n  ".join(ep.LABEL_WARNINGS))
         path, summary = build(r, args.work, args.out)

@@ -24,8 +24,14 @@ correct one, and the reasoning, without switching back to chat.
 
 The open question (or breakdown step) sits at the top as a dashed card, so the
 learner can read it on the board and answer in chat. Progress tiles link to
-each card; the newest answered card comes first. Re-checks waiting in the queue
-show only as a count, never by name.
+each card; the newest answered card comes first.
+
+Every scored card ends with **Comes back as** (`next=`): the re-check that
+answer earned, such as "Core 7 · error hunt (harder), after 3 other
+questions". Correct answers get one too; the builder refuses a scored card
+without it. With `--course`, a **Coming back** panel lists every re-check
+waiting in the tracker by concept and lens, with when each is ready. It never
+shows the upcoming question itself.
 
 ## Spec
 
@@ -37,7 +43,7 @@ from eli5_page import svg, box, text, arrow
 
 ROUND = dict(
     course="MA-235", scope="Chapters 1–3", date="2026-09-27", number=1, planned=8,
-    queued=3,                                   # re-checks waiting; shown as a count only
+    # --course reads the re-check queue from the tracker; `queued` is only a fallback count
     slug="ma235-ch1-3-2026-09-27-r1",           # fixed for the round
     current=dict(num="Q2 · step 1", meta="1.2 · breaking it down", ask="<p>…full question…</p>"),
     cards=[dict(
@@ -48,6 +54,7 @@ ROUND = dict(
         terms=[("chance", "a random process picks, not a person"), …],
         why="…the reasoning; <b> allowed…",
         remember="…one line…",
+        next="Core 4 · real-world map twin ×2 (new scenarios), after 3 other questions",  # the queued re-check
         svg=svg(...),                           # the picture of the reasoning
     )],
 )

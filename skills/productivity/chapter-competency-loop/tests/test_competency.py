@@ -110,6 +110,40 @@ class CompetencyTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             c.log_attempt(self.kit, "Core 2", "correct", "r", "n")
 
+    def test_scope_shows_lenses_tried_and_the_next_check(self):
+        c.log_attempt(self.s11, "Core 2 · real-world map", "correct", "r", "2026-10-01, Core 2 · error hunt", "2026-09-27")
+        core2 = next(k for k in c.scope(self.kit, sections={"1.1"})[0]["concepts"] if k["core"] == 2)
+        self.assertEqual(core2["tried"], "real-world map ✓")
+        self.assertTrue(core2["check"].startswith("retention: error hunt"))
+        c.log_attempt(self.s11, "Core 2 · error hunt twin", "correct", "r", "2026-10-05, Core 2 · contrast", "2026-09-29")
+        core2 = next(k for k in c.scope(self.kit, sections={"1.1"})[0]["concepts"] if k["core"] == 2)
+        self.assertTrue(core2["check"].startswith("retention: stress test"))  # never the passed error hunt again
+        c.log_attempt(self.s11, "Core 2 · stress test", "correct", "r", "2026-10-09, Core 2 · teach-back", "2026-10-02")
+        rows = [r for r in c.read_log(self.s11) if "Core 2" in r["item"]]
+        self.assertEqual(c.next_check(rows, today="2026-10-03"), "secure: don't ask before 2026-10-09, then retention contrast")
+        text = c.render(c.scope(self.kit, chapters={1, 2}))
+        self.assertIn("- Chapter 1: 2 concepts · 1 checked (1 secure, 0 developing, 0 fragile) · 1 not yet checked", text)
+
+    def test_every_scored_answer_queues_its_follow_up(self):
+        course = self.kit.parent
+        new = c.follow_up(self.s11, "Core 2 · compute", "correct", "2026-10-01, Core 2 · error hunt")
+        self.assertEqual([(i["kind"], i["lens"], i["due"]) for i in new], [("harder", "error hunt", "2026-10-01")])
+        self.assertEqual(len(c.follow_up(self.s11, "Core 1 · contrast", "missed", "2026-09-30, Core 1 · twin")), 2)
+        self.assertEqual(c.follow_up(self.s11, "Core 1 · step 1 breakdown", "partial", "2026-09-30, Core 1 · twin"), [])
+        hedged = c.follow_up(self.s11, "Core 2 · predict", "correct", "2026-10-01, Core 2 · anatomy", kind="same")
+        self.assertEqual(hedged[0]["kind"], "same")
+        # answering a queued re-check closes it
+        c.follow_up(self.s11, "Core 2 · error hunt twin", "partial", "2026-10-02, Core 2 · contrast", answers=new[0]["id"])
+        ids = [i["id"] for i in c.load_tracker(course)["queue"]]
+        self.assertNotIn(new[0]["id"], ids)
+        self.assertEqual(c.follow_up(self.kit, "Core 2 · compute", "correct", "x"), [])  # not a section
+
+    def test_secure_concepts_stop_coming_back(self):
+        for day in ("2026-09-27", "2026-09-29", "2026-10-02"):
+            lens = "compute" if day != "2026-10-02" else "contrast"
+            c.log_attempt(self.s11, f"Core 2 · {lens}", "correct", "r", "2026-10-09, Core 2 · teach-back", day)
+        self.assertEqual(c.follow_up(self.s11, "Core 2 · contrast", "correct", "2026-10-09, Core 2 · teach-back"), [])
+
     def make_weeks(self):
         course = self.kit.parent
         for name in ("Week-03_2026-09-21_to_2026-09-27", "Week-04_2026-09-28_to_2026-10-04",

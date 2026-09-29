@@ -22,6 +22,14 @@ thing:
   new observations; they don't rewrite old ones. If a question needs a
   replacement, call it a correction ("the 29 was a typo for 180").
 - **Give every number a unit and a count.** "7 checks, in ms."
+- **When you bridge from an earlier concept, name the difference.** Reusing a
+  familiar test ("who decides?") for a new job without saying so makes the new
+  question look like the old one. Random *selection* (who gets into the study)
+  and random *assignment* (who gets the treatment) both use chance for
+  different jobs; say which one the question is about.
+- **A miss caused by the question's wording isn't scored.** Keep the row as
+  history, but label its Item without a `Core N` so it doesn't count toward
+  the concept's status, and say why in the reason.
 
 ## Lenses for every concept
 

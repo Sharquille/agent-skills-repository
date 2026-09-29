@@ -9,7 +9,8 @@ import round_board as rb  # noqa: E402
 CARD = dict(section="1.1", concept="Levels", lens="real-world map", verdict="correct",
             ask="<p>Which level is each variable?</p>",
             parts=[("OS", "nominal", "nominal", True), ("Extra: Temp", "ratio", "interval", False)],
-            why="Names only; Celsius has no true zero.", remember="Name what each level adds.")
+            why="Names only; Celsius has no true zero.", remember="Name what each level adds.",
+            next="Core 7 · error hunt (harder), after 3 other questions")
 
 
 MISSED = dict(CARD, verdict="missed", parts=[("Which uses chance?", "", "(b)", False)])
@@ -30,7 +31,9 @@ class RoundBoardTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_card_shows_the_full_question_and_maps_each_part(self):
-        out, _ = rb.build(round_([CARD, dict(CARD, wide=True)]), work=self.work)
+        big = rb.ep.svg("", "wide picture", "0 0 640 200")
+        small = rb.ep.svg("", "normal picture", "0 0 360 200")
+        out, _ = rb.build(round_([dict(CARD, wide=True, svg=small), dict(CARD, wide=True, svg=big)]), work=self.work)
         text = out.read_text()
         self.assertIn("Question, as asked", text)
         self.assertIn("<p>Which level is each variable?</p>", text)
@@ -38,7 +41,7 @@ class RoundBoardTest(unittest.TestCase):
         self.assertIn('<tr class="no"><td>Extra: Temp</td><td class="yours">ratio</td><td class="correct">interval</td>', text)
         self.assertEqual(rb.eli5.check(text, max_words=rb.MAX_WORDS)[0], [])
         self.assertIn("## Competency rounds", (self.work / "README.md").read_text())
-        self.assertIn('class="explain wide"', text)
+        self.assertEqual(text.count('class="explain wide"'), 1)  # only the genuinely wide picture spans the card
 
     def test_open_question_sits_first_and_tiles_link_to_cards(self):
         missed = dict(MISSED, concept="Sampling")
@@ -97,6 +100,39 @@ class RoundBoardTest(unittest.TestCase):
                 self.assertIn(message, str(ctx.exception))
         ok = dict(CARD, parts=[("OS", "nominal", "nominal", True), ("Extra: note", "x", "y", False)])
         self.assertEqual(rb.audit(round_([ok])), [])
+
+    def test_queued_count_comes_from_the_tracker(self):
+        import json
+        course = Path(self.tmp.name) / "MA-235"
+        course.mkdir()
+        queue = [dict(id=i, section="1.1", core=7, kind="harder", gap=3, since=i % 5, lens="error hunt", due="2026-10-02")
+                 for i in range(13)]
+        (course / "competency-tracker.json").write_text(json.dumps({"queue": queue}))
+        spec = Path(self.tmp.name) / "spec.py"
+        spec.write_text("CARD = " + repr(CARD) + "\nROUND = dict(course='MA-235', scope='Ch 1-3', date='2026-09-29', number=2, "
+                        "planned=8, queued=9, slug='t-r2', cards=[CARD, CARD])\n")
+        self.assertEqual(rb.main([str(spec), "--work", str(self.work), "--course", str(course)]), 0)
+        text = (self.work / "competency-t-r2.html").read_text()
+        self.assertIn("13 re-checks coming later", text)
+        self.assertIn("Coming back (13)", text)
+        self.assertIn("ready now", text)
+        self.assertIn("after 2 more questions", text)
+        self.assertIn("Comes back as:</b> Core 7 · error hunt", text)
+
+    def test_every_scored_card_says_how_it_comes_back(self):
+        bare = {k: v for k, v in CARD.items() if k != "next"}
+        self.assertEqual(rb.audit(round_([bare])), ["card 1: no 'next' (the re-check it comes back as)"])
+        step = dict(bare, step=True, num="Q1 · step 1")
+        self.assertEqual(rb.audit(round_([step])), [])
+
+    def test_unscored_card_teaches_without_a_grade(self):
+        unscored = dict(MISSED, verdict="unscored", step=True, num="Q1 · step 1")
+        out, _ = rb.build(round_([CARD, unscored]), work=self.work)
+        text = out.read_text()
+        self.assertIn("Not scored", text)
+        card = text[text.index('Q1 · step 1</span>'):]
+        self.assertNotIn("✗", card.split("</article>")[0])
+        self.assertIn("1 correct of 1 answered", text)
 
     def test_refuses_to_overwrite_a_non_board_file(self):
         target = self.work / "competency-t-r1.html"
