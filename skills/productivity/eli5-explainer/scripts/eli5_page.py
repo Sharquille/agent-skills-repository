@@ -68,7 +68,17 @@ def person(x, y, w=40, h=90, cls="k0"):
     return f'<use href="#person" x="{x}" y="{y}" width="{w}" height="{h}" class="{cls}"/>'
 
 
+TEXT_RE = re.compile(r'<text x="([-\d.]+)" y="[-\d.]+"(?: class="([^"]*)")?(?: text-anchor="(\w+)")?[^>]*>([^<]*)</text>')
+
+
 def svg(inner, label, vb="0 0 360 230"):
+    # Free-standing labels that would run past the picture's left or right edge get clipped.
+    width = float(vb.split()[2])
+    for x, cls, anchor, content in TEXT_RE.findall(inner):
+        w = len(html.unescape(content)) * (6.0 if "sm" in (cls or "").split() else 7.2)
+        left = float(x) - (w if anchor == "end" else w / 2 if anchor == "middle" else 0)
+        if left < -2 or left + w > width + 2:
+            LABEL_WARNINGS.append(f"label '{html.unescape(content)}' runs past the picture's edge (x {left:.0f} to {left + w:.0f}, width {width:.0f})")
     return (f'<svg class="fig" viewBox="{vb}" role="img" aria-label="{html.escape(label)}">'
             f'{inner}</svg>')
 

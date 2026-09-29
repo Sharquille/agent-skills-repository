@@ -68,18 +68,19 @@ def _place(n, left, depth, ys):
 
 
 def _bottom(n):
-    return max([n["_y"] + n["_h"]] + [_bottom(c) for c in n.get("children", [])])
+    """Lowest drawn point of a subtree, including band padding and bottom captions."""
+    low = max([n["_y"] + n["_h"]] + [_bottom(c) for c in n.get("children", [])])
+    return low + PAD + CAPTION if n.get("band") else low
 
 
-def _draw(n, bands, edges, nodes, parent_cx=None):
+def _draw(n, bands, edges, nodes):
     if n.get("band"):
-        top = n["_y"] - CAPTION - 8
-        # Put the caption on the side away from the incoming edge so the edge never crosses it.
-        left_side = parent_cx is None or parent_cx >= n["_cx"]
-        cap_x = n["_left"] + 10 if left_side else n["_right"] - 10
+        top = n["_y"] - 16
+        bottom = _bottom(n)
+        # Captions sit at the band's bottom: edges only ever enter a band from the top.
         bands.append(f'<rect class="soft {n.get("band_cls", "k1")}" x="{n["_left"]:.1f}" y="{top:.1f}" '
-                     f'width="{n["_sw"]:.1f}" height="{_bottom(n) + PAD - top:.1f}" rx="12"/>'
-                     + text(round(cap_x, 1), round(top + 15, 1), n["band"], "sm", "start" if left_side else "end"))
+                     f'width="{n["_sw"]:.1f}" height="{bottom - top:.1f}" rx="12"/>'
+                     + text(round(n["_left"] + 10, 1), round(bottom - 7, 1), n["band"], "sm", "start"))
     nodes.append(box(round(n["_x"], 1), n["_y"], n["_w"], n["_h"], n["text"], n.get("cls", "card"), n.get("tcls", "")))
     for c in n.get("children", []):
         x1, y1 = round(n["_cx"], 1), n["_y"] + n["_h"]
@@ -89,7 +90,7 @@ def _draw(n, bands, edges, nodes, parent_cx=None):
             mx, my = (x1 + x2) / 2, (y1 + y2) / 2
             side = "start" if x2 >= x1 else "end"
             edges.append(text(round(mx + (6 if side == "start" else -6), 1), round(my, 1), c["edge"], "sm", side))
-        _draw(c, bands, edges, nodes, n["_cx"])
+        _draw(c, bands, edges, nodes)
 
 
 def tree(root, label, gap_x=18, gap_y=48, margin=8):
@@ -106,5 +107,5 @@ def tree(root, label, gap_x=18, gap_y=48, margin=8):
     bands, edges, nodes = [], [], []
     _draw(root, bands, edges, nodes)
     width = root["_sw"] + 2 * margin
-    height = _bottom(root) + PAD + margin + 4
+    height = _bottom(root) + margin + 4
     return svg("".join(bands + edges + nodes), label, f"0 0 {width:.0f} {height:.0f}")

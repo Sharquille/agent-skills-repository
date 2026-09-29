@@ -21,5 +21,19 @@ class LabelFitTest(unittest.TestCase):
         self.assertEqual(ep.LABEL_WARNINGS, [])
 
 
+class EdgeFitTest(unittest.TestCase):
+    def setUp(self):
+        ep.LABEL_WARNINGS.clear()
+
+    def test_label_past_the_left_edge_is_reported(self):
+        ep.svg(ep.text(36, 20, "median still 25", "sm", "end"), "a picture")
+        self.assertEqual(len(ep.LABEL_WARNINGS), 1)
+        self.assertIn("runs past the picture's edge", ep.LABEL_WARNINGS[0])
+
+    def test_labels_inside_the_frame_pass(self):
+        ep.svg(ep.text(180, 20, "centered caption", "sm") + ep.text(10, 40, "left label", "sm", "start"), "a picture")
+        self.assertEqual(ep.LABEL_WARNINGS, [])
+
+
 if __name__ == "__main__":
     unittest.main()
