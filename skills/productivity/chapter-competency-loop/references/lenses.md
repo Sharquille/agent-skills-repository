@@ -41,6 +41,7 @@ thing:
 | **real-world map** | apply it to a new situation and make the call | "You test a new firewall rule on 10 servers you picked yourself. What's wrong with calling that an experiment?" |
 | **contrast** | separate it from its nearest neighbor by the deciding feature | "Stratified or cluster: you sample some hosts from every subnet. Which, and what tells you?" |
 | **error hunt** | find and fix a wrong claim or step | "A report says 'median latency rose because of one 900 ms spike.' What's wrong?" |
+| **bug hunt** | the mastery check after competency: an error hunt in a new scenario with one planted mistake that hits the concept's deciding feature; the learner finds it, fixes it, and says why | "A dashboard labels ports-open counts as ordinal and cert expiry years as ratio. Which label is wrong, what's the fix, and what decides it?" |
 | **predict** | say what happens when one thing changes, before computing | "One ping jumps to 400 ms. Which moves more, the mean or the median, and why?" |
 | **teach-back** | explain it to a beginner without jargon (use last, as the transfer check) | "Explain standard deviation to a manager who just wants to know if the network is stable." |
 
@@ -72,12 +73,13 @@ recall with a calculator.
   then queue **two** twins at least 3 questions later: same logic, different
   scenarios. Repeating the same stem, numbers, or picture tests memory of the
   card, not understanding.
-- **Twin after a confident correct answer:** harder, with the same deciding
-  cues. Add a step, a distractor, or a depth lens; keep the decision the same.
-- **Developing concepts:** push toward **why it matters**, **anatomy**, **stress
-  test**, or **contrast**, the lenses that show depth.
-- **Near-secure concepts:** finish with **teach-back** or a **real-world map**
-  in a field the learner hasn't seen yet.
+- **After a partial:** one twin at the same difficulty, with a lens the
+  learner hasn't passed yet (the scope's next check lists the passed ones).
+- **After competency is shown:** a **bug hunt**. Plant one mistake that hits
+  the concept's deciding feature, surround it with correct details, and never
+  reuse a scenario or numbers the learner has already seen. A missed bug hunt
+  owes two more, each in a new scenario; don't reuse the planted mistake.
+- **Covered concepts:** don't ask them. Spend the round on outstanding ones.
 
 ## Scenario sources
 

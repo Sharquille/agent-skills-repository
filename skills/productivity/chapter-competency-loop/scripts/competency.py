@@ -4,16 +4,17 @@
   competency.py scope --kit <course>/Chapter-Kits --chapters 1-3 [--sections 2.1,3.2]
   competency.py log --section <section dir> --item "Core 5 · read the result" \
       --result correct|partial|missed --reason "..." --next "2026-09-30, Core 5 · compute" \
-      [--answers <queue id>] [--kind harder|same|twin] [--no-queue]
+      [--answers <queue id>] [--no-queue]
   competency.py week --course <course dir> [--date YYYY-MM-DD]
   competency.py tracker show|set --course <course dir> [key=value ...]
-  competency.py queue add|tick|due|done --course <course dir> [...]
+  competency.py queue add|tick|due|done|sync --course <course dir> [...]
 
 The tracker (<course>/competency-tracker.json) records what the loop is for (goal,
 goal date, chapters), where this session saves files (week and Work folder), the
 round, and the re-check queue. Change it only after the learner confirms. `log`
-keeps the queue in step with the log: every scored answer, correct included,
-queues its follow-up re-check, and `--answers` closes the one it answered.
+keeps the queue in step with the log through the coverage flow in progress():
+competency, then a bug hunt, then covered (off the list). `--answers` closes
+the re-check a question answered; `queue sync` re-derives the whole queue.
 
 Concepts are a section's numbered Core headings. study-log.md rows (the kit's
 attempt log) map to a concept by "Core N" in the Item cell, or by a Practice
@@ -94,33 +95,68 @@ def lens_of(item):
     return item.split("·", 1)[1].strip() if "·" in item else item.strip()
 
 
-def status(rows):
-    """unassessed | fragile | developing | secure.
+HUNT = re.compile(r"bug hunt", re.I)
+BREAKDOWN = re.compile(r"breakdown|\bstep\b", re.I)
+HUNT_LENS = {1: "bug hunt", 2: "bug hunt (2 owed, both must be right)", 3: "final bug hunt"}
 
-    Secure mirrors chapter-study-kit's check: three unaided correct attempts in a
-    row, on three separate dates, using at least two different lenses or items.
+
+def progress(rows):
+    """Walk one concept's log rows through the coverage flow.
+
+    1. Competency: one correct answer passes it, but a miss first owes two
+       correct twins and a partial owes one. Breakdown steps teach; they don't
+       count toward the twins.
+    2. One bug hunt (find and fix a planted mistake). Pass it: covered.
+       Miss it: two more bug hunts, both must be right. Miss both: teaching
+       restarts (back to 1). One of the two right: a final bug hunt decides it.
+    3. Covered: the concept leaves the list and isn't asked again.
+
+    Returns dict(stage=unassessed|learning|bug hunt|covered, need, got, round, reteach).
     """
-    if not rows:
-        return "unassessed"
-    if rows[-1]["result"] != "correct":
-        return "fragile"
-    run = []
-    for r in reversed(rows):
-        if r["result"] != "correct":
-            break
-        run.append(r)
-    dates = {r["date"] for r in run}
-    lenses = {lens_of(r["item"]) for r in run}
-    if len(run) >= 3 and len(dates) >= 3 and len(lenses) >= 2:
-        return "secure"
-    return "developing"
+    p = dict(stage="unassessed", need=0, got=0, fails=0, round=0, reteach=False)
+    restart = dict(stage="learning", need=1, got=0, fails=0, round=0, reteach=True)
+    for r in rows:
+        ok = r["result"] == "correct"
+        if HUNT.search(r["item"]) and p["stage"] == "bug hunt":
+            p["need"] -= 1
+            p["fails"] += not ok
+            if p["round"] == 1:
+                p.update(stage="covered", need=0) if ok else p.update(round=2, need=2, fails=0)
+            elif p["round"] == 2 and p["need"] == 0:
+                if p["fails"] == 0:
+                    p.update(stage="covered")
+                elif p["fails"] == 2:
+                    p.update(restart)
+                else:
+                    p.update(round=3, need=1, fails=0)
+            elif p["round"] == 3:
+                p.update(stage="covered", need=0) if ok else p.update(restart)
+        elif BREAKDOWN.search(r["item"]):
+            if not ok and p["stage"] != "learning":
+                p.update(stage="learning", need=2 if r["result"] == "missed" else 1, got=0)
+        elif ok:
+            if p["stage"] in ("bug hunt", "covered"):
+                continue  # an extra correct check doesn't change the bug hunt owed
+            p["got"] += 1
+            p["need"] = max(p["need"] - 1, 0)
+            if p["need"] == 0:
+                p.update(stage="bug hunt", round=1, need=1, fails=0, reteach=False)
+        else:
+            p.update(stage="learning", need=2 if r["result"] == "missed" else 1, got=0)
+    return p
+
+
+def status(rows):
+    """unassessed | fragile | developing | bug hunt | covered, from progress()."""
+    p = progress(rows)
+    if p["stage"] == "learning":
+        return "developing" if p["got"] else "fragile"
+    return p["stage"]
 
 
 LENSES = ["plain words", "why it matters", "how it works", "real-world map", "contrast", "error hunt",
-          "predict", "teach-back", "which tool", "anatomy", "compute", "read the result", "stress test", "value"]
-# Retention checks for a concept already answered right: bug hunts first. Never
-# re-ask a lens the learner has already passed for that concept.
-RETENTION = ["error hunt", "stress test", "contrast", "teach-back"]
+          "predict", "teach-back", "which tool", "anatomy", "compute", "read the result", "stress test",
+          "value", "bug hunt"]
 MARK = {"correct": "✓", "partial": "~", "missed": "✗"}
 
 
@@ -138,22 +174,22 @@ def tried(rows):
     return ", ".join(f"{lens} {m}" for lens, m in seen.items())
 
 
-def next_check(rows, today=None):
-    """What kind of question this concept needs next, so a shown concept isn't re-asked the same way."""
-    st = status(rows)
-    if st == "unassessed":
+def next_check(rows):
+    """What this concept needs next, so no model re-asks what the learner has shown."""
+    p = progress(rows)
+    if p["stage"] == "unassessed":
         return "first check: plain words or real-world map"
-    if st == "fragile":
-        return "twin in a new scenario (queued); same lens is fine"
-    passed = {lens for r in rows if r["result"] == "correct" for lens in lenses_in(r["item"])}
-    fresh = [lens for lens in RETENTION if lens not in passed]
-    lens = fresh[0] if fresh else "teach-back in a new scenario"
-    if st == "secure":
-        due = rows[-1]["next"].split(",")[0].strip()
-        if re.match(r"\d{4}-\d{2}-\d{2}$", due) and (today or dt.date.today().isoformat()) < due:
-            return f"secure: don't ask before {due}, then retention {lens}"
-        return f"secure: retention {lens} only"
-    return f"retention: {lens} (passed: {', '.join(sorted(passed)) or 'none'})"
+    if p["stage"] == "covered":
+        return "covered: not asked again"
+    if p["stage"] == "bug hunt":
+        return {1: "bug hunt: find and fix a planted mistake; pass = covered",
+                2: f"bug hunt, {p['need']} of 2 left: both must be right; both missed = re-teach",
+                3: "final bug hunt: pass = covered, miss = re-teach"}[p["round"]]
+    if p["reteach"]:
+        return "re-teach first (card, ELI5, breakdown), then a competency question in a new scenario"
+    passed = sorted({lens for r in rows if r["result"] == "correct" for lens in lenses_in(r["item"])})
+    twins = f"{p['need']} correct twin{'s' if p['need'] != 1 else ''} in a new scenario"
+    return twins + (f", not {', '.join(passed)}" if passed else "")
 
 
 def covers(blurb, sid):
@@ -213,17 +249,20 @@ def scope(kit, chapters=None, sections=None):
     return out
 
 
+STATUSES = ("covered", "bug hunt", "developing", "fragile", "unassessed")
+
+
 def chapter_summary(sections):
-    """One line per chapter: how much of it has been checked, and how well."""
+    """One line per chapter: how much is covered and what's still outstanding."""
     chapters = {}
     for s in sections:
         chapters.setdefault(s["section"].split(".")[0], []).extend(c["status"] for c in s["concepts"])
     lines = ["# Coverage by chapter"]
     for ch, sts in chapters.items():
-        counts = {k: sts.count(k) for k in ("secure", "developing", "fragile", "unassessed")}
-        lines.append(f"- Chapter {ch}: {len(sts)} concepts · {len(sts) - counts['unassessed']} checked "
-                     f"({counts['secure']} secure, {counts['developing']} developing, {counts['fragile']} fragile) "
-                     f"· {counts['unassessed']} not yet checked")
+        n = {k: sts.count(k) for k in STATUSES}
+        lines.append(f"- Chapter {ch}: {n['covered']} of {len(sts)} covered · {len(sts) - n['covered']} outstanding "
+                     f"({n['bug hunt']} bug hunt due, {n['developing']} developing, {n['fragile']} fragile, "
+                     f"{n['unassessed']} not yet checked)")
     return lines + [""]
 
 
@@ -232,11 +271,16 @@ def render(sections):
     for s in sections:
         lines.append(f"## {s['section']} {s['title']} (week {s['week']})")
         lines.append(f"path: {s['path']}")
+        # Covered concepts leave the table, so the list shrinks as the learner finishes them.
+        done = [c for c in s["concepts"] if c["status"] == "covered"]
+        if done:
+            lines.append("Covered, not asked again: " + "; ".join(f"Core {c['core']} {c['title']}" for c in done))
         lines.append("| Core | Concept | Status | Lenses tried | Next check | Next review |")
         lines.append("| --- | --- | --- | --- | --- | --- |")
         for c in s["concepts"]:
-            lines.append(f"| {c['core']} | {c['title']} | {c['status']} | {c['tried'] or '—'} | "
-                         f"{c['check']} | {c['next'] or '—'} |")
+            if c["status"] != "covered":
+                lines.append(f"| {c['core']} | {c['title']} | {c['status']} | {c['tried'] or '—'} | "
+                             f"{c['check']} | {c['next'] or '—'} |")
         if s["eli5"]:
             lines.append("ELI5 pages this week:")
             lines.extend(f"- {p['file']} — {p['blurb']}" for p in s["eli5"])
@@ -329,12 +373,7 @@ def queue_cmd(course, action, section=None, core=None, kind="twin", count=1, gap
     return [i for i in data["queue"] if i["since"] >= i["gap"]] if action == "due" else data["queue"]
 
 
-# What each result earns: correct answers come back too, harder (error hunt, stress
-# test, contrast), so a right answer is reinforced instead of checked off.
-FOLLOW_UP = {"correct": ("harder", 1), "partial": ("same", 1), "missed": ("twin", 2)}
-# Breakdown steps and unscored checks queue nothing: the question they break down
-# already queued its twins.
-NO_FOLLOW_UP = re.compile(r"breakdown|not scored|\bstep\b", re.I)
+COMPETENCY_KINDS = {"twin", "same", "harder"}
 
 
 def course_of(section):
@@ -343,33 +382,81 @@ def course_of(section):
     return section.parents[2] if section.parents[1].name == "Chapter-Kits" else None
 
 
-def follow_up(section, item, result, next_review, kind=None, answers=None):
-    """Queue the re-check a logged answer earns; close the queued one it answered.
+def concept_rows(section, core):
+    qmap = question_to_core(section)
+    return [r for r in read_log(section) if concept_of(r["item"], qmap) == core]
 
-    Returns the new queue entries. Nothing is queued for breakdown steps, for
-    items with no Core number, or once the concept is secure.
+
+def sync_concept(course, section, core, lens="", due="", origin=""):
+    """Make the concept's queue entries match what progress() says it owes.
+
+    Covered concepts leave the queue. Waiting time (`since`) is kept when an
+    entry changes kind, so a converted re-check isn't pushed back. Returns the
+    progress and any new entries.
+    """
+    section = Path(section)
+    p = progress(concept_rows(section, core))
+    data = load_tracker(course)
+    q = data.setdefault("queue", [])
+    mine = [i for i in q if i["section"] == section.name and i["core"] == core]
+    if p["stage"] == "bug hunt":
+        kind, want, family = "bug hunt", p["need"], {"bug hunt"}
+        lens = HUNT_LENS[p["round"]]
+    elif p["stage"] == "learning":
+        kind, want, family = ("twin" if p["need"] == 2 else "same"), p["need"], COMPETENCY_KINDS
+        lens = "re-teach, then a competency question" if p["reteach"] else lens or "twin, new scenario"
+    else:
+        kind, want, family = None, 0, set()
+    keep = [i for i in mine if i["kind"] in family][:want]
+    spare = [i for i in mine if i not in keep]
+    while len(keep) < want and spare:
+        keep.append(spare.pop(0))
+    new = []
+    while len(keep) < want:
+        entry = dict(id=max([i["id"] for i in q], default=0) + 1, section=section.name, core=core,
+                     kind=kind, gap=3, since=0, lens=lens, due=due, origin=origin)
+        q.append(entry)
+        keep.append(entry)
+        new.append(entry)
+    for i in keep:
+        if i["kind"] not in family or kind == "bug hunt" or p["reteach"]:
+            i.update(kind=kind, lens=lens)
+        i["kind"] = kind
+    data["queue"] = [i for i in q if i not in mine or i in keep]
+    save_tracker(course, data)
+    return p, new
+
+
+def follow_up(section, item, result, next_review, answers=None):
+    """After logging: close the re-check this answered, then sync the concept's queue.
+
+    Returns (status, new entries); (None, []) outside a kit or for items with no Core.
     """
     course = course_of(section)
     if course is None:
-        return []
+        return None, []
     if answers:
         queue_cmd(course, "done", qid=answers)
     section = Path(section)
     core = concept_of(item, question_to_core(section))
-    if core is None or NO_FOLLOW_UP.search(item):
-        return []
-    rows = [r for r in read_log(section) if concept_of(r["item"], question_to_core(section)) == core]
-    if status(rows) == "secure":
-        return []
-    default_kind, count = FOLLOW_UP[result]
-    kind = kind or default_kind
-    count = count if kind == "twin" else 1
+    if core is None:
+        return None, []
     due, _, planned = next_review.partition(",")
-    before = {i["id"] for i in load_tracker(course).get("queue", [])}
-    queue = queue_cmd(course, "add", section=section.name, core=core, kind=kind, count=count,
-                      lens=lens_of(planned) if planned.strip() else "", due=due.strip(),
-                      origin=f"{item} ({result})")
-    return [i for i in queue if i["id"] not in before]
+    p, new = sync_concept(course, section, core, lens_of(planned) if planned.strip() else "",
+                          due.strip(), f"{item} ({result})")
+    return status(concept_rows(section, core)), new
+
+
+def sync_course(course):
+    """Re-derive every logged concept's queue entries from the study logs."""
+    out = []
+    for log in sorted(Path(course, "Chapter-Kits").glob("Chapter-*/*/study-log.md")):
+        section = log.parent
+        qmap = question_to_core(section)
+        for core in sorted({concept_of(r["item"], qmap) for r in read_log(section)} - {None}):
+            sync_concept(course, section, core)
+            out.append((section.name, core, status(concept_rows(section, core))))
+    return out
 
 
 def main(argv=None):
@@ -387,8 +474,6 @@ def main(argv=None):
     lg.add_argument("--reason", required=True)
     lg.add_argument("--next", required=True, dest="next_review")
     lg.add_argument("--date")
-    lg.add_argument("--kind", choices=["harder", "same", "twin"],
-                    help="override the follow-up (e.g. same for a hedged correct)")
     lg.add_argument("--answers", help="queue id this question answered; it is closed")
     lg.add_argument("--no-queue", action="store_true", help="log only; queue nothing")
     wk = sub.add_parser("week")
@@ -399,11 +484,11 @@ def main(argv=None):
     tr.add_argument("--course", required=True)
     tr.add_argument("pairs", nargs="*", help="key=value, keys: goal goal_date chapters week work")
     qu = sub.add_parser("queue")
-    qu.add_argument("action", choices=["add", "tick", "due", "done"])
+    qu.add_argument("action", choices=["add", "tick", "due", "done", "sync"])
     qu.add_argument("--course", required=True)
     qu.add_argument("--section")
     qu.add_argument("--core")
-    qu.add_argument("--kind", default="twin", help="harder | same | twin")
+    qu.add_argument("--kind", default="twin", help="twin | same | harder | bug hunt")
     qu.add_argument("--count", type=int, default=1)
     qu.add_argument("--gap", type=int, default=3)
     qu.add_argument("--id")
@@ -419,6 +504,10 @@ def main(argv=None):
         if args.cmd == "queue":
             if args.action == "add" and not (args.section and args.core):
                 raise ValueError("queue add needs --section and --core")
+            if args.action == "sync":
+                for sid, core, st in sync_course(args.course):
+                    print(f"{sid} Core {core}: {st}")
+                return 0
             if args.action == "done" and not args.id:
                 raise ValueError("queue done needs --id")
             print(json.dumps(queue_cmd(args.course, args.action, args.section, args.core, args.kind,
@@ -434,7 +523,10 @@ def main(argv=None):
         else:
             print(log_attempt(args.section, args.item, args.result, args.reason, args.next_review, args.date), end="")
             if not args.no_queue:
-                for i in follow_up(args.section, args.item, args.result, args.next_review, args.kind, args.answers):
+                st, new = follow_up(args.section, args.item, args.result, args.next_review, args.answers)
+                if st:
+                    print(f"status: {st}")
+                for i in new:
                     print(f"queued #{i['id']}: {i['section']} Core {i['core']} · {i['lens'] or i['kind']} "
                           f"({i['kind']}, after {i['gap']} other questions)")
     except (ValueError, OSError) as exc:

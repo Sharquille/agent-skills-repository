@@ -96,7 +96,7 @@ HELP = [("help", "show this menu in chat"), ("status", "tracker and each concept
         ("fix log …", "correct a logged result (confirmed first)"), ("end round", "close with the summary")]
 
 
-KIND = {"harder": "harder", "same": "same level", "twin": "new scenario"}
+KIND = {"harder": "harder", "same": "same level", "twin": "new scenario", "bug hunt": "mastery check"}
 
 
 def queue_html(queue):

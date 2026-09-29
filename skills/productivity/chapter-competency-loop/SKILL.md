@@ -81,10 +81,11 @@ SKILL_DIR=/Users/sharquilleandrew/Documents/development/github-local/agent-skill
    python3 "$SKILL_DIR/scripts/competency.py" scope --kit "<term>/<COURSE>/Chapter-Kits" --chapters 1-3
    ```
 
-   It opens with coverage by chapter (concepts checked, and how many are
-   secure, developing, fragile, or not yet checked), then lists each section's
-   concepts (numbered Core headings) with a status of `unassessed`,
-   `fragile`, `developing`, or `secure`, the **lenses tried** with their
+   It opens with coverage by chapter (how many concepts are covered, and how
+   many are still outstanding: bug hunt due, developing, fragile, or not yet
+   checked). Covered concepts are listed once and drop out of the table. The
+   rest show a status of `unassessed`, `fragile`, `developing`, or
+   `bug hunt`, the **lenses tried** with their
    results, the **next check** that concept needs, the next review due, and
    the ELI5 pages that cover the section. Run it at the start of every
    session and before each round, and pick questions from it; the study logs
@@ -125,13 +126,11 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    lens for the same concept. Use 1 day after a miss, 3 after a partial or a
    first correct, 7 after a second correct.
 
-   `log` also queues the follow-up that answer earns (see Adaptive checks),
-   using the lens from `Next review`: correct → one harder re-check, partial →
-   one at the same level, missed → two twins. A correct answer is never just
-   checked off; it comes back as an error hunt, stress test, or contrast. Pass
+   `log` then prints the concept's status and syncs its re-check queue to
+   the coverage flow (see Adaptive checks): twins while it's being learned, a
+   bug hunt once competency is shown, nothing once it's covered. Pass
    `--answers <queue id>` when the question was a queued re-check, so it is
-   closed; `--kind same` for a hedged correct. Breakdown steps and unscored
-   checks queue nothing. Put the same follow-up on the card as `next=`.
+   closed. Put the same follow-up on the card as `next=`.
 4. **Teach on every answer, right or wrong.** After grading, add a card to the
    round board: the question exactly as asked, the learner's answer mapped
    part by part to the correct answer, *how to get it* with a picture, and
@@ -156,15 +155,14 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    wrong, and the fix in a sentence or two. Offer the ELI5 page if one covers
    it. If it's still shaky, hand the concept to `teach-complex-concepts` for
    a short teaching turn, then re-check with a new lens and a new scenario.
-6. **Check retention, don't repeat.** A concept the learner has answered
-   right is never re-asked with a lens they already passed. Follow the scope's
-   **next check**: `developing` concepts get a retention check (a bug hunt
-   first, meaning an error hunt with a planted mistake to find and fix, then
-   stress test, contrast, and teach-back last). `secure` concepts aren't asked
-   before their review date, and then only as a retention check. Spend the
-   round's questions on `unassessed` and `fragile` concepts first.
-7. **Close the round** with a short summary: what's secure, what's fragile,
-   the single weakest concept, and when each is due next. Don't restate every
+6. **Follow the next check; never repeat.** Ask each concept what the
+   scope's **next check** says. Once competency is shown, the concept gets a
+   **bug hunt**, not another question like the one it passed. `covered`
+   concepts are never asked again, so the outstanding list shrinks and the
+   round moves on to other topics.
+7. **Close the round** with a short summary: what's newly covered, what's
+   fragile, how many concepts are still outstanding per chapter, and the
+   single weakest concept. Don't restate every
    question.
 
 ## Help menu
@@ -186,22 +184,23 @@ file locations) are proposals: state the exact change and wait for a yes.
 | `fix log …` | correct a logged result (confirm first; never edit silently) |
 | `end round` | close the round with its summary |
 
-The re-check queue lives in the tracker. `log` adds and closes entries (see
-Live loop, step 3); run `queue tick` after each question asked and `queue due`
-to see which re-checks have waited long enough. `queue add` and `queue done`
-are for manual fixes only.
+The re-check queue lives in the tracker. `log` keeps it in step (see Live
+loop, step 3); run `queue tick` after each question asked and `queue due` to
+see which re-checks have waited long enough. `queue sync` re-derives the whole
+queue from the study logs; `queue add` and `queue done` are for manual fixes.
 
 ## Adaptive checks
 
-One answer never passes a concept. Every concept needs a **twin**: a second
-question with the *same decision logic and cues* in a *different scenario*
-(new surface, new numbers, new wording).
+One answer never finishes a concept: a correct answer is followed by a bug
+hunt (see **Coverage flow** below), and a wrong one by **twins**: questions
+with the *same decision logic and cues* in a *different scenario* (new
+surface, new numbers, new wording).
 
-| First answer | Read as | Next for that concept |
+| Answer | Read as | Next for that concept |
 | --- | --- | --- |
-| correct, stated with confidence | strong | one **harder** twin: more steps, a tempting distractor, or a depth lens (stress test, contrast, anatomy), with the same deciding cues |
-| correct but hedged ("I think…"), or partial | shaky | one twin at the **same** difficulty |
-| missed, "no" / "idk", blank, or far off | weak area | **break it down** (below), then **two** twins in two different scenarios |
+| correct (confident or hedged) | competency shown | a **bug hunt** in a new scenario; a hedged answer is exactly what the bug hunt tests |
+| partial | shaky | one twin at the **same** difficulty, then the bug hunt |
+| missed, "no" / "idk", blank, or far off | weak area | **break it down** (below), then **two** twins in two different scenarios, then the bug hunt |
 
 Confidence comes from the answer itself: hedges, question marks, "not sure,"
 or a guess read as low confidence. Speed isn't visible in chat; if the learner
@@ -231,10 +230,26 @@ fewer than 3 remain. Never ask a twin right after its card. A twin never
 reuses the card's numbers, wording, or picture, so it can't be answered from
 what the learner just read.
 
-**Passing.** A concept passes the round only when its twins are answered
-correctly (both, for a weak area). Log every attempt, twins included, with the
-lens plus `twin` (for example `Core 7 · contrast twin`). The `secure` status
-still needs three correct answers on three separate dates.
+**Coverage flow.** Every concept (a numbered Core topic) moves through three
+stages, and `competency.py` enforces them from the log:
+
+1. **Competency.** A correct answer shows it. After a partial, one correct
+   twin is owed first; after a miss, two (breakdown steps teach but don't
+   count). Hedged or not, a correct answer moves on, because the bug hunt
+   tests it next.
+2. **Bug hunt.** One question with a planted mistake in a claim, a
+   calculation, or a classification: the learner finds it, fixes it, and says
+   why. Pass it and the concept is **covered**. Miss it and **two** more bug
+   hunts are owed, and both must be right. Miss both and the concept is no
+   longer covered: **re-teach it** (card, ELI5 page, breakdown), then back
+   to competency and a fresh bug hunt. One of the two right earns one final
+   bug hunt: pass is covered, miss is re-teach.
+3. **Covered.** The concept leaves the outstanding list and is never asked
+   again; study continues with the other outstanding topics.
+
+Log every attempt with its lens (for example `Core 7 · contrast twin`, and
+`Core 7 · bug hunt` for the mastery check; only items named `bug hunt` count
+as one).
 
 ## Exam mode
 
@@ -256,22 +271,23 @@ still needs three correct answers on three separate dates.
 
 ## Status rules
 
-`competency.py` derives status from the log, mirroring chapter-study-kit's
-three-session check:
+`competency.py` derives status from the log with the coverage flow:
 
 | Status | Meaning |
 | --- | --- |
 | `unassessed` | no attempts logged |
-| `fragile` | the latest attempt was partial or missed |
-| `developing` | the latest attempt was correct, but not yet secure |
-| `secure` | the last three attempts were correct, on three separate dates, with at least two different lenses |
+| `fragile` | still learning, with no correct twin since the last partial or miss (or re-teach due) |
+| `developing` | still learning; some twins right, more owed |
+| `bug hunt` | competency shown; a bug hunt is owed (1, 2, or a final one) |
+| `covered` | passed its bug hunts; off the list, not asked again |
 
-Say "secure" only when the script says so. A secure concept still gets an
-occasional check; its streak lowers its priority but doesn't exempt it.
+Say "covered" only when the script says so. Chapter-study-kit's own `secure`
+check in the ledger is separate and unchanged.
 
 ## Done
 
 - Every attempt in the session is logged, with a next review that uses a
   different lens.
-- The learner knows their weakest concept and when it's due next.
+- The learner knows their weakest concept and how many are still
+  outstanding in each chapter.
 - No graded work was answered, and no question named a slide, deck, or page.

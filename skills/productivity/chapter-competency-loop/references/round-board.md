@@ -28,8 +28,9 @@ each card; the newest answered card comes first.
 
 Every scored card ends with **Comes back as** (`next=`): the re-check that
 answer earned, such as "Core 7 · error hunt (harder), after 3 other
-questions". Correct answers get one too; the builder refuses a scored card
-without it. With `--course`, a **Coming back** panel lists every re-check
+questions" or "Core 7 · bug hunt". Correct answers get one too; the builder
+refuses a scored card without it. A covered concept's card says
+"Covered: not asked again". With `--course`, a **Coming back** panel lists every re-check
 waiting in the tracker by concept and lens, with when each is ready. It never
 shows the upcoming question itself.
 
