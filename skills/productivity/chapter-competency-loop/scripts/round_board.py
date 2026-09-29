@@ -25,7 +25,7 @@ import eli5  # noqa: E402
 import eli5_page as ep  # noqa: E402
 
 VERDICT = {"correct": "Correct", "partial": "Partly right", "missed": "Not yet"}
-MAX_WORDS = 3000  # a board holds a whole round, questions included
+MAX_WORDS = 8000  # a board holds a whole round: questions, breakdown steps, and twins
 README_HEADING = "## Competency rounds\n"
 
 CSS = ep.CSS + """

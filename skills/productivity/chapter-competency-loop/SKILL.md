@@ -105,7 +105,9 @@ Read [references/lenses.md](references/lenses.md) before the first question.
 2. **One question at a time.** Scenario, one question, wait. The learner may
    answer in chat or upload handwritten work; read images in place.
 3. **Grade and log** each answer right away, using the grading table in the
-   reference:
+   reference. Before marking anything wrong, check the answer against every
+   reasonable reading of the question; an answer right for the real-world
+   reading is right.
 
    ```sh
    python3 "$SKILL_DIR/scripts/competency.py" log --section "<section dir>" \

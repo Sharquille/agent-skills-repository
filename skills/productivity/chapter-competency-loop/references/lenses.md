@@ -9,6 +9,20 @@ Every question opens with a short scenario: one or two sentences that put the
 learner somewhere real, then one question. Keep numbers small enough for a
 calculator and a phone screen.
 
+## Write an unambiguous scenario
+
+A real-world scenario is read as real, so it has to behave like the real
+thing:
+
+- **Say how the data changes, in every part that uses it.** "A new 8th check
+  of 180 ms is added" and "the 29 ms reading is replaced by 180" give
+  different answers (45 and 26 vs. 47.29 and 25). Don't state it once in one
+  bullet and leave a later bullet to guess.
+- **Default to how the real system works.** Logs, checks, and surveys gain
+  new observations; they don't rewrite old ones. If a question needs a
+  replacement, call it a correction ("the 29 was a typo for 180").
+- **Give every number a unit and a count.** "7 checks, in ms."
+
 ## Lenses for every concept
 
 | Lens | The learner has to… | Example stem (networking field) |
@@ -92,3 +106,11 @@ Classify with `teach-complex-concepts`' own response classes, then log it:
 
 Give feedback in this order: what's right (specifically), the first thing that
 went wrong, the fix in one or two sentences. Then move on. Don't lecture.
+
+**Before marking an answer wrong, check it against every reasonable reading
+of the question.** If the learner's numbers are right for a reading the
+wording allowed (especially the real-world one), the answer is correct: grade
+it so, say which reading they used, show the other reading's result as
+context, and fix the question's wording for next time. If a result was already
+logged, regrade the row in `study-log.md` (the learner asking you to regrade
+counts as the confirmation) and adjust any queued twin to match.
