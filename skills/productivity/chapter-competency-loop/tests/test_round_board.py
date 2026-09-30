@@ -55,7 +55,7 @@ class RoundBoardTest(unittest.TestCase):
         self.assertIn("2 re-checks coming later", text)
         self.assertNotIn("re-check: Sampling", text)
         readme = (self.work / "README.md").read_text()
-        self.assertEqual(sum("competency-t-r1.html" in ln for ln in readme.splitlines()), 1)
+        self.assertEqual(sum("(Round%201%20-%20Chapters%201-3%20%28Sep%2027%29.html)" in ln for ln in readme.splitlines()), 1)
 
     def test_terms_are_defined_on_cards_and_the_open_question(self):
         card = dict(CARD, terms=[("chance", "a random process picks, not a person")])
@@ -112,7 +112,7 @@ class RoundBoardTest(unittest.TestCase):
         spec.write_text("CARD = " + repr(CARD) + "\nROUND = dict(course='MA-235', scope='Ch 1-3', date='2026-09-29', number=2, "
                         "planned=8, queued=9, slug='t-r2', cards=[CARD, CARD])\n")
         self.assertEqual(rb.main([str(spec), "--work", str(self.work), "--course", str(course)]), 0)
-        text = (self.work / "competency-t-r2.html").read_text()
+        text = (self.work / "Round 2 - Ch 1-3 (Sep 29).html").read_text()
         self.assertIn("13 re-checks coming later", text)
         self.assertIn("Coming back (13)", text)
         self.assertIn("ready now", text)
@@ -123,9 +123,15 @@ class RoundBoardTest(unittest.TestCase):
         bare = {k: v for k, v in CARD.items() if k != "cores"}
         self.assertEqual(rb.audit(round_([bare])), ["card 1: no 'cores' (the Core numbers it covers in its section)"])
         out, _ = rb.build(round_([CARD, dict(MISSED, step=True)]), work=self.work)
-        rec = rb.load_round(out.with_suffix(".json"))
+        self.assertEqual(out.name, "Round 1 - Chapters 1-3 (Sep 27).html")
+        rec = rb.load_round(rb.record_path(out))
+        self.assertEqual(rb.record_path(out).parent.name, ".round-data")
         self.assertEqual([c["num"] for c in rec["cards"]], ["Q1", "Q1"])  # labels fixed at build time
         self.assertEqual(rb.build(rec, out=out)[0], out)  # a board rebuilds from its record alone
+
+    def test_cards_cannot_widen_the_page_on_a_phone(self):
+        self.assertIn(".wrap > *, .qcard > *, .explain > * { min-width: 0; }", rb.CSS)
+        self.assertIn(".map td, .map th { overflow-wrap: break-word; }", rb.CSS)
 
     def test_every_scored_card_says_how_it_comes_back(self):
         bare = {k: v for k, v in CARD.items() if k != "next"}
@@ -143,7 +149,7 @@ class RoundBoardTest(unittest.TestCase):
         self.assertIn("1 correct of 1 answered", text)
 
     def test_refuses_to_overwrite_a_non_board_file(self):
-        target = self.work / "competency-t-r1.html"
+        target = self.work / "Round 1 - Chapters 1-3 (Sep 27).html"
         target.write_text("my notes")
         with self.assertRaises(ValueError):
             rb.build(round_([CARD]), work=self.work)

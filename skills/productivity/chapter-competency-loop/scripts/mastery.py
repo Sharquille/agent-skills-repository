@@ -11,7 +11,7 @@ week Work folders and:
 
 - marks a card as moved when all of its topics are covered, and rebuilds that
   round's board without it (its tile links to the card's new home);
-- writes <course>/Mastery/chapter-NN-mastery.html for each chapter with a
+- writes <course>/Mastery/Chapter N Mastery.html for each chapter with a
   mastered topic: the chapter's sections, each mastered topic, and its cards;
 - lists the chapter files in <course>/Mastery/README.md.
 
@@ -21,7 +21,6 @@ Standard library only.
 """
 import argparse
 import html
-import os
 import re
 import sys
 from pathlib import Path
@@ -61,11 +60,11 @@ def anchor(r, c):
 
 
 def page_for(course, chapter):
-    return Path(course) / "Mastery" / f"chapter-{chapter:02d}-mastery.html"
+    return Path(course) / "Mastery" / f"Chapter {chapter} Mastery.html"
 
 
 def records(course):
-    return sorted(Path(course).glob("Week*/Work/competency-*.json"))
+    return sorted(Path(course).glob(f"Week*/Work/{rb.RECORDS}/*.json"))
 
 
 def render_chapter(course_name, chapter, items, tops):
@@ -144,7 +143,7 @@ def write_readme(course, pages, tops):
     for chapter, page in pages:
         in_ch = [v for k, v in tops.items() if k[0].split(".")[0] == str(chapter)]
         done = sum(v["status"] == "covered" for v in in_ch)
-        lines.append(f"- [`{page.name}`]({page.name}) — chapter {chapter}: {done} of {len(in_ch)} topics mastered.")
+        lines.append(f"- [{page.name}]({rb.quote(page.name)}) — chapter {chapter}: {done} of {len(in_ch)} topics mastered.")
     (Path(course) / "Mastery" / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -161,15 +160,17 @@ def sync(course):
             cores = c.get("cores") or []
             if cores and all(tops.get((c["section"], k), {}).get("status") == "covered" for k in cores):
                 chapter = int(c["section"].split(".")[0])
-                c["moved_to"] = os.path.relpath(page_for(course, chapter), rec.parent) + "#" + anchor(r, c)
+                c["moved_to"] = rb.href(page_for(course, chapter), rb.board_of(rec).parent) + "#" + anchor(r, c)
                 chapters.setdefault(chapter, []).append((r, c))
                 moved += 1
         rb.attach_queue(r, course)
-        rb.write_board(r, rec.with_suffix(".html"))
-        summary.append(f"{rec.with_suffix('.html').name}: {moved} card(s) moved, {len(r['cards']) - moved} kept")
+        board = rb.board_of(rec)
+        rb.attach_review(r, course, board.parent)
+        rb.write_board(r, board)
+        summary.append(f"{board.name}: {moved} card(s) moved, {len(r['cards']) - moved} kept")
     # Chapters that had a file but lost every mastered card still get rewritten, so nothing stale remains.
-    existing = {int(m.group(1)) for p in (course / "Mastery").glob("chapter-*-mastery.html")
-                if (m := re.match(r"chapter-(\d+)-mastery", p.stem))}
+    existing = {int(m.group(1)) for p in (course / "Mastery").glob("Chapter * Mastery.html")
+                if (m := re.match(r"Chapter (\d+) Mastery", p.stem))}
     pages = []
     for chapter in sorted(set(chapters) | existing):
         page = page_for(course, chapter)

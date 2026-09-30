@@ -13,6 +13,7 @@ accessible SVGs). Standard library only.
 """
 import argparse
 import copy
+import datetime as dt
 import html
 import importlib.util
 import json
@@ -20,6 +21,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 # eli5-explainer lives beside this skill in the same repository.
 ELI5 = Path(__file__).resolve().parents[2] / "eli5-explainer" / "scripts"
@@ -31,6 +33,28 @@ VERDICT = {"correct": "Correct", "partial": "Partly right", "missed": "Not yet",
            "unscored": "Not scored"}  # unscored: the question's wording was at fault; teach only
 MAX_WORDS = 8000  # a board holds a whole round: questions, breakdown steps, and twins
 README_HEADING = "## Competency rounds\n"
+RECORDS = ".round-data"  # hidden beside the boards: the JSON records are for the tool, not for reading
+
+
+def board_name(r):
+    """Round 2 - Chapters 1-3 (Sep 29).html: reads like a title and sorts by round in Finder."""
+    day = dt.date.fromisoformat(r["date"])
+    return f"Round {r['number']} - {r['scope'].replace('–', '-')} ({day.strftime('%b')} {day.day}).html"
+
+
+def record_path(board):
+    board = Path(board)
+    return board.parent / RECORDS / (board.stem + ".json")
+
+
+def board_of(record):
+    record = Path(record)
+    return record.parent.parent / (record.stem + ".html")
+
+
+def href(target, from_dir):
+    """A relative link that survives the spaces in plain-English file names."""
+    return quote(os.path.relpath(target, from_dir))
 
 CSS = ep.CSS + """
 .tiles { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -61,6 +85,10 @@ CSS = ep.CSS + """
 .ask ul { margin: 6px 0 0; padding-left: 1.2em; }
 .ask p + p, .ask p + ul { margin-top: 6px; }
 .map .tablewrap { overflow-x: auto; }
+/* Grid items default to their content's min width; without this a wide answer table
+   widens the whole page on a phone. Now the table scrolls inside its own box and words stay whole. */
+.wrap > *, .qcard > *, .explain > * { min-width: 0; }
+.map td, .map th { overflow-wrap: break-word; }
 .next { margin-top: 10px; color: var(--muted); }
 .coming { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; }
 .coming ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
@@ -164,10 +192,27 @@ def card_html(n, c, label):
             + '</div></div></article>')
 
 
+def link_list(links):
+    return ", ".join(f'<a href="{esc(href)}">{esc(label)}</a>' for label, href in links)
+
+
+def review_html(groups):
+    """The cue at a round's start: per topic coming back this round, the earlier cards that teach it."""
+    if not groups:
+        return ""
+    items = "".join(f"<li><b>{esc(topic)}</b>: {link_list(links)}</li>" for topic, links in groups)
+    return ('<section class="coming"><div class="label">Review before this round</div>'
+            "<p>These topics come back as re-checks this round. Read their cards first; the re-checks "
+            "use new scenarios and numbers, so reviewing won't give the answers away.</p>"
+            f"<ul>{items}</ul></section>")
+
+
 def open_card(n, current):
+    recheck = current.get("review_links")
+    cue = (f'<p class="meta">Re-check: review {link_list(recheck)} first, then answer.</p>' if recheck else "")
     return (f'<article class="qcard open" id="now" data-step="{n}">'
             f'<div class="qhead"><span class="qnum">{esc(current.get("num", f"Q{n}"))}</span><span class="meta">{esc(current.get("meta", ""))}</span>'
-            '<span class="verdict">Answer in chat</span></div>'
+            '<span class="verdict">Answer in chat</span></div>' + cue
             + terms_html(current.get("terms")) +
             f'<div class="ask"><div class="label">Question, as asked</div>{current["ask"]}</div></article>')
 
@@ -212,7 +257,7 @@ def render(r):
     pages = sorted({c["moved_to"].split("#")[0] for c in cards if c.get("moved_to")})
     moved = sum(bool(c.get("moved_to")) for c in cards)
     moved_note = (f'<p class="status">✓ {moved} card{"s" if moved != 1 else ""} for mastered topics moved to '
-                  + ", ".join(f'<a href="{esc(pg)}">{esc(Path(pg).stem.replace("-", " "))}</a>' for pg in pages)
+                  + ", ".join(f'<a href="{esc(pg)}">{esc(unquote(Path(pg).stem))}</a>' for pg in pages)
                   + '. Everything still here is for review.</p>') if moved else ""
     if len(body) < 2:  # the checker needs two steps
         body.append('<article class="qcard" data-step="2" id="next"><div class="qhead">'
@@ -253,6 +298,7 @@ def render(r):
   <p class="status">{got} correct of {len(mains)} answered · {planned} planned{waiting}. Tap a tile to jump to its card; the newest card is first.</p>
   {moved_note}
 </header>
+{review_html(r.get("review_links"))}
 {chr(10).join(ordered)}
 {queue_html(r.get("queue"))}
 <details class="help"><summary>Help menu: type any of these in chat</summary><dl>{"".join(f"<dt>{esc(k)}</dt><dd>{esc(v)}</dd>" for k, v in HELP)}</dl></details>
@@ -319,7 +365,7 @@ def add_readme_line(work, fname, r):
     body = readme.read_text(encoding="utf-8") if readme.is_file() else f"# {work.parent.name} Work\n"
     if fname in body:
         return
-    entry = f"- [`{fname}`]({fname}) — {r['course']} {r['scope']}, round {r['number']} ({r['date']}): one card per answer.\n"
+    entry = f"- [{fname}]({quote(fname)}) — {r['course']} {r['scope']}, round {r['number']} ({r['date']}): one card per answer.\n"
     if README_HEADING not in body:
         body = body.rstrip("\n") + "\n\n" + README_HEADING + "\n" + entry
     else:
@@ -358,10 +404,14 @@ def write_board(r, out):
 
 def save_record(r, out):
     """The round's cards as JSON beside the board: the lasting record mastery.py reads."""
-    rec = copy.deepcopy({k: v for k, v in r.items() if k != "queue"})
+    rec = copy.deepcopy({k: v for k, v in r.items() if k not in ("queue", "review_links")})
+    if rec.get("current"):
+        rec["current"].pop("review_links", None)  # derived from the records on every build
     for c in rec["cards"]:
         c.pop("moved_to", None)
-    Path(out).with_suffix(".json").write_text(json.dumps(rec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    path = record_path(out)
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(rec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
 def build(r, work=None, out=None):
@@ -371,7 +421,7 @@ def build(r, work=None, out=None):
         work = Path(work)
         if not work.is_dir():
             raise ValueError(f"no such Work folder: {work}")
-        out = work / f"competency-{r['slug']}.html"
+        out = work / board_name(r)
     if out is None:
         raise ValueError("give work (course week folder) or out")
     words = write_board(r, out)
@@ -379,6 +429,44 @@ def build(r, work=None, out=None):
     if work:
         add_readme_line(work, Path(out).name, r)
     return Path(out), f"{len(r['cards'])} cards, {words} visible words"
+
+
+def find_cards(course, section, core):
+    """Every saved card, in any round, that teaches this topic: (round, label, board, anchor)."""
+    out = []
+    for rec in sorted(Path(course).glob(f"Week*/Work/{RECORDS}/*.json")):
+        r = load_round(rec)
+        for i, c in enumerate(r["cards"], 1):
+            if c.get("section") == section and core in (c.get("cores") or []):
+                out.append((r["number"], c.get("num", f"card {i}"), board_of(rec), f"q{i}"))
+    return out
+
+
+def attach_review(r, course, board_dir):
+    """Resolve review cues to links: the round's `review` topics and the open question's `recheck` topic.
+
+    Topics are (section, core) pairs, so a spec never hard-codes where earlier cards live.
+    """
+    def links(topics):
+        seen, out = set(), []
+        for section, core in topics:
+            for number, label, board, anchor in find_cards(course, section, core):
+                if (board, anchor) not in seen and number != r["number"]:
+                    seen.add((board, anchor))
+                    out.append((f"Round {number} · {label}", href(board, board_dir) + "#" + anchor))
+        return out
+    # One line per section's set of cards, naming every topic those cards teach.
+    import competency
+    groups = {}
+    for section, core in (tuple(t) for t in r.get("review", [])):
+        found = list((Path(course) / "Chapter-Kits").glob(f"Chapter-*/{section}"))
+        title = dict(competency.core_concepts(found[0])).get(core, f"Core {core}") if found else f"Core {core}"
+        got = links([(section, core)])
+        if got:
+            groups.setdefault((section, tuple(got)), []).append(title)
+    r["review_links"] = [(f"{section} " + ", ".join(names), list(got)) for (section, got), names in groups.items()]
+    if r.get("current") and r["current"].get("recheck"):
+        r["current"]["review_links"] = links([tuple(r["current"]["recheck"])])
 
 
 def attach_queue(r, course):
@@ -411,6 +499,7 @@ def main(argv=None):
         r = load_round(args.spec)
         if args.course:
             attach_queue(r, args.course)
+            attach_review(r, args.course, Path(args.work) if args.work else Path(args.out).parent)
         if ep.LABEL_WARNINGS:
             raise ValueError("labels would be clipped:\n  " + "\n  ".join(ep.LABEL_WARNINGS))
         path, summary = build(r, args.work, args.out)

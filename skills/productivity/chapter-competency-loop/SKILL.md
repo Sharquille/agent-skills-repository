@@ -108,6 +108,14 @@ Read [references/lenses.md](references/lenses.md) before the first question.
    section). Queued twins (see Adaptive checks) slot in once their spacing is
    met. Use the sweep lenses from the reference. Keep a round to about
    6–8 questions; ask whether to continue after each round.
+
+   **Cue the review before re-checks.** Plan the round's re-checks up front
+   and list their topics in the spec (`review=[("3.1", 2), ...]`); the board
+   opens with a "Review before this round" panel linking the earlier cards.
+   Point the learner to it before the first question. On each re-check, set
+   `recheck=("3.1", 2)` on the open question so it names and links the card
+   it re-checks. A re-check never appears without its cue. The questions
+   still use new scenarios and numbers, so review doesn't give answers away.
 2. **One question at a time.** Scenario, one question, wait. The learner may
    answer in chat or upload handwritten work; read images in place.
 3. **Grade and log** each answer right away, using the grading table in the
@@ -150,14 +158,16 @@ Read [references/lenses.md](references/lenses.md) before the first question.
 
    The board is a local HTML file in the week's Work folder, so study
    material stays offline and outside any one app. Don't publish it as a
-   hosted page unless the learner asks. Each build also saves the round's
-   cards as JSON beside the board; that record, not the scratch spec, is
-   what later sessions rebuild from (`round_board.py <record>.json`).
+   hosted page unless the learner asks. File names read like titles:
+   `Round 2 - Chapters 1-3 (Sep 29).html`. Each build also saves the round's
+   cards as JSON in the Work folder's hidden `.round-data/`; that record, not
+   the scratch spec, is what later sessions rebuild from
+   (`round_board.py "<Work>/.round-data/Round 2 - Chapters 1-3 (Sep 29).json"`).
 
    With `--course`, every build then runs the **mastery sync**: cards whose
    topics (`cores=[...]`, Core numbers in the card's section) are all
    `covered` move off the round boards into
-   `<course>/Mastery/chapter-NN-mastery.html`, grouped by section and topic.
+   `<course>/Mastery/Chapter N Mastery.html`, grouped by section and topic.
    Their tiles link there. Everything still on a board is for review, and
    a topic that loses coverage goes back to its board. Run
    `mastery.py sync --course <course>` on its own after a log fix.
@@ -270,8 +280,8 @@ as one).
 2. **Compute the key first.** Recompute every number in Python before writing
    the exam. Invented data is fine; wrong answers are not.
 3. **Write two files** in that course's `Week-XX_*/Work/` for the current
-   week: the exam page (`<course>-ch<A>-<B>-practice-exam.html`) and the key
-   (`…-KEY.md`, opening with a do-not-open-until-graded warning, including
+   week: the exam page (`Practice Exam - Chapters A-B.html`) and the key
+   (`Practice Exam - Chapters A-B (KEY).md`, opening with a do-not-open-until-graded warning, including
    partial-credit notes). Add an exam line to that Work README. Offer a private
    Artifact link for tablet viewing.
 4. **Grade uploads** against the key: per item, the points earned, what's

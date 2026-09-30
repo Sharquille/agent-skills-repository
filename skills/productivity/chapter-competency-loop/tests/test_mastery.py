@@ -57,23 +57,38 @@ class MasteryTest(unittest.TestCase):
         self.log(2, "compute", "correct")
         self.log(2, "bug hunt", "correct")
         mastery.sync(self.course)
-        page = self.course / "Mastery" / "chapter-02-mastery.html"
+        page = self.course / "Mastery" / "Chapter 2 Mastery.html"
         text = page.read_text()
         self.assertIn("Chapter 2 mastery", text)
         self.assertIn("Core 2</b> Class boundaries", text)
         self.assertIn('id="r2-q2"', text)
         self.assertIn("1 of 2", text)
         board = self.board.read_text()
-        self.assertIn("../../Mastery/chapter-02-mastery.html#r2-q2", board)  # the tile links to its new home
+        self.assertIn("../../Mastery/Chapter%202%20Mastery.html#r2-q2", board)  # the tile links to its new home
         self.assertNotIn('<span class="qnum">Q2</span>', board)
         self.assertIn('<span class="qnum">Q1</span>', board)             # the missed topic stays for review
-        self.assertIn("chapter-02-mastery.html", (self.course / "Mastery" / "README.md").read_text())
-        self.assertEqual(rb.load_round(self.board.with_suffix(".json"))["cards"][1].get("moved_to"), None)
+        self.assertIn("(Chapter%202%20Mastery.html)", (self.course / "Mastery" / "README.md").read_text())
+        self.assertEqual(rb.load_round(rb.record_path(self.board))["cards"][1].get("moved_to"), None)
         # asked again and wrong: the topic is no longer covered, so its card returns to the board
         self.log(2, "real-world map", "missed")
         mastery.sync(self.course)
         self.assertIn('<span class="qnum">Q2</span>', self.board.read_text())
         self.assertIn("0 of 2", page.read_text())
+
+    def test_review_cue_links_the_earlier_cards_for_this_rounds_rechecks(self):
+        r = dict(course="MA-235", scope="Chapters 1–3", date="2026-09-30", number=3, planned=8, slug="t-r3",
+                 review=[("2.1", 1), ("2.1", 2)], cards=[],
+                 current=dict(num="Q1", ask="<p>Twin.</p>", recheck=("2.1", 1)))
+        rb.attach_review(r, self.course, self.work)
+        board, _ = rb.build(r, work=self.work)
+        text = board.read_text()
+        self.assertIn("Review before this round", text)
+        self.assertIn('href="Round%202%20-%20Chapters%201-3%20%28Sep%2029%29.html#q1">Round 2 · Q1</a>', text)
+        self.assertIn('href="Round%202%20-%20Chapters%201-3%20%28Sep%2029%29.html#q2">Round 2 · Q2</a>', text)
+        self.assertIn("Re-check: review", text)
+        rec = rb.load_round(rb.record_path(board))
+        self.assertNotIn("review_links", rec)                  # links are rebuilt from the records, not saved
+        self.assertEqual(rec["review"], [["2.1", 1], ["2.1", 2]])
 
 
 if __name__ == "__main__":

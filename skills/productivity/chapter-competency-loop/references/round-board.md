@@ -45,8 +45,10 @@ from eli5_page import svg, box, text, arrow
 ROUND = dict(
     course="MA-235", scope="Chapters 1–3", date="2026-09-27", number=1, planned=8,
     # --course reads the re-check queue from the tracker; `queued` is only a fallback count
-    slug="ma235-ch1-3-2026-09-27-r1",           # fixed for the round
-    current=dict(num="Q2 · step 1", meta="1.2 · breaking it down", ask="<p>…full question…</p>"),
+    # saved as "Round 1 - Chapters 1-3 (Sep 27).html"; the name comes from number, scope, and date
+    review=[("1.2", 4), ("3.1", 2)],           # topics re-checked this round: a "review first" panel
+    current=dict(num="Q2 · step 1", meta="1.2 · breaking it down", ask="<p>…full question…</p>",
+                 recheck=("1.2", 4)),           # on a re-check: links the earlier card(s) for that topic
     cards=[dict(
         section="1.2", concept="Naming a sampling method", lens="contrast",
         cores=[4],                              # Core numbers it teaches; it moves to the chapter
