@@ -27,6 +27,10 @@ thing:
   question look like the old one. Random *selection* (who gets into the study)
   and random *assignment* (who gets the treatment) both use chance for
   different jobs; say which one the question is about.
+- **Never use a statistics term in its everyday sense.** "Which 10-Mbps
+  range is most common?" reads as the statistic *range* (largest − smallest)
+  or the *mode*. Say "which row (class)" or "which interval". Same for
+  *mean*, *average*, *spread*, *sample*, and *significant*.
 - **A miss caused by the question's wording isn't scored.** Keep the row as
   history, but label its Item without a `Core N` so it doesn't count toward
   the concept's status, and say why in the reason.
