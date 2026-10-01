@@ -54,7 +54,7 @@ def scaffold(kit: Path, section: str, week: int, title: str) -> Path:
         "batch": 1,
         "release_note": "",
         "missing": [],
-        "verification": {"local": "pending", "http": "pending", "import": "pending"},
+        "verification": {"local": "pending", "render": "pending", "import": "pending"},
     }
     (folder / "state.json").write_text(json.dumps(state, indent=2) + "\n")
     (folder / "ledger.md").write_text(LEDGER.format(section=section))

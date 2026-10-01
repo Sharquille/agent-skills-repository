@@ -19,20 +19,6 @@ classDef leafI fill:#FEF8F1,stroke:#DBAC7E,color:#654626
 - Green = descriptive / population / parameter
 - Peach (`hubI` / `leafI`) = inferential, **only after that chapter is earned**
 
-GoodNotes claim query:
-
-```text
-source=chatgpt
-type=mermaid|markdown
-code=<base64 of file>
-pattern=dotted
-color=white
-themeColor=classic
-themeShade=light
-title=<short>
-claim_id=<uuid>   # mermaid only
-```
-
 Node labels: `<br/>` for line breaks. Keep text short enough to read on iPad.
 
 **One job per map.** The filename and the root node say that job. Do not put

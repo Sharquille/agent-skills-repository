@@ -6,6 +6,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 import zipfile
 from pathlib import Path
 from unittest.mock import patch
@@ -20,11 +21,11 @@ def load(name):
     return module
 
 
-hub = load('build_goodnotes_hub')
 validate = load('validate_kit')
 pptx = load('extract_pptx')
 sync = load('sync_skill')
 scaffold = load('new_section')
+notebook = load('build_section_pdf')
 
 
 class KitTests(unittest.TestCase):
@@ -36,231 +37,15 @@ class KitTests(unittest.TestCase):
         self.section.mkdir(parents=True)
         (self.kit / 'overall-flow.mmd').write_text('flowchart LR\n S --> CH1_1\n')
 
-    def test_short_canonical_is_discovered_and_stale_splits_ignored(self):
-        (self.section / 'Example-Study-Notes.md').write_text('# Core\nFresh notes\n')
-        (self.section / 'Example-Notes-Core.md').write_text('Stale notes')
-        (self.section / 'notes-migration.json').write_text(json.dumps({
-            'canonical': 'Example-Study-Notes.md',
-            'legacy_sha256': {'Example-Notes-Core.md': hashlib.sha256(b'Stale notes').hexdigest()}}))
-        self.assertEqual(hub.note_imports('1.1', self.section, 7600),
-                         [('1.1 Notes', '# Core\nFresh notes\n')])
-
-    def test_unreviewed_legacy_edit_refused(self):
-        (self.section / 'N-Study-Notes.md').write_text('Canonical')
-        (self.section / 'N-Notes-Core.md').write_text('Unique student edit')
-        with self.assertRaisesRegex(ValueError, 'legacy notes differ'):
-            hub.note_imports('1.1', self.section, 7600)
-
-    def test_exact_url_limit_and_unicode_lossless_split(self):
-        text = ''.join(f'## {i}. Idea\n' + 'é漢字 ' * 40 + '\n' for i in range(6))
-        exact = len(hub.markdown_url(text, '1.1 Notes'))
-        self.assertEqual(len(hub.split_notes(text, '1.1 Notes', exact)), 1)
-        chunks = hub.split_notes(text, '1.1 Notes', exact - 1)
-        self.assertGreater(len(chunks), 1)
-        self.assertEqual(''.join(code for _, code in chunks), text)
-        self.assertTrue(all(len(hub.markdown_url(code, name)) <= exact - 1
-                            for name, code in chunks))
-
-    def test_table_and_question_answer_order_preserved(self):
-        text = '# Core\n' + 'Text. ' * 100 + '\n## Questions\n| Q | Cue |\n| --- | --- |\n| One | Two |\n## Answers\n' + 'Answer. ' * 100
-        chunks = hub.split_notes(text, 'Notes', 1700)
-        self.assertEqual(''.join(code for _, code in chunks), text)
-        self.assertTrue(any('| Q | Cue |\n| --- | --- |\n| One | Two |' in code for _, code in chunks))
-        self.assertLess(text.index('## Questions'), text.index('## Answers'))
-
-    def test_h3_ideas_stay_with_parent_section_h2(self):
-        intro = '# Core\nIntro.\n'
-        section_a = (
-            '## Section A: Device basics\n'
-            '### 2. IPOS\n' + 'Input. ' * 30 + '\n'
-            '### 3. Stored program\n' + 'Load. ' * 30 + '\n'
-        )
-        section_b = (
-            '## Section B: Device options\n'
-            '### 9. Enterprise\n' + 'Server. ' * 30 + '\n'
-        )
-        text = intro + section_a + section_b
-        limit = max(len(hub.markdown_url(block, '1.1 Notes 3/3'))
-                    for block in (intro, section_a, section_b))
-        chunks = hub.split_notes(text, '1.1 Notes', limit)
-        self.assertEqual(''.join(code for _, code in chunks), text)
-        self.assertGreater(len(chunks), 1)
-        section_a_chunk = next(code for _, code in chunks if '### 2. IPOS' in code)
-        self.assertIn('## Section A: Device basics', section_a_chunk)
-        self.assertIn('### 3. Stored program', section_a_chunk)
-        self.assertNotIn('## Section B: Device options', section_a_chunk)
-
-    def test_oversized_block_rejected_instead_of_truncation(self):
-        with self.assertRaisesRegex(ValueError, 'heading block exceeds'):
-            hub.split_notes('## Official stem\n' + 'x' * 5000, 'Notes', 1000)
-
-    def test_fenced_headings_do_not_create_boundaries(self):
-        with self.assertRaisesRegex(ValueError, 'heading block exceeds'):
-            hub.split_notes('## Code\n```\n## fake\n' + 'x' * 4000 + '\n```\n', 'Notes', 1000)
-
-    def test_duplicate_canonical_refused(self):
-        for name in ['A', 'B']:
-            (self.section / f'{name}-Study-Notes.md').write_text('notes')
-        with self.assertRaisesRegex(ValueError, 'one canonical'):
-            hub.note_imports('1.1', self.section, 7600)
-
-    def test_legacy_core_only_for_goodnotes(self):
-        for suffix in ['Retrieval', 'Quiz', 'Core']:
-            (self.section / f'N-Notes-{suffix}.md').write_text(suffix)
-        self.assertEqual([code for _, code in hub.note_imports('1.1', self.section, 7600)],
-                         ['Core\n'])
-
-    def test_canonical_drops_quiz_why_and_retrieval_and_ignores_practice(self):
-        (self.section / 'N-Study-Notes.md').write_text(
-            '# 1.1 Core\nKeep this.\n\n# 1.1 Quiz why\nOfficial stem\n\n# 1.1 Retrieval\nPrompt\n')
-        (self.section / 'Practice.md').write_text('> [!question]- Hidden\n> Answer\n')
-        imported = hub.note_imports('1.1', self.section, 7600)
-        self.assertEqual(imported, [('1.1 Notes', '# 1.1 Core\nKeep this.\n')])
-        self.assertNotIn('Official', imported[0][1])
-        self.assertNotIn('Prompt', imported[0][1])
-
     def test_extract_core_rejects_empty(self):
         with self.assertRaisesRegex(ValueError, 'no Core'):
-            hub.extract_core('# 1.1 Retrieval\nOnly questions\n')
-
-    def test_hub_json_writes_a_separate_english_panel(self):
-        (self.kit / 'hub.json').write_text(json.dumps({
-            'title': 'EN-221 English Kit',
-            'editable_stem': 'English-Editable-GoodNotes',
-            'preview_stem': 'English-Preview-GoodNotes',
-            'prefix': 'English',
-        }))
-        (self.section / 'N-Study-Notes.md').write_text('# Core\nRead me\n')
-        with patch.object(hub, 'check', side_effect=AssertionError('network forbidden')):
-            with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit), '--offline']):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    hub.main()
-        preview = (self.kit / 'English-Preview-GoodNotes.html').read_text()
-        self.assertIn('EN-221 English Kit', preview)
-        self.assertFalse((self.kit / 'Statistics-Preview-GoodNotes.html').exists())
-
-    def test_hub_json_rejects_path_stem(self):
-        (self.kit / 'hub.json').write_text(json.dumps({
-            'title': 'X', 'editable_stem': '../escape', 'preview_stem': 'P', 'prefix': 'X'}))
-        with self.assertRaisesRegex(ValueError, 'bare filename stem'):
-            hub.load_hub_meta(self.kit)
-
-    def test_hub_splits_retrieval_maps_from_legend_maps(self):
-        (self.section / 'stats-1.1-concept-map.mmd').write_text('flowchart LR\nA --> B\n')
-        (self.section / 'stats-1.1-decision-flow.mmd').write_text('flowchart TD\nA --> B\n')
-        (self.section / 'stats-1.1-levels-flow.mmd').write_text('flowchart TD\nA --> B\n')
-        (self.section / 'N-Study-Notes.md').write_text('# Core\nRead me\n\n# 1.1 Quiz why\nSkip\n')
-        with patch.object(hub, 'check'):
-            with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit), '--offline']):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    hub.main()
-        preview = (self.kit / 'Statistics-Preview-GoodNotes.html').read_text()
-        self.assertIn('Chapter 1.1 Retrieval maps', preview)
-        self.assertIn('1.1 Quiz Sort', preview)
-        self.assertIn('1.1 Concept Map', preview)
-        self.assertIn('1.1 Levels', preview)
-        self.assertIn('<summary>Unscheduled</summary>', preview)
-        self.assertNotIn('# 1.1 Quiz why', preview)
-        self.assertNotIn('\nSkip\n', preview)
-
-    def test_hub_groups_buttons_under_week_sections(self):
-        html = hub.render_hub(
-            'T',
-            [('Overall Map', '', 'https://example.com/o')],
-            [
-                (1, [('Chapter 1.1 maps', [('1.1 Concept Map', '', 'https://example.com/a')])]),
-                (2, [('Chapter 2.1 maps', [('2.1 Concept Map', '', 'https://example.com/b')])]),
-            ],
-        )
-        self.assertIn('href="#week-1"', html)
-        self.assertIn('href="#week-2"', html)
-        self.assertIn('<details class="week" id="week-1">', html)
-        self.assertIn('<details class="week" open id="week-2">', html)
-        self.assertIn('<summary>Week 1</summary>', html)
-        self.assertIn('<summary>Week 2</summary>', html)
-        self.assertLess(html.index('id="week-1"'), html.index('id="week-2"'))
-        self.assertLess(html.index('1.1 Concept Map'), html.index('2.1 Concept Map'))
-        self.assertNotIn('Unscheduled', html)
-
-    def test_hub_prints_exact_goodnotes_destinations(self):
-        html = hub.render_hub(
-            'T',
-            [('Overall Map', '', 'https://example.com/o')],
-            [(3, [('Chapter 3.2 notes', [('3.2 Notes', '', 'https://example.com/n')])])],
-            destinations={
-                'Course-wide': 'Monroe University → 2026 Fall → MA-235 Statistics → 00 Course Overview',
-                'Chapter 3.2 notes': 'Monroe University → 2026 Fall → MA-235 Statistics → Week 03 → 3.2 Measures of Variation → Notes',
-            },
-        )
-        self.assertIn('Place in:', html)
-        self.assertIn('Week 03 → 3.2 Measures of Variation → Notes', html)
-        self.assertIn('00 Course Overview', html)
-
-    def test_section_title_uses_state_and_has_safe_fallback(self):
-        self.assertEqual(hub.section_title(self.section, '1.1'), '1.1')
-        (self.section / 'state.json').write_text(json.dumps({
-            'week': 1,
-            'title': 'Data Basics & Levels',
-        }))
-        self.assertEqual(hub.section_title(self.section, '1.1'), 'Data Basics & Levels')
-
-    def test_hub_meta_accepts_goodnotes_folder_names(self):
-        (self.kit / 'hub.json').write_text(json.dumps({
-            'goodnotes_root': 'Monroe University',
-            'goodnotes_term': '2026 Fall',
-            'goodnotes_course': 'EN-221 English',
-        }))
-        meta = hub.load_hub_meta(self.kit)
-        self.assertEqual(meta['goodnotes_course'], 'EN-221 English')
+            notebook.extract_core('# 1.1 Retrieval\nOnly questions\n')
 
     def test_kit_contract_requires_week_on_state(self):
         self.fill_live_contract()
         (self.section / 'state.json').write_text(json.dumps({'status': 'ready'}))
         errors = '\n'.join(validate.check_kit(self.kit))
         self.assertIn('positive integer week', errors)
-
-    def test_collecting_refuses_live_build_and_preserves_output(self):
-        (self.section / 'state.json').write_text(json.dumps({'status': 'collecting'}))
-        published = self.kit / 'Statistics-Editable-GoodNotes.html'
-        published.write_text('published')
-        with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit)]):
-            with self.assertRaisesRegex(ValueError, 'collecting'):
-                hub.main()
-        self.assertEqual(published.read_text(), 'published')
-
-    def test_offline_preview_never_calls_network_or_replaces_live(self):
-        (self.section / 'state.json').write_text(json.dumps({'status': 'partial'}))
-        (self.section / 'N-Study-Notes.md').write_text('# Notes\nRead me')
-        published = self.kit / 'Statistics-Editable-GoodNotes.html'
-        published.write_text('published')
-        with patch.object(hub, 'check', side_effect=AssertionError('network forbidden')):
-            with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit), '--offline']):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    hub.main()
-        self.assertEqual(published.read_text(), 'published')
-        preview = (self.kit / 'Statistics-Preview-GoodNotes.html').read_text()
-        self.assertIn('Unverified preview', preview)
-        self.assertIn('1.1 Notes', preview)
-        self.assertFalse((self.section / 'imports').exists())
-
-    def test_network_failure_preserves_published_output(self):
-        self.fill_live_contract()
-        published = self.kit / 'T-Editable-GoodNotes.html'
-        published.write_text('published')
-        with patch.object(hub, 'check', side_effect=OSError('offline')):
-            with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit)]):
-                with contextlib.redirect_stdout(io.StringIO()):
-                    with self.assertRaises(OSError):
-                        hub.main()
-        self.assertEqual(published.read_text(), 'published')
-
-    def test_map_hub_remaining_does_not_hide_removed_branch(self):
-        previous, candidate = self.kit / 'old.mmd', self.kit / 'new.mmd'
-        previous.write_text('flowchart LR\nS --> CH1_1\nCH1_1 --> VAR\nVAR("Variable")\n')
-        candidate.write_text('flowchart LR\nS --> CH1_1\nVAR("Variable")\n')
-        self.assertEqual(validate.check_map(previous, candidate), ['CH1_1 --> VAR'])
-        candidate.write_text(previous.read_text() + 'S --> CH1_2\n')
-        self.assertEqual(validate.check_map(previous, candidate), [])
 
     def test_relative_source_links(self):
         sources = self.kit / 'SOURCES.md'
@@ -280,8 +65,7 @@ class KitTests(unittest.TestCase):
         kit = course / 'IT-100' / 'Chapter-Kits'
         kit.mkdir(parents=True)
         (kit / 'hub.json').write_text(json.dumps({
-            'title': 'Wrong', 'editable_stem': 'Statistics-Editable-GoodNotes',
-            'preview_stem': 'P', 'prefix': 'Statistics'}))
+            'title': 'Wrong', 'prefix': 'Statistics'}))
         errors = '\n'.join(validate.check_kit(kit))
         self.assertIn('belongs to MA-235', errors)
 
@@ -329,8 +113,7 @@ class KitTests(unittest.TestCase):
 
     def fill_live_contract(self):
         (self.kit / 'hub.json').write_text(json.dumps({
-            'title': 'T', 'editable_stem': 'T-Editable-GoodNotes',
-            'preview_stem': 'T-Preview-GoodNotes', 'prefix': 'T',
+            'title': 'T', 'prefix': 'T',
             'goodnotes_root': 'Monroe University', 'goodnotes_term': '2026 Fall',
             'goodnotes_course': 'T-100 Test'}))
         (self.kit / 'README.md').write_text('Map then Retrieval then Practice.md')
@@ -363,20 +146,11 @@ class KitTests(unittest.TestCase):
         (self.kit / 'hub.json').write_text(json.dumps(data))
         self.assertIn('goodnotes_course', '\n'.join(validate.check_kit(self.kit)))
 
-    def test_missing_goodnotes_course_falls_back_to_own_prefix(self):
-        (self.kit / 'hub.json').write_text(json.dumps({'prefix': 'IT'}))
-        self.assertEqual(hub.load_hub_meta(self.kit)['goodnotes_course'], 'IT')
-
-    def test_map_label_drops_any_course_tag(self):
-        for name in ('it-3.1-address-flow.mmd', 'stats-3.1-address-flow.mmd', '3.1-address-flow.mmd'):
-            self.assertEqual(hub.map_label('3.1', Path(name)), '3.1 Address')
-        self.assertEqual(hub.map_label('3.1', Path('it-3.1-secure-lan-flow.mmd')), '3.1 Secure Lan')
-
     def test_section_folder_name_never_repeats_number(self):
-        self.assertEqual(hub.section_folder_name('1.1', '1.1'), '1.1')
-        self.assertEqual(hub.section_folder_name('1.1', ''), '1.1')
-        self.assertEqual(hub.section_folder_name('3.2', '3.2 Variation'), '3.2 Variation')
-        self.assertEqual(hub.section_folder_name('3.2', 'Variation'), '3.2 Variation')
+        self.assertEqual(notebook.section_folder_name('1.1', '1.1'), '1.1')
+        self.assertEqual(notebook.section_folder_name('1.1', ''), '1.1')
+        self.assertEqual(notebook.section_folder_name('3.2', '3.2 Variation'), '3.2 Variation')
+        self.assertEqual(notebook.section_folder_name('3.2', 'Variation'), '3.2 Variation')
 
     def test_state_requires_status_coverage_and_title(self):
         self.fill_live_contract()
@@ -415,36 +189,6 @@ class KitTests(unittest.TestCase):
         (self.section / 'ledger.md').write_text('| S001 | a | b | c | d |\n')
         self.assertFalse([w for w in validate.kit_warnings(self.kit) if 'source table' in w])
 
-    def test_import_changes_ignore_random_claim_id(self):
-        old = {'Map': hub.mermaid_url('flowchart LR\nA', 'Map'),
-               'Notes': hub.markdown_url('one', 'Notes'),
-               'Gone': hub.markdown_url('x', 'Gone')}
-        new = {'Map': hub.mermaid_url('flowchart LR\nA', 'Map'),
-               'Notes': hub.markdown_url('two', 'Notes'),
-               'Added': hub.markdown_url('y', 'Added')}
-        self.assertNotEqual(old['Map'], new['Map'])
-        link_txt = ''.join(f'{name}:\n{url}\n\n' for name, url in old.items())
-        self.assertEqual(hub.parse_link_txt(link_txt), old)
-        self.assertEqual(hub.import_changes(old, new),
-                         {'new': ['Added'], 'changed': ['Notes'], 'removed': ['Gone']})
-
-    def test_live_rebuild_reports_only_changed_imports(self):
-        self.fill_live_contract()
-        with patch.object(hub, 'check'):
-            with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit)]):
-                with contextlib.redirect_stdout(io.StringIO()) as first:
-                    hub.main()
-                self.assertIn('every button is a first import', first.getvalue())
-                html = (self.kit / 'T-Editable-GoodNotes.html').read_text()
-                self.assertIn('Week 01 → 1.1 Data Basics → Map', html)
-                with contextlib.redirect_stdout(io.StringIO()) as second:
-                    hub.main()
-                self.assertIn('nothing to re-import', second.getvalue())
-                (self.section / 'N-Study-Notes.md').write_text('# Core\nRevised\n')
-                with contextlib.redirect_stdout(io.StringIO()) as third:
-                    hub.main()
-                self.assertIn('Changed imports: 1.1 Notes', third.getvalue())
-
     def test_scaffold_creates_collecting_section_and_refuses_existing(self):
         folder = scaffold.scaffold(self.kit, '3.2', 3, 'Measures of Variation')
         self.assertEqual(folder, self.kit / 'Chapter-03' / '3.2')
@@ -475,7 +219,7 @@ class KitTests(unittest.TestCase):
         '  linkStyle 1,3 stroke:#999\n')
 
     def test_overall_split_is_per_chapter_and_lossless(self):
-        parts = dict(hub.split_overall(self.OVERALL))
+        parts = dict(notebook.split_overall(self.OVERALL))
         self.assertEqual(sorted(parts), [1, 2])
         self.assertIn('CH1_1 --> IND', parts[1])
         self.assertIn('S --> NOTE', parts[1])
@@ -489,29 +233,9 @@ class KitTests(unittest.TestCase):
 
     def test_overall_split_refuses_unknown_syntax_and_single_chapter(self):
         with self.assertRaisesRegex(ValueError, 'cannot be split'):
-            hub.split_overall(self.OVERALL + '  subgraph X\n')
+            notebook.split_overall(self.OVERALL + '  subgraph X\n')
         with self.assertRaisesRegex(ValueError, 'fewer than two chapters'):
-            hub.split_overall('flowchart LR\n  S(["S"])\n  S --> CH1_1\n')
-
-    def test_oversized_overall_map_becomes_chapter_buttons(self):
-        self.fill_live_contract()
-        (self.kit / 'overall-flow.mmd').write_text(self.OVERALL)
-        whole = len(hub.mermaid_url(self.OVERALL, 'T Overall Map'))
-        with patch.object(hub, 'check'):
-            with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit),
-                                            '--max-url-chars', str(whole - 1)]):
-                with contextlib.redirect_stdout(io.StringIO()) as out:
-                    hub.main()
-        self.assertIn('splitting it by chapter', out.getvalue())
-        links = (self.kit / 'T-Editable-GoodNotes-link.txt').read_text()
-        self.assertIn('Overall Map Ch 1:', links)
-        self.assertIn('Overall Map Ch 2:', links)
-        self.assertNotIn('Overall Map:', links)
-
-    def test_live_hub_refuses_incomplete_kit(self):
-        with patch.object(sys, 'argv', ['hub', '--kit', str(self.kit)]):
-            with self.assertRaisesRegex(ValueError, 'Kit contract failed'):
-                hub.main()
+            notebook.split_overall('flowchart LR\n  S(["S"])\n  S --> CH1_1\n')
 
     def test_sync_updates_known_old_copy_and_preserves_unrelated(self):
         source, dest = self.kit / 'source', self.kit / 'dest'
@@ -566,6 +290,130 @@ class KitTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Slide 2: no extractable text'):
             pptx.extract(self.deck(empty=True))
 
+    def concept_code(self, hubs=5, leaves=4):
+        lines = ['flowchart LR', '  S(["COURSE"])']
+        for h in range(hubs):
+            lines.append(f'  H{h}("Hub {h}")')
+            lines.append(f'  S --> H{h}')
+            for leaf in range(leaves):
+                lines.append(f'  L{h}_{leaf}("Leaf {h}.{leaf}")')
+                lines.append(f'  H{h} --> L{h}_{leaf}')
+        return '\n'.join(lines + ['  classDef root fill:#1F3A5F'])
+
+    def test_large_concept_map_gets_one_lossless_page_per_hub(self):
+        pages = notebook.split_concept(self.concept_code())
+        self.assertEqual([label for label, _ in pages], [f'Hub {h}' for h in range(5)])
+        for h, (_, code) in enumerate(pages):
+            self.assertTrue(code.startswith('flowchart LR'))
+            self.assertIn(f'S --> H{h}', code)
+            self.assertIn('classDef root', code)
+            for leaf in range(4):
+                self.assertIn(f'H{h} --> L{h}_{leaf}', code)
+            self.assertNotIn(f'H{(h + 1) % 5} -->', code)
+
+    def test_concept_split_leaves_small_or_labelled_maps_whole(self):
+        self.assertEqual(notebook.split_concept(self.concept_code(hubs=3)), [])
+        labelled = self.concept_code().replace('S --> H0', 'S -->|yes| H0')
+        self.assertEqual(notebook.split_concept(labelled), [])
+
+    def test_notebook_keeps_core_only_and_redraws_before_check(self):
+        (self.section / 'state.json').write_text(json.dumps({'week': 1, 'title': 'Data Basics'}))
+        (self.section / 'X-Study-Notes.md').write_text(
+            '# 1.1 Core\n## A. Basics\n### 1. Idea\nCore text.\n\n**TEST MOVE:** Decide.\n'
+            '# 1.1 Quiz why\nOfficial key text\n')
+        (self.section / 'x-1.1-concept-map.mmd').write_text('flowchart LR\n  S --> A\n')
+        (self.section / 'x-1.1-decision-flow.mmd').write_text('flowchart TD\n  Q --> A\n')
+        (self.section / 'x-1.1-https-flow.mmd').write_text('flowchart LR\n  K --> L\n')
+        page, diagrams = notebook.section_html('1.1', self.section, 'MA-235 Statistics', 1, 'Data Basics')
+        self.assertEqual(diagrams, page.count('<pre class="mermaid">'))
+        self.assertEqual(diagrams, 3)
+        self.assertIn('Core text.', page)
+        self.assertIn('class="test"', page)
+        self.assertNotIn('Official key text', page)
+        self.assertIn('Map · HTTPS', page)
+        self.assertLess(page.index('Quiz Sort: redraw from memory'), page.index('Quiz Sort: check'))
+        self.assertIn('1.1 Data Basics', page)
+
+    def test_render_check_reports_undrawn_diagrams(self):
+        good = '<title>READY</title>' + '<pre data-processed="true">' * 2
+        self.assertEqual(notebook.rendered_ok(good, 2), [])
+        problems = notebook.rendered_ok('<title>x</title><pre data-processed="true">', 2)
+        self.assertIn('1 of 2 Mermaid diagrams rendered', problems)
+        self.assertIn('page did not finish rendering', problems)
+
+    def test_notebook_goes_to_matching_week_work_folder(self):
+        course = self.kit / 'course'
+        for name in ('Week-04_2026-09-28_to_2026-10-04', 'Weeks-14-15_Finals_2026-12-07_to_2026-12-17'):
+            (course / name).mkdir(parents=True)
+        self.assertEqual(notebook.week_work(course, 4).parent.name, 'Week-04_2026-09-28_to_2026-10-04')
+        self.assertEqual(notebook.week_work(course, 15).parent.name, 'Weeks-14-15_Finals_2026-12-07_to_2026-12-17')
+        with self.assertRaises(FileNotFoundError):
+            notebook.week_work(course, 5)
+        self.assertEqual(notebook.pdf_name(Path('IT-100'), '4.1', 'The Web'), 'IT-100_4.1_The-Web_GoodNotes.pdf')
+
+    def test_notebook_refuses_collecting_section_before_rendering(self):
+        (self.kit / 'hub.json').write_text(json.dumps({'goodnotes_course': 'T-100 Test'}))
+        (self.section / 'state.json').write_text(json.dumps({'status': 'collecting', 'week': 1, 'title': 'T'}))
+        with patch.object(notebook.validate_kit, 'check_kit', return_value=[]), \
+                patch.object(notebook, 'render') as render:
+            with self.assertRaisesRegex(ValueError, 'collecting'):
+                notebook.build(self.kit, None, False)
+        render.assert_not_called()
+
+    def test_notebook_refuses_kit_that_fails_contract(self):
+        with patch.object(notebook, 'render') as render:
+            with self.assertRaisesRegex(ValueError, 'kit contract failed'):
+                notebook.build(self.kit, None, False)
+        render.assert_not_called()
+    def test_course_overview_notebook_has_one_page_per_chapter(self):
+        (self.kit / 'overall-flow.mmd').write_text(
+            'flowchart LR\nS["COURSE"]\nS --> CH1_1\nCH1_1["1.1 A"]\nCH1_1 --> X["x"]\n'
+            'S --> CH2_1\nCH2_1["2.1 B"]\nCH2_1 --> Y["y"]\n')
+        page, diagrams = notebook.overview_html(self.kit, 'MA-235 Statistics')
+        self.assertEqual(diagrams, 3)
+        self.assertEqual(page.count('<pre class="mermaid">'), 3)
+        self.assertIn('Overall map · Chapter 2', page)
+        (self.kit / 'overall-flow.mmd').write_text('flowchart LR\nS --> CH1_1\n')
+        self.assertEqual(notebook.overview_html(self.kit, 'MA-235 Statistics')[1], 1)
+
+    def test_core_drops_quiz_why_and_retrieval(self):
+        core = notebook.extract_core('# 1.1 Core\nKeep this.\n\n# 1.1 Quiz why\nOfficial stem\n\n# 1.1 Retrieval\nPrompt\n')
+        self.assertEqual(core, '# 1.1 Core\nKeep this.\n')
+
+    def test_map_title_drops_course_tag_and_restores_acronyms(self):
+        for name in ('it-3.1-address-flow.mmd', 'stats-3.1-address-flow.mmd', '3.1-address-flow.mmd'):
+            self.assertEqual(notebook.map_title('3.1', Path(name)), 'Address')
+        self.assertEqual(notebook.map_title('4.1', Path('it-4.1-https-flow.mmd')), 'HTTPS')
+        self.assertEqual(notebook.map_title('4.1', Path('it-4.1-error-flow.mmd')), 'Error Sort')
+        self.assertEqual(notebook.map_title('4.1', Path('it-4.1-decision-flow.mmd')), 'Quiz Sort')
+
+    def test_notebook_needs_exactly_one_canonical_notes_file(self):
+        (self.section / 'A-Study-Notes.md').write_text('# Core\nA\n')
+        (self.section / 'B-Study-Notes.md').write_text('# Core\nB\n')
+        with self.assertRaisesRegex(ValueError, 'exactly one'):
+            notebook.section_html('1.1', self.section, 'C', 1, 'T')
+
+    def test_render_retries_once_then_refuses_without_printing(self):
+        good = '<title>READY</title><pre data-processed="true">'
+        out = self.kit / 'n.pdf'
+        calls = []
+
+        def fake_chrome(*args):
+            calls.append(args[0])
+            if args[0] == '--dump-dom':
+                return unittest.mock.Mock(stdout='' if calls.count('--dump-dom') == 1 else good)
+            Path(args[0].split('=', 1)[1]).write_text('pdf')
+            return unittest.mock.Mock(stdout='')
+        with patch.object(notebook, 'CHROME', Path(sys.executable)), patch.object(notebook, 'chrome', fake_chrome):
+            notebook.render('<html></html>', 1, out)
+        self.assertEqual(out.read_text(), 'pdf')
+        self.assertEqual(calls.count('--dump-dom'), 2)
+        out.write_text('previous')
+        with patch.object(notebook, 'CHROME', Path(sys.executable)), \
+                patch.object(notebook, 'chrome', lambda *a: unittest.mock.Mock(stdout='')):
+            with self.assertRaisesRegex(RuntimeError, '0 of 1 Mermaid diagrams'):
+                notebook.render('<html></html>', 1, out)
+        self.assertEqual(out.read_text(), 'previous')
 
 if __name__ == '__main__':
     unittest.main()

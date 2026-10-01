@@ -29,14 +29,15 @@ section's source evidence is recorded. It does not show the rest of the textbook
    document the exact changed statements and source evidence in the ledger,
    review the validator's diff, and obtain explicit correction approval before
    bypassing preservation. Never reset the baseline just to silence a failure.
-7. Publisher flowcharts that preview later chapters stay in
-   `preserved-claims.json` as **Syllabus preview**. They are not the Overall
-   Map button.
-8. Keep one `overall-flow.mmd` even when it outgrows a single GoodNotes URL.
-   The hub builder splits the import by chapter (`CH{chapter}_{section}` hubs);
-   do not hand-split the live file. The split handles plain `A --> B` edges,
+7. A publisher flowchart that previews later chapters is saved as a `.mmd` in
+   the course's `00-Course-Guide/` (for example `syllabus-preview-flow.mmd`).
+   It is not the course map and earns no nodes.
+8. Keep one `overall-flow.mmd` as it grows. The course-map notebook prints it
+   whole, then one page per chapter (`CH{chapter}_{section}` hubs); do not
+   hand-split the live file. The split handles plain `A --> B` edges,
    inline node labels, `class`, and `linkStyle`. Any other statement (for
-   example `subgraph`) stops the build instead of guessing.
+   example `subgraph`) leaves the whole map as the only page instead of
+   guessing.
 9. Discrete vs continuous, mean/median, inference, regression: omit until a
    supplied source actually teaches them.
 

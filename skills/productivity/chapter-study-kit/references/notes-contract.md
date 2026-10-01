@@ -1,7 +1,7 @@
 # Notes contract
 
-One canonical `*Study-Notes.md` per section on disk. GoodNotes receives **Core
-only**. Self-test is Obsidian `Practice.md`, not a GoodNotes notebook.
+One canonical `*Study-Notes.md` per section on disk. The GoodNotes notebook PDF
+prints **Core only**. Self-test is Obsidian `Practice.md`, not the notebook.
 
 Read [overwhelm-scaffold.md](overwhelm-scaffold.md) first.
 For a source-based question count and the Practice quality check, read
@@ -27,12 +27,12 @@ For a source-based question count and the Practice quality check, read
    stratified vs cluster; observational vs experiment; lurking vs confounding;
    application vs system software; RAM vs ROM vs storage.
 5. Group long Core with level-2 source sections (`## Section A`, `## 1.1
-   Variable type`) and keep idea headings at level-3 so the 414 split follows
+   Variable type`) and keep idea headings at level-3 so the notebook pages follow
    the module. An objective with no body on the slides stays Uncertain; do
    not invent the missing procedure.
 6. Worked stems kept **verbatim** only if the page printed them, then Official /
-   Why / If you missed it. That block is **Quiz why** in the canonical file. Do
-   not import it into GoodNotes.
+   Why / If you missed it. That block is **Quiz why** in the canonical file. It
+   never goes in the GoodNotes notebook.
 7. Traps only from these pages.
 8. Student self-test is `$SECTION/Practice.md`. Folded Obsidian callouts, one
    primary earned outcome each, full prompt in the title, answer hidden until tap:
@@ -70,7 +70,7 @@ platform tables as figures from the textbook's period. When source slides
 contradict an authoritative technical source, verify the correction, record it
 in the ledger, and show a short note at the affected Core topic. Do not invent
 material for missing pages or objectives. Compare old and revised heading
-numbers and coverage before regenerating the hub. A passed HTTP request cannot
+numbers and coverage before rebuilding the notebook. A passed render check cannot
 replace an actual readability check in GoodNotes or a folded-answer tap in
 Obsidian Reading view.
 
@@ -78,26 +78,22 @@ Obsidian Reading view.
 
 | Surface | What lives there |
 | --- | --- |
-| GoodNotes **Map/** | Concept map + extra legend flows (levels, methods, pitfalls, tools) |
-| GoodNotes **Notes/** | Core import only |
-| GoodNotes **Retrieval/** | TD sort maps only (`*-decision-flow.mmd`, `*-error-flow.mmd`) |
+| Notebook **Map pages** | Concept map + extra legend flows (levels, methods, pitfalls, tools) |
+| Notebook **Notes pages** | Core only, with a writing margin |
+| Notebook **Retrieval pages** | TD sort maps only (`*-decision-flow.mmd`, `*-error-flow.mmd`), each behind a blank redraw page |
 | Obsidian `Practice.md` | Tap-to-reveal transfer items |
 | Canonical `*Study-Notes.md` | Core + Quiz why (if printed) + author restudy pointer |
 
-Do not put Quiz why or Retrieval prose notebooks in GoodNotes.
+Do not put Quiz why or Retrieval prose in the notebook.
 
-## 414 split
+## Core in the notebook
 
-The builder derives GoodNotes markdown from **Core only**: text before the first
-level-1 heading whose title contains `Quiz why` or `Retrieval`. Use level-2
-headings for source sections so a long Core splits A–E (or 1.1 topics), not
-mid-table. Keep idea headings at level-3. Official stems, tables, and code
-fences stay together. Do not separately maintain Core/Quiz/Retrieval copies as
-the source of truth. Maps stay one `.mmd` each. `Practice.md` is never a claim
-URL.
-
-Old Core/Quiz/Retrieval files are fallback inputs only when no canonical notes
-exist. The GoodNotes fallback still sends **Core only**.
+The notebook builder prints **Core only**: text before the first level-1
+heading whose title contains `Quiz why` or `Retrieval`. Each level-2 source
+section starts a new page, so a long Core reads A–E (or 1.1 topics). Keep idea
+headings at level-3; tables and code fences are kept whole on a page. Do not
+separately maintain Core/Quiz/Retrieval copies as the source of truth. Maps
+stay one `.mmd` each. `Practice.md` never goes in the notebook.
 
 ## Integrity
 

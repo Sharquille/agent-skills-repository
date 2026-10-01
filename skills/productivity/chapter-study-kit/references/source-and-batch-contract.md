@@ -14,26 +14,27 @@ writes this shape):
   "batch": 1,
   "release_note": "More screenshots are coming",
   "missing": ["Remaining worked-example pages"],
-  "verification": {"local": "pending", "http": "pending", "import": "pending"}
+  "verification": {"local": "pending", "render": "pending", "import": "pending"}
 }
 ```
 
 - `collecting`: user is still sending sources. Record receipts and source IDs.
   Do not replace existing study outputs or expand the live overall map.
-- `partial`: user requested an interim draft. Build an offline preview only.
+- `partial`: user requested an interim draft. Keep it as files on disk; the
+  notebook builder refuses partial sections.
 - `ready`: user released this batch for processing. Source coverage may still
   be partial. Record the release instruction; do not infer missing pages exist.
-- `complete`: released batch processed, with local, HTTP, and actual import
-  checks passed. Keep ready while any check is pending, including when no browser
-  is available. Report pending checks without claiming successful import.
+- `complete`: released batch processed, with local checks, the notebook render
+  check, and the user's on-iPad check passed. Keep ready while any check is
+  pending. Report pending checks without claiming the notebook reads well.
 
 `validate_kit.py --kit` requires `state.json` on every processed section, with
-a positive integer `"week"`, a nonempty `"title"` (the GoodNotes section folder
+a positive integer `"week"`, a nonempty `"title"` (the GoodNotes notebook
 name), `"status"` from the four states below, and `"coverage"` of `partial` or
 `full`. Do not infer week
 from `Chapter-NN`. A
 legacy folder without one fails that check until you add the file (status and
-coverage as known; do not invent missing pages). The live hub builder runs
+coverage as known; do not invent missing pages). The notebook builder runs
 `--kit` and will not write while the contract fails.
 
 A new batch increments `batch` and returns to collecting when more is coming.
@@ -95,6 +96,6 @@ validate prose-only path mentions or access to remote links.
 
 Always visually check mathematical symbols, signs, units, table alignment, and
 printed answers. Extraction success is not proof of correct mathematical reading.
-Keep local source metadata out of generated claim URLs, including filenames that
-contain personal information. HTTP checks transmit the encoded note/map content
-to GoodNotes; offline previews do not contact the service.
+Keep local source metadata out of the notebook pages, including filenames that
+contain personal information. A notebook build fetches the Mermaid library from
+jsDelivr; note and map content stays on this Mac.

@@ -6,8 +6,7 @@ import re
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-HUB_KEYS = ("title", "editable_stem", "preview_stem", "prefix",
-            "goodnotes_root", "goodnotes_term", "goodnotes_course")
+HUB_KEYS = ("title", "prefix", "goodnotes_root", "goodnotes_term", "goodnotes_course")
 PREFIX_BY_COURSE = {
     "MA-235": "Statistics",
     "EN-221": "English",
@@ -207,7 +206,7 @@ def check_section(folder: Path) -> list[str]:
 
 
 def check_kit(kit: Path) -> list[str]:
-    """Filing contract every model must pass before a live hub.
+    """Filing contract every model must pass before building notebooks.
 
     Catches the Stats-vs-IT misses: missing hub.json, study-order README,
     COURSE/week pointers, leftover pending/candidate files, and thin sections.
@@ -218,7 +217,7 @@ def check_kit(kit: Path) -> list[str]:
 
     hub_path = kit / "hub.json"
     if not hub_path.is_file():
-        errors.append("Missing hub.json; every course needs its own import panel")
+        errors.append("Missing hub.json; every course needs its own course name and GoodNotes route")
     else:
         try:
             data = json.loads(hub_path.read_text())
@@ -230,10 +229,6 @@ def check_kit(kit: Path) -> list[str]:
                 for key in HUB_KEYS)):
             errors.append("hub.json needs nonempty " + ", ".join(HUB_KEYS))
         if isinstance(data, dict):
-            for key in ("editable_stem", "preview_stem"):
-                stem = str(data.get(key, "")).strip()
-                if Path(stem).name != stem or stem.endswith((".html", ".txt")):
-                    errors.append(f"hub.json {key} must be a bare filename stem")
             prefix = str(data.get("prefix", "")).strip()
             expected = PREFIX_BY_COURSE.get(course.name)
             if expected and prefix != expected:
@@ -295,9 +290,6 @@ def check_kit(kit: Path) -> list[str]:
             readme_path = sub / "README.md"
             if not readme_path.is_file() or "Chapter-Kits" not in readme_path.read_text():
                 errors.append(f"{week.name}/{label} must exist and point at Chapter-Kits")
-
-    for html in list(course.glob("Week*/Work/*Editable-GoodNotes.html")):
-        errors.append(f"Do not copy hub HTML into Work/: {html.relative_to(course).as_posix()}")
 
     return errors
 
