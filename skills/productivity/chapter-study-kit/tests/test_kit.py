@@ -419,6 +419,52 @@ class KitTests(unittest.TestCase):
         self.assertIn('needs alt text', errors)
         self.assertIn('referenced but missing', errors)
 
+    WORKED = (
+        '**Worked example: A 5 on each of two dice**\n\n'
+        '**Situation:** Roll two fair dice (Example 4). What is the chance both show 5?\n\n'
+        '**Given:**\n\n| Quantity | Value | Meaning |\n| --- | --- | --- |\n'
+        '| Faces per die | 6 | equally likely |\n\n'
+        '**Steps:**\n\n'
+        '1. One die: $P(5) = \\frac{1}{6}$.\n'
+        '2. Independent, formula (4): $\\frac{1}{6} \\cdot \\frac{1}{6} = \\frac{1}{36}$.\n'
+        '3. As a decimal: $1 \\div 36 \\approx 0.028$.\n\n'
+        '**Answer:** The chance is 1/36, about 0.028.\n\n'
+        '**Check:** 0.028 is between 0 and 1.\n')
+
+    def test_worked_example_traces_every_number(self):
+        self.assertEqual(validate.check_worked_examples(self.WORKED), [])
+        recheck = self.WORKED.replace('**Check:** 0.028 is between 0 and 1.', '**Check:** $36 \\times 0.028 = 1.008$, about 1.')
+        self.assertEqual(validate.check_worked_examples(recheck), [])
+        sneaky = self.WORKED.replace('**Check:** 0.028 is between 0 and 1.', '**Check:** $7 \\times 0.028 = 0.196$.')
+        self.assertIn('7 appears with no source', '\n'.join(validate.check_worked_examples(sneaky)))
+        after = self.WORKED + '\n**TEST MOVE:** Multiply.\n\n![Dice](stats-5.2-fig-dice.svg)\n'
+        self.assertEqual(validate.check_worked_examples(after), [])
+        invented = self.WORKED.replace('about 0.028.', 'about 0.028, or 3 in 100.')
+        self.assertIn('3 appears with no source', '\n'.join(validate.check_worked_examples(invented)))
+        unshown = self.WORKED.replace('3. As a decimal: $1 \\div 36 \\approx 0.028$.\n', '')
+        self.assertIn('0.028 appears with no source', '\n'.join(validate.check_worked_examples(unshown)))
+        self.assertIn('needs Given, Check', '\n'.join(validate.check_worked_examples(
+            self.WORKED.replace('**Given:**', 'Given:').replace('**Check:**', 'Check:'))))
+        moved = self.WORKED.replace('**Answer:**', '**Tmp:**').replace('**Steps:**', '**Answer:**').replace('**Tmp:**', '**Steps:**')
+        self.assertIn('parts must run', '\n'.join(validate.check_worked_examples(moved)))
+
+    def test_math_is_protected_from_markdown_and_prices_stay_text(self):
+        found = notebook.protect_math('Use `$C$1`, pay $5 and $10, macOS ($$) | ($$), then $x_1 * y_2$ and\n$$P(A^c) = 1 - P(A)$$')[1]
+        self.assertEqual(found, [('x_1 * y_2', False), ('P(A^c) = 1 - P(A)', True)])
+        notes = self.section / 'M-Study-Notes.md'
+        notes.write_text('# T\n## A\n### 1. X\nSee $a_1 * b_2$.\n\n$$\\frac{1}{6}$$\n')
+        body = notebook.core_html(notes)
+        self.assertIn('<span class="tex" data-tex="a_1 * b_2"></span>', body)
+        self.assertIn('<div class="tex display" data-tex="\\frac{1}{6}"></div>', body)
+        self.assertNotIn('<em>', body)
+        self.assertIn('katex.min.js', notebook.page('t', body))
+        self.assertIn('"\\\\frac": "\\\\dfrac"', notebook.MATH_JS)  # JS must see \\frac, not a form feed
+        self.assertNotIn('katex', notebook.page('t', '<p>no math</p>'))
+        self.assertIn('0 of 1 equations typeset', notebook.rendered_ok('<title>READY</title>', 0, 1))
+        self.assertIn('KaTeX reported an equation error',
+                      notebook.rendered_ok('<title>READY</title><span class="tex tex-error"></span>', 0, 0))
+        self.assertEqual(notebook.rendered_ok('<title>READY</title><style>.tex-error{}</style><span data-ok="1">', 0, 1), [])
+
     def test_orientation_is_fixed_before_printing(self):
         page = notebook.MAP_SECTION + 'a</section>' + notebook.MAP_SECTION + 'b</section>'
         numbered = notebook.number_maps(page)

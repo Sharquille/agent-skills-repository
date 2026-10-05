@@ -59,7 +59,10 @@ curl -fsS "https://data.jsdelivr.com/v1/packages/npm/mermaid@$V?structure=flat" 
   | python3 -c "import json,sys; print(next(f['hash'] for f in json.load(sys.stdin)['files'] if f['name'] == '/dist/mermaid.min.js'))"
 ```
 
-The last two lines must print the same SHA-256. Then run the tests, rebuild one
+The last two lines must print the same SHA-256. KaTeX (`KATEX`,
+`KATEX_CSS_SRI`, `KATEX_JS_SRI`) is pinned the same way: hash
+`dist/katex.min.css` and `dist/katex.min.js` for the new version and check both
+against the jsDelivr metadata. Then run the tests, rebuild one
 section and inspect its maps, and only then rebuild every course without
 `--section`. A new Mermaid release can change layout, so tell the user which
 notebooks to replace in GoodNotes.

@@ -54,7 +54,9 @@ own paper.
 
 ## Preserve the explanation
 
-Core is the entry point, not a word-count ceiling for the whole kit. Cover
+Short notes come from smaller headings, not from skipped steps: a bare number
+or a jump between steps is what overloads, because the reader has to rebuild the
+missing reasoning alone. Core is the entry point, not a word-count ceiling for the whole kit. Cover
 every earned objective. If the student cannot explain a decision from that
 heading, add a table or one small example rather than more compressed labels.
 Do not require reading all optional detail before trying Practice.md. Use

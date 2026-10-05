@@ -35,6 +35,25 @@ MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js"
 # Subresource Integrity: Chrome refuses the script if jsDelivr ever serves other bytes.
 # Bump the version and this hash together (see references/maintaining.md).
 MERMAID_SRI = "sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2"
+# KaTeX typesets $...$ and $$...$$ in Core, the same syntax Obsidian renders. Pinned and
+# integrity-checked like Mermaid; loaded only when a notebook has math.
+KATEX = "https://cdn.jsdelivr.net/npm/katex@0.19.0/dist/"
+KATEX_CSS_SRI = "sha384-3rdsX6e5mueWyoweR9NIVmtEsUkokpBT/0ALqKKIBMr9j4qhHkaIkAcGgsE6uVlp"
+KATEX_JS_SRI = "sha384-QFFtAGzvvj+bfgCGxXJlNZZR1nXEZgvG8tDLCCY1F19xl20WlfTYgguB4VcNdxYk"
+MATH_HEAD = (f'<link rel="stylesheet" href="{KATEX}katex.min.css" integrity="{KATEX_CSS_SRI}" crossorigin="anonymous">\n'
+             f'<script src="{KATEX}katex.min.js" integrity="{KATEX_JS_SRI}" crossorigin="anonymous"></script>')
+MATH_JS = """document.querySelectorAll(".tex").forEach(el => {
+  try { // \\frac prints full height inline so fractions stay readable on the iPad.
+        katex.render(el.dataset.tex, el, { displayMode: el.classList.contains("display"), throwOnError: true,
+                                           macros: { "\\\\frac": "\\\\dfrac" } });
+        el.dataset.ok = "1"; }
+  catch (e) { el.classList.add("tex-error"); el.textContent = "TeX error: " + e.message; }
+});"""
+# Code is skipped; math follows pandoc's rule so `$C$1`, $5, "$5 and $10", and ($$) stay text.
+MATH_OR_CODE = re.compile(
+    r"(?P<code>```.*?```|`[^`\n]*`)"
+    r"|\$\$(?!\))(?P<display>.+?)(?<!\()\$\$"  # not "($$)", a price marker
+    r"|(?<![\\\w$])\$(?P<inline>[^\s$](?:[^$\n]*?[^\s$])?)\$(?![\w$])", re.S)
 ACRONYMS = {"Https": "HTTPS", "Http": "HTTP", "Html": "HTML", "Css": "CSS",
             "Url": "URL", "Ip": "IP", "Lan": "LAN", "Io": "I/O"}
 PLAIN_EDGE = re.compile(r"^\s*(\w+)\s*-->\s*(\w+)\s*$")
@@ -273,6 +292,29 @@ def inline_figure(notes: Path, number: int, name: str) -> str:
     return f'\n<div class="fig">{svg}</div>\n'
 
 
+def protect_math(text: str) -> tuple[str, list[tuple[str, bool]]]:
+    """Swap math for placeholders so Markdown cannot mangle `_`, `*`, or `\\`."""
+    found: list[tuple[str, bool]] = []
+
+    def swap(m: re.Match) -> str:
+        if m.group("code"):
+            return m.group("code")
+        display = m.group("display") is not None
+        found.append(((m.group("display") if display else m.group("inline")).strip(), display))
+        return f"@@MATH{len(found) - 1}@@"
+    return MATH_OR_CODE.sub(swap, text), found
+
+
+def restore_math(body: str, found: list[tuple[str, bool]]) -> str:
+    def tag(i: int) -> str:
+        tex, display = found[i]
+        cls = "tex display" if display else "tex"
+        el = "div" if display else "span"
+        return f'<{el} class="{cls}" data-tex="{html.escape(tex, quote=True)}"></{el}>'
+    body = re.sub(r"<p>@@MATH(\d+)@@</p>", lambda m: tag(int(m.group(1))), body)
+    return re.sub(r"@@MATH(\d+)@@", lambda m: tag(int(m.group(1))), body)
+
+
 def core_html(notes: Path) -> str:
     """Core only (no Quiz why / Retrieval); each level-2 source section opens a page."""
     text = extract_core(notes.read_text())
@@ -282,7 +324,8 @@ def core_html(notes: Path) -> str:
     text = CUE.sub(lambda m: f'\n<div class="cue"><b>{m.group(1)}</b>{html.escape(m.group(2).strip())}</div>\n',
                    text)
     text = GFM_ALERT.sub(lambda m: f"> **{m.group(1).upper()}:** ", text)
-    body = markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
+    text, found = protect_math(text)
+    body = restore_math(markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"]), found)
     body = body.replace("<p><strong>TEST MOVE:</strong>", '<p class="test"><strong>TEST MOVE:</strong>')
     return body.replace("<h2>", '<h2 class="section">')
 
@@ -347,8 +390,7 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str)
 <div class="howto"><strong>First pass:</strong> Map → Notes → Practice.md in Obsidian.<br>
 <strong>Return visits:</strong> start closed-book. Redraw a Retrieval map or answer Practice items before you look back.</div>
 </section>"""
-    return PAGE.format(title=html.escape(title), body=cover + "".join(pages),
-                       mermaid=MERMAID_JS, sri=MERMAID_SRI), diagrams
+    return page(html.escape(title), cover + "".join(pages)), diagrams
 
 
 def overview_html(kit: Path, course: str) -> tuple[str, int]:
@@ -366,12 +408,23 @@ def overview_html(kit: Path, course: str) -> tuple[str, int]:
 <div class="howto">Every section studied so far, grown from its sources. Redraw a chapter branch from memory, then check it here.</div>
 </section>"""
     body = cover + "".join(pages) + blank_page("Scratch 1")
-    return PAGE.format(title="Course map", body=body, mermaid=MERMAID_JS, sri=MERMAID_SRI), 1 + len(parts)
+    return page("Course map", body), 1 + len(parts)
 
 
-def rendered_ok(dom: str, expected: int) -> list[str]:
-    """Problems in Chrome's dumped DOM; empty means every diagram drew."""
+def page(title: str, body: str) -> str:
+    math = 'class="tex' in body
+    return PAGE.format(title=title, body=body, mermaid=MERMAID_JS, sri=MERMAID_SRI,
+                       math_head=MATH_HEAD if math else "", math_js=MATH_JS if math else "")
+
+
+def rendered_ok(dom: str, expected: int, math: int = 0) -> list[str]:
+    """Problems in Chrome's dumped DOM; empty means every diagram and equation drew."""
     problems = []
+    typeset = dom.count('data-ok="1"')
+    if typeset != math:
+        problems.append(f"{typeset} of {math} equations typeset")
+    if re.search(r'class="[^"]*\btex-error', dom):  # the CSS and script also name the class
+        problems.append("KaTeX reported an equation error")
     drawn = dom.count('data-processed="true"')
     if drawn != expected:
         problems.append(f"{drawn} of {expected} Mermaid diagrams rendered")
@@ -416,7 +469,7 @@ def render(page_html: str, expected: int, out: Path) -> None:
         # One retry: a slow jsDelivr fetch occasionally leaves every diagram undrawn.
         for _ in range(2):
             dom = chrome("--dump-dom", source.as_uri()).stdout
-            problems = rendered_ok(dom, expected)
+            problems = rendered_ok(dom, expected, page_html.count('class="tex'))
             if not problems:
                 break
         if problems:
@@ -519,8 +572,14 @@ th {{ background: var(--tint); }}
 code {{ font: 9pt Menlo, monospace; background: #F4F6F8; padding: 0 2pt; border-radius: 2pt; }}
 pre:not(.mermaid) {{ background: #F4F6F8; padding: 6pt; white-space: pre-wrap; break-inside: avoid; }}
 .edgeLabel, .edgeLabel p, .edgeLabel span, .edgeLabel div {{ color:#24313F !important; background:#FFFFFF !important; font-weight:600; }}
+.tex.display {{ display: block; margin: 6pt 0 8pt; text-align: center; }}
+/* full-height inline fractions need taller lines so stacked lines don't collide */
+p:has(.tex), li:has(.tex), td:has(.tex) {{ line-height: 2.7; }}
+li:has(.tex) {{ margin: 3pt 0; }}
+.tex-error {{ color: #5C4023; }}
 blockquote {{ margin: 6pt 0; padding: 6pt 10pt; border-left: 3px solid #6FA98A; background: #F3FAF6; break-inside: avoid; }}
 </style>
+{math_head}
 <script src="{mermaid}" integrity="{sri}" crossorigin="anonymous"></script>
 </head><body>
 {body}
@@ -528,6 +587,7 @@ blockquote {{ margin: 6pt 0; padding: 6pt 10pt; border-left: 3px solid #6FA98A; 
 mermaid.initialize({{ startOnLoad: false, theme: "base", flowchart: {{ htmlLabels: true, useMaxWidth: true }},
   themeVariables: {{ fontFamily: "-apple-system, Helvetica Neue, Arial, sans-serif", fontSize: "15px",
   edgeLabelBackground: "#FFFFFF" }} }});
+{math_js}
 mermaid.run().then(() => {{
   // Tall drawings get a portrait page so their labels stay large. The first pass
   // records the shape; the builder sets the class before the print pass.

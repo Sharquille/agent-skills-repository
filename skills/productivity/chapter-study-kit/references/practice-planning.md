@@ -60,7 +60,7 @@ example.
 
 Put the full, answerable prompt in the folded `[!question]-` title; its body stays hidden until tap. Group items by the source's sections. Use consecutive `Q01`, `Q02`, … IDs and short groups of about 6–8 questions per study round. `ceil(Q_min / 8)` is only a **planning estimate** for rounds; stop a round after about 10–15 minutes or when attention fails. A large bank is available across days, not one compulsory sitting.
 
-Every revealed answer must state the decision, give the source-based reason, resolve offered alternatives, and point to a specific numbered Core topic. Before counting a card, reject or rewrite it if any answer is yes:
+Every revealed answer must state the decision, give the source-based reason, resolve offered alternatives, and point to a specific numbered Core topic. On a calculation item, **Why** shows the working as numbered steps, one calculation each, in the worked-example style of the notes contract. Before counting a card, reject or rewrite it if any answer is yes:
 
 1. Does it ask about more than one concept, or chain parts with `(a)/(b)` or "then… next"?
 2. Does the stem contain the answer's key term, or state the verdict it asks for?

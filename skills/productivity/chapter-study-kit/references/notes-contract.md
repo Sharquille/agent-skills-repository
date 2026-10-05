@@ -13,11 +13,11 @@ For a source-based question count and the Practice quality check, read
 2. Numbered sections. One idea per heading. When the lecture lists module or
    section objectives, that list is the Core spine: one heading per earned
    objective. Do not collapse a full slide module into a ten-heading recap.
-3. Core: 1–3 short sentences, then a **TEST MOVE** line. That is the shape of
-   one heading, not a word-count ceiling for the kit. When the source teaches
+3. Core: each heading follows the explanation order below, then a **TEST
+   MOVE** line. Keep a heading short by splitting a long idea into smaller
+   headings, never by skipping a step or a definition. When the source teaches
    a list (four cleaning mistakes, five shop steps, Fig 2-20), put it in a
-   table. When compression loses the reason, add optional depth or a tiny
-   worked example, still under that heading.
+   table.
    For a procedure the source actually demonstrates, include one correct worked
    example with the decision points visible. Practice then fades one meaningful
    step before asking for independent near-transfer. Do not invent a procedure
@@ -56,6 +56,58 @@ For a source-based question count and the Practice quality check, read
 11. Figures are `.svg` files beside the notes, embedded with a Markdown image
     line; rules in [visual-language.md](visual-language.md#figures-in-core).
 
+## Explanation order
+
+Write every Core heading for a reader who has never seen the textbook:
+
+1. **What it is**, in plain words. Define every term and symbol before its
+   first use.
+2. **Why it works**: the reason the rule or idea holds, from the source.
+3. **What it builds on**: the earlier Core heading it depends on, by number.
+4. **A worked example** when the topic involves a calculation (format below).
+5. **TEST MOVE**: what to do when it shows up on a test.
+
+A section that uses notation (`P(A)`, `P(A | B)`, `Aᶜ`, `x-bar`, `σ`) starts
+its Core with a **Symbols** table: symbol, how to read it aloud, and what it
+means. Write math as `$...$` inline and `$$...$$` on its own line; Obsidian and
+the notebook both typeset it (KaTeX). Use LaTeX commands (`\frac{1}{6}`,
+`\mid`, `\cdot`), never a picture of an equation.
+
+## Worked examples
+
+A calculation is shown, not asserted. Use this exact layout so
+`validate_kit.py` can trace it:
+
+```markdown
+**Worked example: A 5 on each of two dice**
+
+**Situation:** The problem in one or two sentences (Example 4).
+
+**Given:**
+
+| Quantity | Value | Meaning |
+| --- | --- | --- |
+| Faces per die | 6 | each face equally likely |
+
+**Steps:**
+
+1. One die: $P(5) = \frac{1}{6}$, favorable faces over all faces.
+2. Independent dice, formula (4): $\frac{1}{6} \cdot \frac{1}{6} = \frac{1}{36}$.
+
+**Answer:** A full sentence with units or meaning.
+
+**Check:** A sense check, such as a probability between 0 and 1.
+```
+
+- **Given** lists every number the problem states and what it means.
+- Each **Step** does one calculation and says what it does and why. Numbers
+  left of `=` must already be given or produced by an earlier step; numbers
+  after `=` are what the step produces.
+- A count is shown by listing or multiplying the outcomes, never just stated.
+- The validator rejects a missing part, parts out of order, or a number with
+  no source. It cannot judge whether a step is correct, so the editorial
+  review still re-works every example.
+
 Study paths (first contact vs closed-book return) and cueing live in
 [overwhelm-scaffold.md](overwhelm-scaffold.md).
 
@@ -63,7 +115,9 @@ Prose: unslop. No decorative emoji. No invented later-chapter traps.
 
 ## Editorial review before release
 
-Read each Core heading and Practice item aloud in its source context. Rewrite
+Read the Core once as someone who has never seen the textbook: every symbol
+defined before use, every number traceable, no step skipped. Then read each Core
+heading and Practice item aloud in its source context. Rewrite
 fragments as complete, plain-English explanations, with one test decision and
 the reason behind it. Keep the lecture's objective spine, numbered headings,
 revealed official answers, units, and source locators. Treat old prices and

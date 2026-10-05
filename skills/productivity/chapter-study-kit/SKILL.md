@@ -22,7 +22,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.11.1**. Read the canonical version before executing a synced copy.
+Workflow version: **2.12.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -47,7 +47,8 @@ manifest, synced copies, Mermaid bump):
   not. The validator, scaffolder, PPTX extractor, and sync script are stdlib
   only and also run on 3.9.
 - Network only for a notebook build: Chrome loads a pinned, integrity-checked
-  Mermaid from jsDelivr. Notes, maps, and sources never leave the Mac.
+  Mermaid, and KaTeX when Core has math, from jsDelivr. Notes, maps, and
+  sources never leave the Mac.
 
 ## Non-negotiables
 
@@ -219,8 +220,11 @@ own the detail. Order and non-negotiables:
 1. Map first. Then one canonical `*Study-Notes.md`: numbered, unslop, portable
    GFM alerts only. Core follows the lecture's objective spine (A–E or
    equivalent), with level-2 source sections and level-3 idea headings. Each
-   heading is 1–3 sentences plus a TEST MOVE, with a table when the source
-   teaches a list: a per-heading shape, not a word-count ceiling.
+   heading follows the notes contract's explanation order (what it is, why it
+   works, what it builds on, a worked example for a calculation, TEST MOVE).
+   Notation-heavy sections open with a Symbols table; math is `$...$`.
+   Worked examples use Situation / Given / Steps / Answer / Check, and every
+   number is given or produced by a visible step.
 2. **Figures** (default for every section): follow the Figures section of
    [references/visual-language.md](references/visual-language.md). One idea
    per figure after the text it shows, built with `scripts/svg_figure.py`,
@@ -255,8 +259,9 @@ then **re-run item 8 above**.
 Run local validation first. `--kit` is the filing contract: hub.json, study-order
 README, COURSE/week pointers, leftover pending files, section maps/notes, map
 direction (concept map LR, sort maps TD), and `state.json` week, title, status,
-coverage, verification, and figures (safe, labelled, palette-only SVGs whose
-numbers the notes or ledger supply). Warnings (for example a legacy ledger with no
+coverage, verification, figures (safe, labelled, palette-only SVGs whose
+numbers the notes or ledger supply), and worked examples (all five parts, every
+number traced). Warnings (for example a legacy ledger with no
 `| S001 |` source rows, or free-text verification values) do not block
 publishing; report them.
 
@@ -279,8 +284,8 @@ writing margin holding the SKETCH/RECALL prompts, each level-2 section after
 the first on a new page → redraw-then-check Retrieval pages →
 scratch pages. Core is the text before the first H1 titled Quiz why or
 Retrieval. A concept map with 4+ hubs and 20+ edges also gets one page per hub.
-The build stops unless every Mermaid diagram drew without a syntax error, and
-a failed build leaves the previous PDF in place.
+The build stops unless every Mermaid diagram drew and every equation typeset
+without an error, and a failed build leaves the previous PDF in place.
 
 `hub.json` names the course for the cover and the filing contract (`title`,
 `prefix`, `goodnotes_root`, `goodnotes_term`, `goodnotes_course`); give each

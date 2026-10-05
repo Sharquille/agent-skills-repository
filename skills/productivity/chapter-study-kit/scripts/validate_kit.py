@@ -85,6 +85,64 @@ def check_figures(folder: Path, notes: Path) -> list[str]:
     return errors
 
 
+# Worked examples: every number is given or produced by a visible step (notes-contract.md).
+WORKED_START = re.compile(r"(?m)^\*\*Worked example:\s*(.+?)\*\*\s*$")
+WORKED_PARTS = ("Situation", "Given", "Steps", "Answer", "Check")
+WORKED_LABELS = re.compile(
+    r"\b(?:Examples?|Figures?|Fig\.?|Tables?|Core|Chapters?|Sections?|Q|formulas?)\s*\(?\d+(?:[-.]\d+)*[a-z]?\)?"
+    r"|\(\d+\)|^\s*\d+\.\s", re.I | re.M)
+WORKED_NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?![\w])")
+WORKED_CONSTANTS = {0.0, 1.0, 100.0}
+
+
+def worked_numbers(text: str) -> list[str]:
+    return WORKED_NUMBER.findall(WORKED_LABELS.sub(" ", text))
+
+
+def check_worked_examples(notes_text: str) -> list[str]:
+    """Each worked example has its five parts and no number from nowhere."""
+    errors = []
+    starts = list(WORKED_START.finditer(notes_text))
+    for i, start in enumerate(starts):
+        end = starts[i + 1].start() if i + 1 < len(starts) else len(notes_text)
+        # The example ends at the next heading, its TEST MOVE, or a figure line.
+        heading = re.search(r"(?m)^(?:#|\*\*TEST MOVE:\*\*|!\[)", notes_text[start.end():end])
+        block = notes_text[start.end():start.end() + heading.start()] if heading else notes_text[start.end():end]
+        title = start.group(1).strip()
+        marks = {part: re.search(rf"(?m)^\*\*{part}:\*\*", block) for part in WORKED_PARTS}
+        missing = [part for part, m in marks.items() if not m]
+        if missing:
+            errors.append(f"Worked example: {title}: needs {', '.join(missing)}")
+            continue
+        pos = [marks[part].start() for part in WORKED_PARTS]
+        if pos != sorted(pos):
+            errors.append(f"Worked example: {title}: parts must run Situation, Given, Steps, Answer, Check")
+            continue
+        piece = {part: block[pos[k]:pos[k + 1] if k + 1 < len(pos) else len(block)]
+                 for k, part in enumerate(WORKED_PARTS)}
+        known = set(WORKED_CONSTANTS) | {float(n) for n in worked_numbers(piece["Situation"] + piece["Given"])}
+        unexplained = []
+        steps = re.split(r"(?m)^\s*\d+\.\s", piece["Steps"].split("**", 2)[-1])
+        for step in steps:
+            parts = re.split(r"=|≈|\\approx", step)  # what follows is produced by the step
+            unexplained += [n for n in worked_numbers(parts[0]) if float(n) not in known]
+            for later in parts[1:]:
+                known |= {float(n) for n in worked_numbers(later)}
+        unexplained += [n for n in worked_numbers(piece["Answer"]) if float(n) not in known]
+        # A check may recompute: its inputs are traced like a step's, its results are new.
+        check = re.split(r"=|≈|\\approx", piece["Check"])
+        unexplained += [n for n in worked_numbers(check[0]) if float(n) not in known]
+        for i, later in enumerate(check[1:], 1):
+            head = re.split(r"[,.;]\s|\$\s", later, maxsplit=1)
+            known |= {float(n) for n in worked_numbers(head[0])}
+            if len(head) > 1:
+                unexplained += [n for n in worked_numbers(head[1]) if float(n) not in known]
+        for number in dict.fromkeys(unexplained):
+            errors.append(f"Worked example: {title}: {number} appears with no source; "
+                          "add it to Given or show the step that produces it")
+    return errors
+
+
 def missing_links(path: Path) -> list[str]:
     missing = []
     for target in re.findall(r'\]\((<[^>]+>|[^)]+)\)', path.read_text()):
@@ -254,6 +312,7 @@ def check_section(folder: Path) -> list[str]:
         errors.append("need exactly one *Study-Notes.md")
     else:
         errors += check_figures(folder, notes[0])
+        errors += check_worked_examples(notes[0].read_text())
     concept = sorted(folder.glob("*-concept-map.mmd"))
     sort_maps = sorted(folder.glob("*-decision-flow.mmd"))
     if not concept:
