@@ -1,6 +1,6 @@
 {
   "files": {
-    "SKILL.md": "dc6d03bea4e0832cde96b446cd609c61bb56974c37e5a759fffcd2a427a11262",
+    "SKILL.md": "ac77842eb21100b277dd261588ce6547300cd6a288416031b46087edc60f3c07",
     "references/consult-panel.md": "5b7fcdf21baf26022751e3455a97ef5ae7b761bde6ce28896c2baf155bbbe8c2",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
     "references/maintaining.md": "07f847850ecdedcaf40babaac3685fe1c7e218a7796fae9efa0b3fd0d265bd1a",
@@ -8,7 +8,7 @@
     "references/overwhelm-scaffold.md": "99b81642b4347d950a9e01d805951e8a0dc5be8facdb6cf89005b687e2b94833",
     "references/practice-planning.md": "77ecaca343da5b4c55f6630750ea76cbcc2c6def2d9e875802c7d6f231f9a357",
     "references/source-and-batch-contract.md": "e446ac77e863196bb5d90952d0129abc3c56cce69b537b9e53a7c89127581396",
-    "references/visual-language.md": "f2dc2cfb3b3eeeab07a886bdc4d77b02b7b7dcd1f3e4f88847019c0d7af27aa4",
+    "references/visual-language.md": "d9fd0fffbbf543282c95159a5c38b5b659bc3b088d7a9855e87d69944db88b3e",
     "scripts/build_section_pdf.py": "d773c8a903605d18feba89fb20c44831164be25048f7e044b9567c9f41cbc49f",
     "scripts/extract_pptx.py": "610aa2f02c54dfa117c2e26ab57743fa45552449fe87240704b83478903eae27",
     "scripts/new_section.py": "438e68d07018b15dc8db11ce8facc259507d5ba9216e4f6e3addfdfabf9cb1b3",
@@ -18,5 +18,5 @@
     "scripts/validate_kit.py": "796836d9ca9f60e5a8685ded869b52aa806a8b7f5a194c17e8fb02e8d204c405",
     "tests/test_kit.py": "6323380fe9be1a80c04dd76f5fe0175b702f091e52c84aefe5585d8e9d8b2691"
   },
-  "version": "2.11.0"
+  "version": "2.11.1"
 }

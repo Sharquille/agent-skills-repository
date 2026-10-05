@@ -54,10 +54,16 @@ definition or an argument in prose; a literature section may need none.
    Numbers come only from the notes or ledger; `validate_kit.py` rejects a
    multi-digit, decimal, or percent value it cannot find there. Placeholders
    that only show a pattern (`Climber 1`, `here k = 4`) read as examples.
-3. **Same meaning, same colour, in every figure:** green = population,
-   parameter, descriptive; navy = sample, statistic; purple = individuals and
-   variables; peach = inferential, traps, errors, undercoverage. Palette
+3. **Same meaning, same colour, in every figure of a course.** Palette
    colours only; the validator rejects others.
+
+   | Course | Green | Navy | Purple | Peach |
+   | --- | --- | --- | --- | --- |
+   | MA-235 | population, parameter, descriptive | sample, statistic | individuals, variables | inferential, traps, errors, undercoverage |
+   | IT-100 | server, destination, receiver | your device, client, sender | data, packets, components | failure, loss, attacker |
+   | EN-221, LA-122 | the other side, receiver, outcome | speaker, character, sender | message, channel, story parts | conflict, gap, noise |
+
+   A new course picks its mapping on its first figure and adds a row here.
 4. **Replace a table only when the figure holds every cell** (the levels
    staircase, the sampling-method panels). Otherwise keep the table and draw
    the relation the table cannot show.
@@ -67,7 +73,9 @@ definition or an argument in prose; a literature section may need none.
    opposite of the words (undercoverage is only the population outside the
    frame, never inside it). Render the page and inspect it for overlap and
    clipping before release.
-7. **One margin prompt per level-2 group**, drawn before looking at the figure:
+7. **One margin prompt per level-2 group**, drawn or written before looking
+   back. Skip a group that only bounds an assignment or retells the reading;
+   a prompt asks for the concept, never a worksheet or graded answer:
 
    ```markdown
    > [!TIP]
