@@ -1,19 +1,19 @@
 {
   "files": {
-    "SKILL.md": "12f02edbe776b6e653a64929ff8fa07dd6abfbe6c252f8546ab7aeb2a235ab9f",
+    "SKILL.md": "c716112cd8ec7021d26b17b52bbbf29a75d057a7a8617ec88a0a3c9b230115b2",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
     "references/notes-contract.md": "e08963061c90ae2ff801d6cc201772e04a142e35bb9f4894da6b12f0c7fb83e7",
     "references/overwhelm-scaffold.md": "e57f88b7af3f7351ef7b8d4067e5f960d7e2f8a2ad912b1c5c059fa3a234b9d4",
     "references/practice-planning.md": "8722fe32370ede8d147e33db3c5379df3ddcc9127522aaa68190c5b63c6d313f",
     "references/source-and-batch-contract.md": "cdbd2f600e72779bd59c4eebd5956380468bb990520d868e7b5bc4a5047e3234",
     "references/visual-language.md": "61fe47056726b2464cb20656e677ca33a7ec6356c3369a89d0f040b3689a0704",
-    "scripts/build_section_pdf.py": "e2ee5f03dd6f489392d9aaab61b93eb6688ee2902c14dc5713e973074bcc80c3",
+    "scripts/build_section_pdf.py": "aef2ae9ac315e84f668009a5936d53ab6eb73cb855924a0383adca4f0069e5df",
     "scripts/extract_pptx.py": "610aa2f02c54dfa117c2e26ab57743fa45552449fe87240704b83478903eae27",
     "scripts/new_section.py": "438e68d07018b15dc8db11ce8facc259507d5ba9216e4f6e3addfdfabf9cb1b3",
     "scripts/ocr_pdf.swift": "9ca7fc099e5326f879d19d307034e777b6bb0030c9bf2bf03ec7f7ca925f6524",
     "scripts/sync_skill.py": "aa42424eb86465910f93f23f62df191fd651a0657edf0768629538d379134a61",
     "scripts/validate_kit.py": "5a1f6ae71bc653b71e467566efd70631326159573ab63ca0a973ccb942b62705",
-    "tests/test_kit.py": "751355cbfb393fa97d5e9ceac6a7c622b0bc5596786a8957efbf3a7e2e4a08ae"
+    "tests/test_kit.py": "0e20ee02cd4d289be29a68e0a55a44a2013189c19feae680562ddea621553dcd"
   },
-  "version": "2.9.0"
+  "version": "2.9.1"
 }

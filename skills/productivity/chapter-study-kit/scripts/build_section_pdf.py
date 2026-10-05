@@ -46,6 +46,10 @@ EDGE_LINE = re.compile(
 CLASS_LINE = re.compile(r"^\s*class\s+([A-Za-z0-9_,\s]+?)\s+(\S+)\s*;?\s*$")
 LINKSTYLE_LINE = re.compile(r"^\s*linkStyle\s+([\d,\s]+?)\s+(\S.*)$")
 CHAPTER_HUB = re.compile(r"^CH(\d+)_\d+$")
+# A GFM alert label line, any blank "> " lines after it, and the next line's "> "
+# prefix, so the label opens the first paragraph instead of printing a literal ">".
+GFM_ALERT = re.compile(
+    r"(?im)^>[ \t]?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n(?:>[ \t]*\n)*>[ \t]?)?")
 
 
 def numeric_key(name: str) -> tuple[int, ...]:
@@ -303,8 +307,7 @@ def core_html(notes: Path) -> str:
     """Core only (no Quiz why / Retrieval); each level-2 source section opens a page."""
     text = extract_core(notes.read_text())
     text = re.sub(r"^# .*\n", "", text, count=1)  # the cover carries the title
-    text = re.sub(r"^> \[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*\n", r"> **\1:** ",
-                  text, flags=re.M)
+    text = GFM_ALERT.sub(lambda m: f"> **{m.group(1).upper()}:** ", text)
     body = markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
     body = body.replace("<p><strong>TEST MOVE:</strong>", '<p class="test"><strong>TEST MOVE:</strong>')
     return body.replace("<h2>", '<h2 class="section">')

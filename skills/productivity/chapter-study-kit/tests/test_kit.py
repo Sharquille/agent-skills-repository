@@ -380,6 +380,15 @@ class KitTests(unittest.TestCase):
         core = notebook.extract_core('# 1.1 Core\nKeep this.\n\n# 1.1 Quiz why\nOfficial stem\n\n# 1.1 Retrieval\nPrompt\n')
         self.assertEqual(core, '# 1.1 Core\nKeep this.\n')
 
+    def test_alert_label_joins_first_paragraph_without_literal_quote_marker(self):
+        notes = self.section / '1.1-Study-Notes.md'
+        notes.write_text('# 1.1 Core\n\n> [!NOTE]\n> The slides define it.\n>\n> Second paragraph.\n\n'
+                         '> [!tip]\n>\n> After a blank line.\n')
+        body = notebook.core_html(notes)
+        self.assertNotIn('&gt;', body)
+        self.assertIn('<p><strong>NOTE:</strong> The slides define it.</p>\n<p>Second paragraph.</p>', body)
+        self.assertIn('<p><strong>TIP:</strong> After a blank line.</p>', body)
+
     def test_map_title_drops_course_tag_and_restores_acronyms(self):
         for name in ('it-3.1-address-flow.mmd', 'stats-3.1-address-flow.mmd', '3.1-address-flow.mmd'):
             self.assertEqual(notebook.map_title('3.1', Path(name)), 'Address')
