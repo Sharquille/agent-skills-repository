@@ -1,21 +1,22 @@
 {
   "files": {
-    "SKILL.md": "fc1ea97cd77630081a6946fbf71961871b966195b77ac45e1b0e861e7b5125ac",
+    "SKILL.md": "dc6d03bea4e0832cde96b446cd609c61bb56974c37e5a759fffcd2a427a11262",
     "references/consult-panel.md": "5b7fcdf21baf26022751e3455a97ef5ae7b761bde6ce28896c2baf155bbbe8c2",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
     "references/maintaining.md": "07f847850ecdedcaf40babaac3685fe1c7e218a7796fae9efa0b3fd0d265bd1a",
-    "references/notes-contract.md": "9d4d4cebb7565214bcd44c2d9c3491ab00eab9f70dc3e79cb48e277a13174021",
+    "references/notes-contract.md": "e17c3756f557f29f2001f6d84e1c2469fcd69a51c024eeafc5e2de23d61a5d56",
     "references/overwhelm-scaffold.md": "99b81642b4347d950a9e01d805951e8a0dc5be8facdb6cf89005b687e2b94833",
     "references/practice-planning.md": "77ecaca343da5b4c55f6630750ea76cbcc2c6def2d9e875802c7d6f231f9a357",
     "references/source-and-batch-contract.md": "e446ac77e863196bb5d90952d0129abc3c56cce69b537b9e53a7c89127581396",
-    "references/visual-language.md": "47db026c6c57635efa76ed2df415de8164d3a00258187fae2cdb8a91c64477f5",
-    "scripts/build_section_pdf.py": "3e9a14c7023fefbe91a52f079773eef30e90386e341ef4df533eb45c5b8bd904",
+    "references/visual-language.md": "f2dc2cfb3b3eeeab07a886bdc4d77b02b7b7dcd1f3e4f88847019c0d7af27aa4",
+    "scripts/build_section_pdf.py": "d773c8a903605d18feba89fb20c44831164be25048f7e044b9567c9f41cbc49f",
     "scripts/extract_pptx.py": "610aa2f02c54dfa117c2e26ab57743fa45552449fe87240704b83478903eae27",
     "scripts/new_section.py": "438e68d07018b15dc8db11ce8facc259507d5ba9216e4f6e3addfdfabf9cb1b3",
     "scripts/ocr_pdf.swift": "9ca7fc099e5326f879d19d307034e777b6bb0030c9bf2bf03ec7f7ca925f6524",
+    "scripts/svg_figure.py": "958af25c274b5529b67339d99a5d61c7430318c91dd4856654bf600a9d8a8962",
     "scripts/sync_skill.py": "aa42424eb86465910f93f23f62df191fd651a0657edf0768629538d379134a61",
-    "scripts/validate_kit.py": "a1140281faefd2fac33e4affc207f14836700fe6e84ec045aa5d521e4172990b",
-    "tests/test_kit.py": "68c75be4df47fff424dc6e6c5f3ec70701f07cbbe271e5af6ae1a16eac258e61"
+    "scripts/validate_kit.py": "796836d9ca9f60e5a8685ded869b52aa806a8b7f5a194c17e8fb02e8d204c405",
+    "tests/test_kit.py": "6323380fe9be1a80c04dd76f5fe0175b702f091e52c84aefe5585d8e9d8b2691"
   },
-  "version": "2.10.1"
+  "version": "2.11.0"
 }

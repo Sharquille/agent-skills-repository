@@ -51,7 +51,10 @@ For a source-based question count and the Practice quality check, read
    then a different item later; a miss on an `unverified` outcome routes to a
    source recheck instead. Record actual attempts only when supplied.
 10. Canonical `*Study-Notes.md` callouts: `> [!NOTE]` / `TIP` / `IMPORTANT` /
-    `WARNING` / `CAUTION` only. `Practice.md` may use `[!question]-`.
+    `WARNING` / `CAUTION` only. A `TIP` whose body starts with `**SKETCH:**` or
+    `**RECALL:**` is a margin prompt. `Practice.md` may use `[!question]-`.
+11. Figures are `.svg` files beside the notes, embedded with a Markdown image
+    line; rules in [visual-language.md](visual-language.md#figures-in-core).
 
 Study paths (first contact vs closed-book return) and cueing live in
 [overwhelm-scaffold.md](overwhelm-scaffold.md).
@@ -77,7 +80,7 @@ Obsidian Reading view.
 | Surface | What lives there |
 | --- | --- |
 | Notebook **Map pages** | Concept map + extra legend flows (levels, methods, pitfalls, tools) |
-| Notebook **Notes pages** | Core only, with a writing margin |
+| Notebook **Notes pages** | Core and its figures, with SKETCH/RECALL prompts in the writing margin |
 | Notebook **Retrieval pages** | TD sort maps only (`*-decision-flow.mmd`, `*-error-flow.mmd`), each behind a blank redraw page |
 | Obsidian `Practice.md` | Tap-to-reveal transfer items |
 | Canonical `*Study-Notes.md` | Core + Quiz why (if printed) + author restudy pointer |

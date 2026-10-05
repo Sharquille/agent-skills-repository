@@ -27,6 +27,7 @@ pptx = load('extract_pptx')
 sync = load('sync_skill')
 scaffold = load('new_section')
 notebook = load('build_section_pdf')
+svgfig = load('svg_figure')
 
 
 class KitTests(unittest.TestCase):
@@ -373,6 +374,66 @@ class KitTests(unittest.TestCase):
         self.assertNotIn('Sigma', page)
         self.assertLess(page.index('Quiz Sort: redraw from memory'), page.index('Quiz Sort: check'))
         self.assertIn('1.1 Data Basics', page)
+
+    def good_figure(self, name='1.1-fig-sample.svg', label_text='Sample inside population'):
+        body = svgfig.circle(60, 60, 50, svgfig.GREEN) + svgfig.text(60, 64, label_text, 11, svgfig.NAVY['ink']) + svgfig.arrow(5, 5, 30, 30)
+        return svgfig.write(self.section / name, svgfig.figure(120, 120, body, 'A sample sits inside its population'))
+
+    def test_figure_is_inlined_and_sketch_cue_goes_to_the_margin(self):
+        self.fill_live_contract()
+        self.good_figure()
+        (self.section / 'N-Study-Notes.md').write_text(
+            '# Core\n## A. Data\n\n> [!TIP]\n> **SKETCH:** Draw the circle.\n\n### 1. Idea\nText.\n\n'
+            '![A sample inside its population](1.1-fig-sample.svg)\n\n**TEST MOVE:** Decide.\n')
+        self.assertEqual(validate.check_section(self.section), [])
+        page, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T')
+        self.assertIn('<div class="fig"><svg', page)
+        self.assertIn('id="f1-ah"', page)
+        self.assertIn('url(#f1-ah)', page)
+        self.assertIn('<div class="cue"><b>SKETCH</b>Draw the circle.</div>', page)
+        self.assertNotIn('![', page)
+        self.assertNotIn('[!TIP]', page)
+
+    def test_figure_checks_catch_unsafe_offpalette_unlabelled_and_invented_numbers(self):
+        self.fill_live_contract()
+        notes = self.section / 'N-Study-Notes.md'
+        notes.write_text('# Core\n### 1. Idea\nThe poll reported 71%.\n\n![Poll](1.1-fig-poll.svg)\n')
+        fig = self.section / '1.1-fig-poll.svg'
+        fig.write_text(svgfig.figure(100, 40, svgfig.text(50, 20, 'poll: 71%'), 'Poll result'))
+        self.assertEqual(validate.check_figures(self.section, notes), [])
+        cases = {
+            '<svg role="img" aria-label="x"><script>alert(1)</script></svg>': 'script, external link',
+            '<svg role="img" aria-label="x"><a href="https://example.com">x</a></svg>': 'script, external link',
+            '<svg role="img" aria-label="x"><rect fill="#FF0000"/></svg>': 'outside the palette',
+            '<svg><text>ok</text></svg>': 'role="img"',
+            '<svg role="img" aria-label="x"><text>58%</text></svg>': 'shows 58%',
+        }
+        for svg, expected in cases.items():
+            fig.write_text(svg)
+            self.assertIn(expected, '\n'.join(validate.check_figures(self.section, notes)), svg)
+        fig.write_text(svgfig.figure(100, 40, '', 'Poll result'))
+        (self.section / '1.1-fig-stray.svg').write_text(svgfig.figure(10, 10, '', 'Stray'))
+        self.assertIn('not referenced', '\n'.join(validate.check_figures(self.section, notes)))
+        notes.write_text('# Core\n![](missing.svg)\n')
+        errors = '\n'.join(validate.check_figures(self.section, notes))
+        self.assertIn('needs alt text', errors)
+        self.assertIn('referenced but missing', errors)
+
+    def test_orientation_is_fixed_before_printing(self):
+        page = notebook.MAP_SECTION + 'a</section>' + notebook.MAP_SECTION + 'b</section>'
+        numbered = notebook.number_maps(page)
+        self.assertIn('data-map="0"', numbered)
+        self.assertIn('data-map="1"', numbered)
+        dom = ('<section class="map landscape" data-map="0" data-orient="portrait">'
+               '<section class="map landscape" data-map="1" data-orient="landscape">')
+        fixed = notebook.apply_orientation(page, dom)
+        self.assertEqual(fixed.count('<section class="map portrait">'), 1)
+        self.assertEqual(fixed.count('<section class="map landscape">'), 1)
+        self.assertLess(fixed.index('map portrait'), fixed.index('map landscape'))
+        self.assertNotIn('classList.replace', notebook.PAGE)
+        # Overflow on map pages and a last-of-type break rule keep Core full size and drop the blank last page.
+        self.assertIn('overflow:hidden', notebook.PAGE)
+        self.assertIn('section:last-of-type', notebook.PAGE)
 
     def test_render_check_reports_undrawn_diagrams(self):
         good = '<title>READY</title>' + '<pre data-processed="true">' * 2

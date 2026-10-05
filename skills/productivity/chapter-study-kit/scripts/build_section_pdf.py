@@ -53,6 +53,13 @@ LINKSTYLE_LINE = re.compile(r"^\s*linkStyle\s+([\d,\s]+?)\s+(\S.*)$")
 CHAPTER_HUB = re.compile(r"^CH(\d+)_\d+$")
 # A GFM alert label line, any blank "> " lines after it, and the next line's "> "
 # prefix, so the label opens the first paragraph instead of printing a literal ">".
+# A figure is a Markdown image line pointing at an SVG beside the notes; Obsidian shows
+# the same file, and the notebook inlines it.
+FIGURE_LINE = validate_kit.FIGURE_LINE
+# A margin prompt is a TIP callout whose body starts with **SKETCH:** or **RECALL:**.
+CUE = re.compile(r"(?m)^>[ \t]?\[!TIP\][ \t]*\n>[ \t]?\*\*(SKETCH|RECALL):\*\*[ \t]*(.+)$")
+MAP_SECTION = '<section class="map landscape">'
+ORIENT = re.compile(r'data-map="(\d+)"[^>]*data-orient="(portrait|landscape)"')
 GFM_ALERT = re.compile(
     r"(?im)^>[ \t]?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n(?:>[ \t]*\n)*>[ \t]?)?")
 
@@ -254,10 +261,26 @@ def split_concept(code: str) -> list[tuple[str, str]]:
     return pages
 
 
+def inline_figure(notes: Path, number: int, name: str) -> str:
+    """The SVG beside the notes, ids namespaced so several figures share one page."""
+    path = notes.parent / name
+    if path.parent != notes.parent or not path.is_file():
+        raise ValueError(f"{notes.parent.name}: figure {name} not found beside the notes")
+    svg = path.read_text()
+    svg = svg[svg.index("<svg"):]
+    svg = re.sub(r'\bid="([^"]+)"', rf'id="f{number}-\1"', svg)
+    svg = re.sub(r'(url\(#|href="#)([^)"]+)', rf"\g<1>f{number}-\2", svg)
+    return f'\n<div class="fig">{svg}</div>\n'
+
+
 def core_html(notes: Path) -> str:
     """Core only (no Quiz why / Retrieval); each level-2 source section opens a page."""
     text = extract_core(notes.read_text())
     text = re.sub(r"^# .*\n", "", text, count=1)  # the cover carries the title
+    counter = iter(range(1, 1000))
+    text = FIGURE_LINE.sub(lambda m: inline_figure(notes, next(counter), m.group(2)), text)
+    text = CUE.sub(lambda m: f'\n<div class="cue"><b>{m.group(1)}</b>{html.escape(m.group(2).strip())}</div>\n',
+                   text)
     text = GFM_ALERT.sub(lambda m: f"> **{m.group(1).upper()}:** ", text)
     body = markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
     body = body.replace("<p><strong>TEST MOVE:</strong>", '<p class="test"><strong>TEST MOVE:</strong>')
@@ -365,19 +388,40 @@ def chrome(*args: str) -> subprocess.CompletedProcess:
                            *args], check=True, capture_output=True, text=True, timeout=180)
 
 
+def apply_orientation(page_html: str, dom: str) -> str:
+    """Fix each map page's orientation before printing.
+
+    Changing a page's orientation while Chrome prints makes it lay the portrait
+    Core pages out at landscape width and shrink them, so the first pass records
+    each map's shape and the print pass starts with the final classes.
+    """
+    orient = {int(n): o for n, o in ORIENT.findall(dom)}
+    counter = iter(range(10**6))
+    return re.sub(re.escape(MAP_SECTION),
+                  lambda m: f'<section class="map {orient.get(next(counter), "landscape")}">', page_html)
+
+
+def number_maps(page_html: str) -> str:
+    counter = iter(range(10**6))
+    return re.sub(re.escape(MAP_SECTION),
+                  lambda m: f'<section class="map landscape" data-map="{next(counter)}">', page_html)
+
+
 def render(page_html: str, expected: int, out: Path) -> None:
     if not CHROME.exists():
         raise FileNotFoundError(f"Google Chrome not found at {CHROME}")
     with tempfile.TemporaryDirectory() as tmp:
         source = Path(tmp) / "notebook.html"
-        source.write_text(page_html)
+        source.write_text(number_maps(page_html))
         # One retry: a slow jsDelivr fetch occasionally leaves every diagram undrawn.
         for _ in range(2):
-            problems = rendered_ok(chrome("--dump-dom", source.as_uri()).stdout, expected)
+            dom = chrome("--dump-dom", source.as_uri()).stdout
+            problems = rendered_ok(dom, expected)
             if not problems:
                 break
         if problems:
             raise RuntimeError(f"{out.name}: " + "; ".join(problems))
+        source.write_text(apply_orientation(page_html, dom))
         pending = out.with_name(out.stem + ".pending.pdf")
         chrome(f"--print-to-pdf={pending}", source.as_uri())
         pending.replace(out)
@@ -439,7 +483,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>{title}</title
 * {{ box-sizing: border-box; }}
 body {{ margin:0; color:var(--ink); background:#fff; font: 11pt/1.45 -apple-system, "Helvetica Neue", Arial, sans-serif; }}
 section {{ break-after: page; }}
-section:last-child {{ break-after: auto; }}
+section:last-of-type {{ break-after: auto; }}  /* the closing <script> is the last child */
 .portrait {{ page: portraitpage; }}
 .landscape {{ page: landscapepage; }}
 .cover h1 {{ font-size: 30pt; color: var(--navy); margin: 0.2in 0 0.3in; }}
@@ -447,7 +491,8 @@ section:last-child {{ break-after: auto; }}
 .contents li {{ margin: 6pt 0; }}
 .howto {{ margin-top: .4in; padding: 12pt 14pt; background: var(--tint); border-left: 4px solid var(--navy); }}
 .maptitle {{ font-size: 12pt; color: var(--navy); margin: 0 0 8pt; }}
-.map {{ display:flex; flex-direction:column; }}
+/* overflow:hidden stops Chrome shrinking every later page when a portrait map follows a landscape one */
+.map {{ display:flex; flex-direction:column; overflow:hidden; }}
 .map.landscape {{ height: 7.55in; }}
 .map.portrait {{ height: 9.85in; }}
 .map pre.mermaid {{ flex:1; min-height:0; margin:0; }}
@@ -459,7 +504,12 @@ section:last-child {{ break-after: auto; }}
 .notes {{ background: linear-gradient(to left, transparent calc(var(--margin) - 0.12in), var(--rule) calc(var(--margin) - 0.12in),
   var(--rule) calc(var(--margin) - 0.1in), transparent calc(var(--margin) - 0.1in)); }}
 h2.section {{ break-before: page; font-size: 15pt; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 3pt; margin: 0 0 8pt; }}
-.notes .col > h2.section:first-child {{ break-before: auto; }}
+.notes .col > h2.section:first-of-type {{ break-before: auto; }}
+.fig {{ margin: 6pt 0 8pt; break-inside: avoid; }}
+.fig svg {{ width: 100%; height: auto; display: block; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }}
+.cue {{ float: right; clear: right; width: 2.0in; margin: 2pt -2.28in 6pt 0; padding: 5pt 7pt; border: 1.2px dashed var(--navy);
+  border-radius: 4pt; font-size: 8.5pt; line-height: 1.35; color: var(--navy); background: #fff; }}
+.cue b {{ display: block; letter-spacing: .06em; font-size: 7.5pt; margin-bottom: 2pt; }}
 h3 {{ font-size: 11.5pt; margin: 14pt 0 3pt; break-after: avoid; }}
 p {{ margin: 0 0 6pt; }}
 p.test {{ background: var(--tint); padding: 4pt 7pt; border-radius: 3pt; break-inside: avoid; }}
@@ -479,11 +529,12 @@ mermaid.initialize({{ startOnLoad: false, theme: "base", flowchart: {{ htmlLabel
   themeVariables: {{ fontFamily: "-apple-system, Helvetica Neue, Arial, sans-serif", fontSize: "15px",
   edgeLabelBackground: "#FFFFFF" }} }});
 mermaid.run().then(() => {{
-  // Tall drawings get a portrait page so their labels stay large.
+  // Tall drawings get a portrait page so their labels stay large. The first pass
+  // records the shape; the builder sets the class before the print pass.
   document.querySelectorAll("section.map").forEach(sec => {{
     const svg = sec.querySelector("svg"); if (!svg) return;
     const box = svg.viewBox.baseVal;
-    if (box && box.height > box.width * 0.9) {{ sec.classList.replace("landscape", "portrait"); }}
+    sec.dataset.orient = box && box.height > box.width * 0.9 ? "portrait" : "landscape";
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   }});
   document.title = "READY";

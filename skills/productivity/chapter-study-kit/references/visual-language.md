@@ -38,3 +38,48 @@ parent; do not draw a taxonomy as a causal chain. 1.1 worked example (keep this
 pattern): `VAR --> VT` and `VAR --> DS`. Ordered steps are a chain with one
 exit. Lookup facts can hang off a step with a dotted edge so they do not look
 like the next step.
+
+## Figures in Core
+
+Maps name the ideas; a Core figure shows how one idea works, right after the
+text it illustrates. Every new section gets figures for the ideas that are
+spatial, ordered, set-like, a contrast, a procedure, or a scale (population
+inside sample, levels of measurement, sampling methods, frame and
+undercoverage, selection then assignment). Skip ideas that are only a
+definition or an argument in prose; a literature section may need none.
+
+1. **One idea per figure, and the text stays.** A figure adds a picture of
+   the mechanism; it never replaces the explanation or the TEST MOVE.
+2. **Labels on the picture, in the course's words** from Core and the ledger.
+   Numbers come only from the notes or ledger; `validate_kit.py` rejects a
+   multi-digit, decimal, or percent value it cannot find there. Placeholders
+   that only show a pattern (`Climber 1`, `here k = 4`) read as examples.
+3. **Same meaning, same colour, in every figure:** green = population,
+   parameter, descriptive; navy = sample, statistic; purple = individuals and
+   variables; peach = inferential, traps, errors, undercoverage. Palette
+   colours only; the validator rejects others.
+4. **Replace a table only when the figure holds every cell** (the levels
+   staircase, the sampling-method panels). Otherwise keep the table and draw
+   the relation the table cannot show.
+5. **No decoration and no caption that repeats nearby text.** A picture that
+   does not carry the idea costs attention.
+6. **Check the figure against its definition sentence.** A shape can teach the
+   opposite of the words (undercoverage is only the population outside the
+   frame, never inside it). Render the page and inspect it for overlap and
+   clipping before release.
+7. **One margin prompt per level-2 group**, drawn before looking at the figure:
+
+   ```markdown
+   > [!TIP]
+   > **SKETCH:** The population circle with a sample inside. Tag P and S.
+   ```
+
+   Use `**RECALL:**` for a list to write from memory. The notebook prints it in
+   the writing margin; Obsidian shows a tip callout.
+
+Build figures with `scripts/svg_figure.py` (palette, labels, boxes, circles,
+arrows, accessible `<svg>`), save each as `<prefix>-<section>-fig-<idea>.svg`
+beside the notes, and embed it on its own line with alt text that states the
+idea: `![Levels of measurement as a staircase](stats-1.1-fig-levels.svg)`.
+Figures must have `role="img"` and an `aria-label`, and no scripts, links, or
+embedded images.

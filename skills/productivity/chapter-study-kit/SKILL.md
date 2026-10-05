@@ -22,7 +22,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.10.1**. Read the canonical version before executing a synced copy.
+Workflow version: **2.11.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -87,7 +87,7 @@ manifest, synced copies, Mermaid bump):
 - [ ] 3. Write ledger.md (earned / not earned)
 - [ ] 4. Chapter maps
 - [ ] 5. Expand overall map (backup first)
-- [ ] 6. Source-grounded editorial review + Practice outcome plan + Core notes
+- [ ] 6. Source-grounded editorial review + Practice outcome plan + Core notes + figures
 - [ ] 7. `validate_kit.py --kit` then the GoodNotes notebook PDF
 - [ ] 8. Chapter README + file into Chapter-Kits + GoodNotes folder rule
 ```
@@ -221,20 +221,26 @@ own the detail. Order and non-negotiables:
    equivalent), with level-2 source sections and level-3 idea headings. Each
    heading is 1–3 sentences plus a TEST MOVE, with a table when the source
    teaches a list: a per-heading shape, not a word-count ceiling.
-2. **Quiz why** (disk only) explains why printed official answers are right.
+2. **Figures** (default for every section): follow the Figures section of
+   [references/visual-language.md](references/visual-language.md). One idea
+   per figure after the text it shows, built with `scripts/svg_figure.py`,
+   saved beside the notes, embedded as `![idea](file.svg)`; one
+   `> [!TIP]` **SKETCH:** or **RECALL:** margin prompt per level-2 group.
+   Render and inspect each figure page before release.
+3. **Quiz why** (disk only) explains why printed official answers are right.
    If the ledger has no official quiz, omit it; never synthesize one.
-3. Write `$SECTION/practice-plan.md` before `Practice.md`: atomic source-backed
+4. Write `$SECTION/practice-plan.md` before `Practice.md`: atomic source-backed
    decisions, `Q_min = A + H = <A> + <H> = <total>`, and a role for each item
    (**foundation**, **discriminate**, **transfer**). The count is a coverage
    heuristic, not proof of mastery. Outcome rows start with a numeric ID.
-4. `$SECTION/Practice.md`: folded `[!question]-` callouts with the full question
+5. `$SECTION/Practice.md`: folded `[!question]-` callouts with the full question
    in the title and `**Answer:**`, `**Why:**`, `**Review:**` in the body. New
    wording of earned Core ideas only; no official stems, homework, or HTML quiz.
-5. Study path: Map → Core → Practice on first contact; closed-book first on
+6. Study path: Map → Core → Practice on first contact; closed-book first on
    return. Adapt cues from actual attempts, never a learning-style label.
-6. Run the editorial review in the notes contract before publishing. Report the
+7. Run the editorial review in the notes contract before publishing. Report the
    Obsidian Reading-view fold check as pending when you cannot do it.
-7. Check this section alone, even while other sections are still collecting:
+8. Check this section alone, even while other sections are still collecting:
 
    ```sh
    python3 "$SKILL_DIR/scripts/validate_kit.py" --section "$SECTION"
@@ -242,14 +248,15 @@ own the detail. Order and non-negotiables:
 
 If the user later sends the quiz they actually missed, fold those stems into
 Quiz why **on disk**. Refresh Practice.md only with new-wording transfer items,
-then **re-run step 7**.
+then **re-run item 8 above**.
 
 ### 7. GoodNotes notebook PDF
 
 Run local validation first. `--kit` is the filing contract: hub.json, study-order
 README, COURSE/week pointers, leftover pending files, section maps/notes, map
 direction (concept map LR, sort maps TD), and `state.json` week, title, status,
-coverage, and verification. Warnings (for example a legacy ledger with no
+coverage, verification, and figures (safe, labelled, palette-only SVGs whose
+numbers the notes or ledger supply). Warnings (for example a legacy ledger with no
 `| S001 |` source rows, or free-text verification values) do not block
 publishing; report them.
 
@@ -267,8 +274,9 @@ python3 "$SKILL_DIR/scripts/build_section_pdf.py" --kit "$KIT" --section 3.2 --d
 `00-Course-Guide/<COURSE>_Course-Overview_GoodNotes.pdf` from `overall-flow.mmd`:
 the whole map, then one page per chapter. The live file stays one map.
 
-Notebook order: cover → map pages (step 4) → Core with a ruled writing margin,
-each level-2 section on a new page → redraw-then-check Retrieval pages →
+Notebook order: cover → map pages (step 4) → Core with its figures and a ruled
+writing margin holding the SKETCH/RECALL prompts, each level-2 section after
+the first on a new page → redraw-then-check Retrieval pages →
 scratch pages. Core is the text before the first H1 titled Quiz why or
 Retrieval. A concept map with 4+ hubs and 20+ edges also gets one page per hub.
 The build stops unless every Mermaid diagram drew without a syntax error, and
@@ -324,7 +332,8 @@ Week-NN_.../Work/<COURSE>_<section>_<Title>_GoodNotes.pdf
 - Local checks and the notebook render check passed; the on-iPad check is
   reported separately.
 - Notes are source-grounded, editorially reviewed, and follow the lecture
-  checklist. `practice-plan.md` reconciles the outcome count to eligible
+  checklist. Core figures show each spatial or contrastive idea, and every
+  level-2 group has one margin prompt. `practice-plan.md` reconciles the outcome count to eligible
   Practice questions; `Practice.md` is tap-to-reveal transfer, not the book quiz.
 - Status is complete only per step 7; otherwise it stays ready and the
   summary names each pending check. Complete does not mean mastered.

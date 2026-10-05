@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 from pathlib import Path
@@ -29,6 +30,59 @@ SOURCE_LOCATOR = re.compile(
     r"\b(?:PP\d+|slides?\s+\d+|(?:the|this|these|that)\s+(?:slides?|deck|lecture|textbook|handout|figure)"
     r"|on\s+this\s+deck|fig(?:ure|\.)?\s*\d+(?:-\d+)?|page\s+\d+|printed\s+(?:example|answer|key|list)"
     r"|according\s+to\s+the)\b", re.I)
+
+
+# Figures: an SVG beside the notes, embedded with a Markdown image line.
+FIGURE_LINE = re.compile(r"(?m)^!\[([^\]]*)\]\(<?([^)>]+\.svg)>?\)[ \t]*$")
+# The map palette (references/visual-language.md) plus the notebook's neutral inks.
+FIGURE_COLORS = {
+    "#1F3A5F", "#EEF3F8", "#8FA8BE", "#24313F", "#EFE9FA", "#9B8AB8", "#3E3357",
+    "#F8F4FD", "#B9A9D1", "#4A3D63", "#E7F4EC", "#6FA98A", "#2F4F3C", "#F3FAF6",
+    "#93C2A8", "#37543F", "#FBEFE3", "#C98F5A", "#5C4023", "#FEF8F1", "#DBAC7E",
+    "#654626", "#FFFFFF", "#1F2933", "#5B6B7A", "#C9D3DD",
+}
+FIGURE_FORBIDDEN = re.compile(
+    r"<script|<foreignObject|<image\b|<iframe|\bon[a-z]+\s*=|javascript:|@import"
+    r"|(?:xlink:)?href\s*=\s*\"(?!#)|url\(\s*(?!#)", re.I)
+# A multi-digit, decimal, or percent value in a figure must come from the notes or ledger.
+FIGURE_NUMBER = re.compile(r"\d+(?:[.,]\d+)?%?")
+
+
+def check_figures(folder: Path, notes: Path) -> list[str]:
+    """Figures are safe, accessible, on-palette SVGs whose numbers the sources supply."""
+    errors = []
+    notes_text = notes.read_text()
+    ledger = folder / "ledger.md"
+    evidence = notes_text + (ledger.read_text() if ledger.is_file() else "")
+    referenced = {}
+    for alt, name in FIGURE_LINE.findall(notes_text):
+        if "/" in name or "\\" in name:
+            errors.append(f"figure {name} must sit beside the notes, not in another folder")
+            continue
+        if not alt.strip():
+            errors.append(f"figure {name} needs alt text in its Markdown image line")
+        referenced[name] = alt
+    for name in referenced:
+        if not (folder / name).is_file():
+            errors.append(f"figure {name} is referenced but missing")
+    for svg_path in sorted(folder.glob("*.svg")):
+        name = svg_path.name
+        if name not in referenced:
+            errors.append(f"figure {name} is not referenced from the notes")
+        svg = svg_path.read_text()
+        if FIGURE_FORBIDDEN.search(svg):
+            errors.append(f"figure {name} has a script, external link, or embedded image")
+        if not re.search(r'<svg[^>]*\brole="img"', svg) or not re.search(r'<svg[^>]*\baria-label="[^"]+"', svg):
+            errors.append(f"figure {name} needs role=\"img\" and an aria-label on <svg>")
+        odd = sorted({c.upper() for c in re.findall(r"#[0-9A-Fa-f]{6}\b", svg)} - FIGURE_COLORS)
+        if odd:
+            errors.append(f"figure {name} uses colours outside the palette: {', '.join(odd)}")
+        labels = " ".join(html.unescape(x) for x in re.findall(r"<text[^>]*>([^<]*)</text>", svg))
+        for number in sorted(set(FIGURE_NUMBER.findall(labels))):
+            digits = re.sub(r"\D", "", number)
+            if (len(digits) >= 2 or "%" in number or "." in number) and number not in evidence:
+                errors.append(f"figure {name} shows {number}, which the notes and ledger do not")
+    return errors
 
 
 def missing_links(path: Path) -> list[str]:
@@ -198,6 +252,8 @@ def check_section(folder: Path) -> list[str]:
     notes = [p for p in folder.glob("*.md") if p.name.lower().endswith("study-notes.md")]
     if len(notes) != 1:
         errors.append("need exactly one *Study-Notes.md")
+    else:
+        errors += check_figures(folder, notes[0])
     concept = sorted(folder.glob("*-concept-map.mmd"))
     sort_maps = sorted(folder.glob("*-decision-flow.mmd"))
     if not concept:
