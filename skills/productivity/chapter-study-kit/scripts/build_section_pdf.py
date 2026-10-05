@@ -575,8 +575,8 @@ pre:not(.mermaid) {{ background: #F4F6F8; padding: 6pt; white-space: pre-wrap; b
 .edgeLabel, .edgeLabel p, .edgeLabel span, .edgeLabel div {{ color:#24313F !important; background:#FFFFFF !important; font-weight:600; }}
 .tex.display {{ display: block; margin: 6pt 0 8pt; text-align: center; }}
 /* full-height inline fractions need taller lines so stacked lines don't collide */
-p:has(.tex), li:has(.tex), td:has(.tex) {{ line-height: 2.7; }}
-li:has(.tex) {{ margin: 3pt 0; }}
+p:has(.mfrac), li:has(.mfrac), td:has(.mfrac) {{ line-height: 2.7; }}
+li:has(.mfrac) {{ margin: 3pt 0; }}
 .tex-error {{ color: #5C4023; }}
 blockquote {{ margin: 6pt 0; padding: 6pt 10pt; border-left: 3px solid #6FA98A; background: #F3FAF6; break-inside: avoid; }}
 </style>
