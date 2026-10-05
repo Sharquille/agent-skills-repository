@@ -1,15 +1,15 @@
 {
   "files": {
-    "SKILL.md": "c28267c7b8e44454b9a1584d0e74dbb8ad542527552631caa59f23035824c910",
+    "SKILL.md": "5bbac9c637df79593c70c1812aa4329eb78221e8e21195d4f98564e151e6cf4c",
     "references/consult-panel.md": "5b7fcdf21baf26022751e3455a97ef5ae7b761bde6ce28896c2baf155bbbe8c2",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
     "references/maintaining.md": "23ac96fd138bdaf62ef52dae263a8ce7305a5a40825e0431c878463c43b3e1cd",
-    "references/notes-contract.md": "aceb46b6eaf7440fc0f8645edb3413337a56020ef86beb890d85bf6566f2c48f",
+    "references/notes-contract.md": "f61668092a886319fddb3a661c90369f05547d00107732fba413bf4c06177c14",
     "references/overwhelm-scaffold.md": "ba782ae5a0684d27a940625dd732db3eef4085c6f631963ff43cd4a48bfc9224",
     "references/practice-planning.md": "10b47a9faf188b5a890c15ed6414a994a992d226d85a441486f497f05a98dd47",
     "references/source-and-batch-contract.md": "e446ac77e863196bb5d90952d0129abc3c56cce69b537b9e53a7c89127581396",
     "references/visual-language.md": "d9fd0fffbbf543282c95159a5c38b5b659bc3b088d7a9855e87d69944db88b3e",
-    "scripts/build_section_pdf.py": "4452e1c384e88df20cf63d3e754389cf1e589b2e82d068f3717c448f479f87e9",
+    "scripts/build_section_pdf.py": "1271b7c76cdf753d9ab87a650eba73253b5f12ffd37d7cac48b1d54a00ede6b0",
     "scripts/extract_pptx.py": "610aa2f02c54dfa117c2e26ab57743fa45552449fe87240704b83478903eae27",
     "scripts/new_section.py": "438e68d07018b15dc8db11ce8facc259507d5ba9216e4f6e3addfdfabf9cb1b3",
     "scripts/ocr_pdf.swift": "9ca7fc099e5326f879d19d307034e777b6bb0030c9bf2bf03ec7f7ca925f6524",
@@ -18,5 +18,5 @@
     "scripts/validate_kit.py": "e01614afe80396658dcdbd45f3ba2fac11acfdbb2ccf2cb44c0a84a976618da9",
     "tests/test_kit.py": "1a867f6a33e007803beb8347ca00a1d26dd4410eb152ca2577ffef4d712ece12"
   },
-  "version": "2.12.0"
+  "version": "2.12.1"
 }

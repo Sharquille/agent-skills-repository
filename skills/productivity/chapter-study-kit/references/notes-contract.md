@@ -67,6 +67,14 @@ Write every Core heading for a reader who has never seen the textbook:
 4. **A worked example** when the topic involves a calculation (format below).
 5. **TEST MOVE**: what to do when it shows up on a test.
 
+Assume nothing about the vocabulary:
+
+- **Codes and labels in words first.** Letter codes and labels (`BB`, `Bℓ`, `A`, `B`, `Q1`) are spelled out in words, in a small table when there are several, before the first example uses them.
+- **Every technical word gets a one-line definition** where it first appears (dominant, genotype, mutually exclusive), even when the source assumes it.
+- **Every formula gets three lines** right under it: **Read it aloud** (the formula as a plain sentence), **Use it when**, and **Don't use it when** (the case that calls for a different formula, by number).
+- **A section with several formulas** opens with a **Which rule do I use?** table: the question's key word, the one deciding question, the formula, and what it does in plain words.
+- When the slides print no numeric example for a formula, build one from earned numbers, label it derived, and check it a second way.
+
 A section that uses notation (`P(A)`, `P(A | B)`, `Aᶜ`, `x-bar`, `σ`) starts
 its Core with a **Symbols** table: symbol, how to read it aloud, and what it
 means. Write math as `$...$` inline and `$$...$$` on its own line; Obsidian and

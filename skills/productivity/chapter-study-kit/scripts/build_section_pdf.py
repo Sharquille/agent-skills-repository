@@ -558,6 +558,7 @@ section:last-of-type {{ break-after: auto; }}  /* the closing <script> is the la
   var(--rule) calc(var(--margin) - 0.1in), transparent calc(var(--margin) - 0.1in)); }}
 h2.section {{ break-before: page; font-size: 15pt; color: var(--navy); border-bottom: 2px solid var(--navy); padding-bottom: 3pt; margin: 0 0 8pt; }}
 .notes .col > h2.section:first-of-type {{ break-before: auto; }}
+h2.section {{ break-after: avoid; }}  /* never strand a section title at a page bottom */
 .fig {{ margin: 6pt 0 8pt; break-inside: avoid; }}
 .fig svg {{ width: 100%; height: auto; display: block; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }}
 .cue {{ float: right; clear: right; width: 2.0in; margin: 2pt -2.28in 6pt 0; padding: 5pt 7pt; border: 1.2px dashed var(--navy);

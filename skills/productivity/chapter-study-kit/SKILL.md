@@ -22,7 +22,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.12.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.12.1**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -223,6 +223,9 @@ own the detail. Order and non-negotiables:
    heading follows the notes contract's explanation order (what it is, why it
    works, what it builds on, a worked example for a calculation, TEST MOVE).
    Notation-heavy sections open with a Symbols table; math is `$...$`.
+   Codes and labels are spelled out before use; every formula gets Read it
+   aloud / Use it when / Don't use it when; several formulas get a Which rule
+   table.
    Worked examples use Situation / Given / Steps / Answer / Check, and every
    number is given or produced by a visible step.
 2. **Figures** (default for every section): follow the Figures section of
