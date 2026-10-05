@@ -24,7 +24,7 @@ For an extra item, change both the surface situation **and** the response demand
 
 ## Sequence the item roles
 
-Label the item role in the Primary item or Extra item cell. The roles control
+Label the item role in the Primary or Varied extra cell. The roles control
 order; they are not extra content types:
 
 - **foundation** — one primary item for every outcome. Keep newly taught
@@ -74,7 +74,7 @@ Every revealed answer must state the decision, give the source-based reason, res
 
 Review technical corrections against a primary source and note the source conflict in the ledger. Preserve exact course terminology where it matters.
 
-In `practice-plan.md`, use a table with `Outcome ID | Core/source anchor | Learner decision | r_i and reason | Primary item | Extra item`. Write the role beside each question ID, for example `Q01 foundation` or `Q02 discriminate`. Reconcile the total: each earned outcome has one eligible item; every flagged outcome has a second eligible, varied item. Record unavailable objectives separately so a missing chapter page never silently inflates or shrinks `A`.
+In `practice-plan.md`, use the table `new_section.py` scaffolds: `Outcome | Core/source anchor | Learner decision | Extra reason | Primary | Varied extra`. Outcome cells hold a numeric ID (`1`, `2a`). Extra reason holds the `r_i = 1` reason; write `—` when `r_i = 0`, because `validate_kit.py` counts any other value as a flagged outcome that needs a Varied extra. Write the role beside each question ID, for example `Q01 foundation` or `Q02 discriminate`. Reconcile the total: each earned outcome has one eligible item; every flagged outcome has a second eligible, varied item. Record unavailable objectives separately so a missing chapter page never silently inflates or shrinks `A`.
 
 ## Optional preview and cumulative review
 

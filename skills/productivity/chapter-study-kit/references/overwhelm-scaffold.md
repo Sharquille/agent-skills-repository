@@ -33,14 +33,8 @@ the book quiz.
 - TEST MOVE = what to do when this shows up on an exam. One line.
 - Do not recopy the book. Restate. If a line could be pasted from the PDF,
   rewrite it.
-- Screenshots may be the section source. Read them in place. They earn map
-  nodes. Do not copy them into Chapter-Kits. Later screenshots can fill gaps in that same section after ledger evidence is added.
-- Official answers only when the page printed them.
-- Do not fill graded homework. Teach the method with a *different* example.
-- If he could copy the kit onto the assignment without deciding anything, the
-  kit crossed the line.
-- Do not ship a per-section interactive HTML quiz. Folded callouts in the vault
-  are the iPad path.
+- Do not fill graded homework. If he could copy the kit onto the assignment
+  without deciding anything, the kit crossed the line.
 - Add cues after a demonstrated miss and remove them after success. Use actual
   attempts to adapt support, never a visual/auditory/reading/kinesthetic label.
 

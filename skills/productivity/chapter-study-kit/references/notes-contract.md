@@ -53,10 +53,8 @@ For a source-based question count and the Practice quality check, read
 10. Canonical `*Study-Notes.md` callouts: `> [!NOTE]` / `TIP` / `IMPORTANT` /
     `WARNING` / `CAUTION` only. `Practice.md` may use `[!question]-`.
 
-On first contact, Map → Core → Practice. On return, require a closed-book answer
-or map reconstruction before using Map/Core as feedback. Adapt cueing from the
-learner's recorded attempts and fade help after success; do not select formats
-from learning-style labels.
+Study paths (first contact vs closed-book return) and cueing live in
+[overwhelm-scaffold.md](overwhelm-scaffold.md).
 
 Prose: unslop. No decorative emoji. No invented later-chapter traps.
 
@@ -83,8 +81,6 @@ Obsidian Reading view.
 | Notebook **Retrieval pages** | TD sort maps only (`*-decision-flow.mmd`, `*-error-flow.mmd`), each behind a blank redraw page |
 | Obsidian `Practice.md` | Tap-to-reveal transfer items |
 | Canonical `*Study-Notes.md` | Core + Quiz why (if printed) + author restudy pointer |
-
-Do not put Quiz why or Retrieval prose in the notebook.
 
 ## Core in the notebook
 

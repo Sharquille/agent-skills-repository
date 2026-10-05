@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Read-only checks for source links, overall-map preservation, and kit filing."""
+from __future__ import annotations
+
 import argparse
 import json
 import re
@@ -14,8 +16,11 @@ PREFIX_BY_COURSE = {
     "LA-122": "Communication",
 }
 SKIP_NAMES = {".DS_Store", "README.md"}
-STATUSES = {"collecting", "partial", "ready", "complete"}
+STATUSES = {"collecting", "ready", "complete"}
 COVERAGES = {"partial", "full"}
+# "import" is the on-iPad check: the user confirms the notebook reads well in GoodNotes.
+VERIFICATIONS = ("local", "render", "import")
+CHECK_RESULTS = {"pending", "passed", "failed"}
 SOURCE_ROW = re.compile(r"^\|\s*S\d+\s*\|", re.M)
 OUTCOME_ROW = re.compile(r"^\| (?:\d+[a-z]?) \|")
 # A Practice item that names where something was taught (deck, slide, figure, page)
@@ -162,6 +167,11 @@ def check_state(state_path: Path) -> list[str]:
     title = state.get("title")
     if not isinstance(title, str) or not title.strip():
         errors.append("state.json needs a short human title for the GoodNotes route")
+    verification = state.get("verification")
+    if state.get("status") == "complete" and not (
+            isinstance(verification, dict)
+            and all(verification.get(key) == "passed" for key in VERIFICATIONS)):
+        errors.append("state.json complete needs verification local, render, and import all passed")
     return errors
 
 
@@ -303,11 +313,22 @@ def kit_warnings(kit: Path) -> list[str]:
             f"{kit.parent.name} is not in PREFIX_BY_COURSE; the cross-course prefix check "
             "only guards the known courses")
     for folder in section_folders(kit):
+        rel = folder.relative_to(kit).as_posix()
         ledger = folder / "ledger.md"
         if ledger.is_file() and not SOURCE_ROW.search(ledger.read_text()):
             warnings.append(
-                f"{folder.relative_to(kit).as_posix()}: ledger.md has no source table rows "
+                f"{rel}: ledger.md has no source table rows "
                 "(| S001 | ...); claims are legacy/unverified until sources are recorded")
+        try:
+            state = json.loads((folder / "state.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            continue  # check_kit already reports a missing or broken state.json
+        verification = state.get("verification") if isinstance(state, dict) else None
+        odd = [key for key in VERIFICATIONS
+               if not isinstance(verification, dict) or verification.get(key) not in CHECK_RESULTS]
+        if odd:
+            warnings.append(f"{rel}: state.json verification {', '.join(odd)} should be "
+                            "pending, passed, or failed")
     return warnings
 
 

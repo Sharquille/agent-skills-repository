@@ -7,8 +7,8 @@ notes with a writing margin, redraw-then-check Retrieval pages, and scratch
 pages. One AirDrop per section, filed once in GoodNotes.
 
 Chrome renders the page twice: once to dump the DOM so a Mermaid failure
-stops the build, then to print. Mermaid loads from jsDelivr, so a build needs
-a network connection; studying the PDF does not.
+stops the build, then to print. A pinned, integrity-checked Mermaid loads from
+jsDelivr, so a build needs a network connection; studying the PDF does not.
 """
 
 from __future__ import annotations
@@ -31,7 +31,10 @@ if str(_SCRIPTS) not in sys.path:
 import validate_kit
 
 CHROME = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"
+MERMAID_JS = "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js"
+# Subresource Integrity: Chrome refuses the script if jsDelivr ever serves other bytes.
+# Bump the version and this hash together (see references/maintaining.md).
+MERMAID_SRI = "sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2"
 ACRONYMS = {"Https": "HTTPS", "Http": "HTTP", "Html": "HTML", "Css": "CSS",
             "Url": "URL", "Ip": "IP", "Lan": "LAN", "Io": "I/O"}
 PLAIN_EDGE = re.compile(r"^\s*(\w+)\s*-->\s*(\w+)\s*$")
@@ -214,60 +217,6 @@ def split_overall(code: str) -> list[tuple[int, str]]:
     return parts
 
 
-def map_kind_rank(path: Path) -> tuple[int, str]:
-    stem = path.stem.lower()
-    if stem.endswith("concept-map"):
-        return (0, stem)
-    if retrieval_map(path):
-        return (1, stem)
-    return (2, stem)
-
-
-def retrieval_map(path: Path) -> bool:
-    stem = path.stem.lower()
-    return stem.endswith(RETRIEVAL_MAP_SUFFIXES) or "quiz-sort" in stem
-
-
-def map_label(section: str, path: Path) -> str:
-    stem = path.stem
-    lower = stem.lower()
-    if lower.endswith("concept-map"):
-        return f"{section} Concept Map"
-    if lower.endswith("decision-flow"):
-        return f"{section} Quiz Sort"
-    # Drop an optional course tag plus the section: stats-1.1-, it-3.1-, 2.1-.
-    rest = re.sub(rf"^(?:[a-z]+-)?{re.escape(section)}-", "", stem, flags=re.I)
-    rest = re.sub(r"-?flow$", "", rest, flags=re.I)
-    pretty = rest.replace("-", " ").strip().title() or path.stem
-    return f"{section} {pretty}"
-
-
-def extract_core(text: str) -> str:
-    """Keep Core; drop Quiz why and Retrieval prose from GoodNotes imports."""
-    collected: list[str] = []
-    for line in text.splitlines(keepends=True):
-        if CORE_STOP.match(line.rstrip("\n")):
-            break
-        collected.append(line)
-    core = "".join(collected).strip()
-    if not core:
-        raise ValueError("notes have no Core before Quiz why / Retrieval")
-    return core + "\n"
-
-
-def check_batch(folder: Path, offline: bool) -> None:
-    path = folder / "state.json"
-    if not path.exists():
-        print(f"{folder.name}: legacy section; batch completeness unverified")
-        return
-    state = json.loads(path.read_text())
-    status = state.get("status")
-    if status not in {"collecting", "partial", "ready", "complete"}:
-        raise ValueError(f"{path}: invalid status")
-    if not offline and status not in {"ready", "complete"}:
-        raise ValueError(f"{folder.name}: {status}; build an offline preview or wait for release")
-
-
 def split_concept(code: str) -> list[tuple[str, str]]:
     """One LR page per hub (root -> hub -> leaves) for a concept map too tall to read.
 
@@ -372,7 +321,8 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str)
 <div class="howto"><strong>First pass:</strong> Map → Notes → Practice.md in Obsidian.<br>
 <strong>Return visits:</strong> start closed-book. Redraw a Retrieval map or answer Practice items before you look back.</div>
 </section>"""
-    return PAGE.format(title=html.escape(title), body=cover + "".join(pages), mermaid=MERMAID_JS), diagrams
+    return PAGE.format(title=html.escape(title), body=cover + "".join(pages),
+                       mermaid=MERMAID_JS, sri=MERMAID_SRI), diagrams
 
 
 def overview_html(kit: Path, course: str) -> tuple[str, int]:
@@ -390,7 +340,7 @@ def overview_html(kit: Path, course: str) -> tuple[str, int]:
 <div class="howto">Every section studied so far, grown from its sources. Redraw a chapter branch from memory, then check it here.</div>
 </section>"""
     body = cover + "".join(pages) + blank_page("Scratch 1")
-    return PAGE.format(title="Course map", body=body, mermaid=MERMAID_JS), 1 + len(parts)
+    return PAGE.format(title="Course map", body=body, mermaid=MERMAID_JS, sri=MERMAID_SRI), 1 + len(parts)
 
 
 def rendered_ok(dom: str, expected: int) -> list[str]:
@@ -518,7 +468,7 @@ pre:not(.mermaid) {{ background: #F4F6F8; padding: 6pt; white-space: pre-wrap; b
 .edgeLabel, .edgeLabel p, .edgeLabel span, .edgeLabel div {{ color:#24313F !important; background:#FFFFFF !important; font-weight:600; }}
 blockquote {{ margin: 6pt 0; padding: 6pt 10pt; border-left: 3px solid #6FA98A; background: #F3FAF6; break-inside: avoid; }}
 </style>
-<script src="{mermaid}"></script>
+<script src="{mermaid}" integrity="{sri}" crossorigin="anonymous"></script>
 </head><body>
 {body}
 <script>

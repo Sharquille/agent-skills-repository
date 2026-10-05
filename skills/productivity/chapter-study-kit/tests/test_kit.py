@@ -1,3 +1,4 @@
+import ast
 import contextlib
 import importlib.util
 import io
@@ -160,6 +161,43 @@ class KitTests(unittest.TestCase):
         self.assertIn('status must be one of', errors)
         self.assertIn('coverage must be one of', errors)
         self.assertIn('human title', errors)
+
+    def test_complete_needs_every_check_passed_and_partial_is_not_a_status(self):
+        self.fill_live_contract()
+        state = {'status': 'complete', 'week': 1, 'coverage': 'partial', 'title': 'T',
+                 'verification': {'local': 'passed', 'render': 'passed', 'import': 'pending'}}
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertIn('complete needs verification', '\n'.join(validate.check_kit(self.kit)))
+        state['verification']['import'] = 'passed'
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertEqual(validate.check_kit(self.kit), [])
+        state['status'] = 'partial'
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertIn('status must be one of', '\n'.join(validate.check_kit(self.kit)))
+
+    def test_free_text_verification_warns_but_passes(self):
+        self.fill_live_contract()
+        (self.section / 'state.json').write_text(json.dumps({
+            'status': 'ready', 'week': 1, 'coverage': 'partial', 'title': 'T',
+            'verification': {'local': 'validate_kit passed', 'render': 'passed', 'import': 'pending'}}))
+        self.assertEqual(validate.check_kit(self.kit), [])
+        warnings = '\n'.join(validate.kit_warnings(self.kit))
+        self.assertIn('verification local should be pending, passed, or failed', warnings)
+        self.assertNotIn('render', warnings)
+
+    def test_scripts_define_each_function_once(self):
+        # A second definition silently replaces the first, so an edit to the first does nothing.
+        for script in SCRIPTS.glob('*.py'):
+            names = [node.name for node in ast.parse(script.read_text()).body
+                     if isinstance(node, (ast.FunctionDef, ast.ClassDef))]
+            duplicates = sorted({name for name in names if names.count(name) > 1})
+            self.assertEqual(duplicates, [], script.name)
+
+    def test_mermaid_is_pinned_and_integrity_checked(self):
+        self.assertRegex(notebook.MERMAID_JS, r'/mermaid@\d+\.\d+\.\d+/')
+        self.assertRegex(notebook.MERMAID_SRI, r'^sha384-[A-Za-z0-9+/]{64}$')
+        page, _ = notebook.overview_html(self.kit, 'C')
+        self.assertIn(f'integrity="{notebook.MERMAID_SRI}" crossorigin="anonymous"', page)
 
     def test_map_directions_enforced(self):
         self.fill_live_contract()

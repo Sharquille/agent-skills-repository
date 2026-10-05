@@ -19,22 +19,27 @@ writes this shape):
 ```
 
 - `collecting`: user is still sending sources. Record receipts and source IDs.
-  Do not replace existing study outputs or expand the live overall map.
-- `partial`: user requested an interim draft. Keep it as files on disk; the
-  notebook builder refuses partial sections.
+  Do not replace existing study outputs or expand the live overall map. An
+  interim draft the user asks for stays collecting: it lives as files on disk,
+  never replaces published notes or maps, and the notebook builder refuses it.
 - `ready`: user released this batch for processing. Source coverage may still
   be partial. Record the release instruction; do not infer missing pages exist.
 - `complete`: released batch processed, with local checks, the notebook render
   check, and the user's on-iPad check passed. Keep ready while any check is
   pending. Report pending checks without claiming the notebook reads well.
 
+`verification` records those three checks, each `pending`, `passed`, or
+`failed`: `local` (`validate_kit.py`), `render` (a notebook build that passed),
+and `import` (the user confirms the notebook reads well on the iPad). Put
+details in `release_note`, not in these values. The validator rejects
+`complete` unless all three are `passed`, and warns on any other value.
+
 `validate_kit.py --kit` requires `state.json` on every processed section, with
 a positive integer `"week"`, a nonempty `"title"` (the GoodNotes notebook
-name), `"status"` from the four states below, and `"coverage"` of `partial` or
-`full`. Do not infer week
-from `Chapter-NN`. A
-legacy folder without one fails that check until you add the file (status and
-coverage as known; do not invent missing pages). The notebook builder runs
+name), `"status"` from the three states above, and `"coverage"` of `partial` or
+`full`. Do not infer week from `Chapter-NN`. A legacy folder without one fails
+that check until you add the file (status and coverage as known; do not invent
+missing pages). The notebook builder runs
 `--kit` and will not write while the contract fails.
 
 A new batch increments `batch` and returns to collecting when more is coming.
@@ -52,7 +57,8 @@ Use stable IDs such as `S001`; do not renumber old sources. Record:
 | S001 | Local original path | PDF pp. 1–3 | ocr-S001.txt | Read; page 3 formula checked |
 | S002 | Original image path or attachment identifier | image 2 | Short transcript below | Read; bottom cropped |
 
-For local files, record SHA-256 and byte size when available. This identifies
+For local files, record SHA-256 and byte size when available
+(`shasum -a 256 "$ORIGINAL"` and `stat -f %z "$ORIGINAL"`). This identifies
 repeated batches or changed sources without copying binaries into the kit.
 Do not store names, IDs, credentials, or private source paths in imported notes.
 For temporary attachments, retain a short local text transcription plus locator
@@ -97,5 +103,5 @@ validate prose-only path mentions or access to remote links.
 Always visually check mathematical symbols, signs, units, table alignment, and
 printed answers. Extraction success is not proof of correct mathematical reading.
 Keep local source metadata out of the notebook pages, including filenames that
-contain personal information. A notebook build fetches the Mermaid library from
-jsDelivr; note and map content stays on this Mac.
+contain personal information. A notebook build fetches a pinned, integrity-checked
+Mermaid library from jsDelivr; note and map content stays on this Mac.
