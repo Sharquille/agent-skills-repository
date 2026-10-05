@@ -110,7 +110,8 @@ A calculation is shown, not asserted. Use this exact layout so
 - **Given** lists every number the problem states and what it means.
 - Each **Step** does one calculation and says what it does and why. Numbers
   left of `=` must already be given or produced by an earlier step; numbers
-  after `=` are what the step produces.
+  after `=` are what the step produces. 0, 1, 2, and 100 need no source
+  (bounds, halving, squaring, percent).
 - A count is shown by listing or multiplying the outcomes, never just stated.
 - The validator rejects a missing part, parts out of order, or a number with
   no source. It cannot judge whether a step is correct, so the editorial

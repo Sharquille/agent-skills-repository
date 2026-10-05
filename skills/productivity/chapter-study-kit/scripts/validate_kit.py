@@ -92,7 +92,8 @@ WORKED_LABELS = re.compile(
     r"\b(?:Examples?|Figures?|Fig\.?|Tables?|Core|Chapters?|Sections?|Q|formulas?)\s*\(?\d+(?:[-.]\d+)*[a-z]?\)?"
     r"|\(\d+\)|^\s*\d+\.\s", re.I | re.M)
 WORKED_NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?![\w])")
-WORKED_CONSTANTS = {0.0, 1.0, 100.0}
+# 2 is the halving in a midpoint or average and the exponent in a square.
+WORKED_CONSTANTS = {0.0, 1.0, 2.0, 100.0}
 
 
 def worked_numbers(text: str) -> list[str]:
