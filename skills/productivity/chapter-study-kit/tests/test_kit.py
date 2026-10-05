@@ -362,6 +362,7 @@ class KitTests(unittest.TestCase):
         (self.section / 'x-1.1-concept-map.mmd').write_text('flowchart LR\n  S --> A\n')
         (self.section / 'x-1.1-decision-flow.mmd').write_text('flowchart TD\n  Q --> A\n')
         (self.section / 'x-1.1-https-flow.mmd').write_text('flowchart LR\n  K --> L\n')
+        (self.section / 'x-1.1-sigma-bridge-tool.mmd').write_text('flowchart LR\n  Z --> Y\n')
         page, diagrams = notebook.section_html('1.1', self.section, 'MA-235 Statistics', 1, 'Data Basics')
         self.assertEqual(diagrams, page.count('<pre class="mermaid">'))
         self.assertEqual(diagrams, 3)
@@ -369,6 +370,7 @@ class KitTests(unittest.TestCase):
         self.assertIn('class="test"', page)
         self.assertNotIn('Official key text', page)
         self.assertIn('Map · HTTPS', page)
+        self.assertNotIn('Sigma', page)
         self.assertLess(page.index('Quiz Sort: redraw from memory'), page.index('Quiz Sort: check'))
         self.assertIn('1.1 Data Basics', page)
 

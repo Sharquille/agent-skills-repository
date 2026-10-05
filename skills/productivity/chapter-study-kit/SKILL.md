@@ -22,7 +22,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.10.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.10.1**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -190,6 +190,8 @@ optional extra `*-flow.mmd`. At least one LR and one TD. Add a worked-example
 map when the ledger has a split case. Add an extra legend flow for each earned
 contrast or section (shop, storage, instruction cycle, I/O), not only stats
 "levels / methods". Add `*-error-flow.mmd` when the source teaches mixups.
+Name a homework bridge tool `*-bridge-tool.mmd`: it stays on disk beside its
+notes and never prints in the notebook, because the section does not earn it.
 
 **Where each map lands in the section notebook:**
 

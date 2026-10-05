@@ -42,6 +42,8 @@ NODE_DEF = re.compile(r"^\s*(\w+)\s*[\(\[\{]")
 SCRATCH_PAGES = 3
 CORE_STOP = re.compile(r"(?i)^#\s+.*\b(quiz why|retrieval)\s*$")
 RETRIEVAL_MAP_SUFFIXES = ("decision-flow", "error-flow")
+# Homework bridge tools teach material the section does not earn; they stay on disk.
+DISK_ONLY_MAP_SUFFIX = "bridge-tool"
 NODE_ID = r"[A-Za-z][A-Za-z0-9_]*"
 NODE_LINE = re.compile(rf"^\s*({NODE_ID})\s*[\(\[\{{>]")
 EDGE_LINE = re.compile(
@@ -282,7 +284,8 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str)
     notes = sorted(folder.glob("*Study-Notes.md"))
     if len(notes) != 1:
         raise ValueError(f"{folder}: need exactly one *Study-Notes.md")
-    maps = sorted((p for p in folder.glob("*.mmd") if "overall" not in p.stem.lower()), key=map_kind_rank)
+    maps = sorted((p for p in folder.glob("*.mmd") if "overall" not in p.stem.lower()
+                   and not p.stem.lower().endswith(DISK_ONLY_MAP_SUFFIX)), key=map_kind_rank)
     concept = [p for p in maps if p.stem.lower().endswith("concept-map")]
     sorts = [p for p in maps if retrieval_map(p)]
     legends = [p for p in maps if p not in concept and p not in sorts]

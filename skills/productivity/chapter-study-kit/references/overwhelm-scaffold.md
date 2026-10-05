@@ -48,7 +48,8 @@ canonical source and not a default part of every chapter.
 
 ## Homework that is not in the chapter
 
-Name it a **bridge tool**. Work a tiny unrelated example. Send him back to his
+Name it a **bridge tool** (map file `*-bridge-tool.mmd`, kept out of the
+notebook). Work a tiny unrelated example. Send him back to his
 own paper.
 
 ## Preserve the explanation
