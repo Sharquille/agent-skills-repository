@@ -15,7 +15,13 @@ PREFIX_BY_COURSE = {
     "EN-221": "English",
     "IT-100": "IT",
     "LA-122": "Communication",
+    "ComptiaSec+": "SecurityPlus",
 }
+# How a course is tested decides what its notes must carry (references/course-profiles.md).
+PROFILES = {"quantitative", "technical", "security", "general"}
+EXPLAINED = re.compile(r"\*\*(?:Why[^*]*|Builds on|Read [^*]*aloud)[:*]")
+OBJECTIVE_ROW = re.compile(r"^\|\s*(\d\.\d)\s*\|")
+OBJECTIVE_STATUSES = {"covered", "covered elsewhere", "later module", "gap"}
 SKIP_NAMES = {".DS_Store", "README.md"}
 STATUSES = {"collecting", "ready", "complete"}
 COVERAGES = {"partial", "full"}
@@ -288,6 +294,136 @@ def check_state(state_path: Path) -> list[str]:
     return errors
 
 
+def section_core(notes: Path) -> str:
+    return re.split(r"(?im)^#\s+.*\b(?:quiz why|retrieval)\s*$", notes.read_text())[0]
+
+
+def profile_warnings(folder: Path, profile: str | None) -> list[str]:
+    """What the course profile expects the Core to carry; advisory for older kits."""
+    notes = [p for p in folder.glob("*.md") if p.name.lower().endswith("study-notes.md")]
+    if len(notes) != 1 or profile not in PROFILES:
+        return []
+    core = section_core(notes[0])
+    warnings = []
+    blocks = re.split(r"(?m)^(?=### \d+[a-z]?\. )", core)[1:]
+    bare = [re.match(r"### (\d+[a-z]?)\.", b).group(1) for b in blocks
+            if "**TEST MOVE:**" in b and not EXPLAINED.search(b) and "**Worked example:" not in b]
+    if bare:
+        warnings.append(f"headings {', '.join(bare)} need a Why it works / Builds on / Read it aloud line")
+    if profile == "quantitative" and "$" in core and "**Symbols" not in core:
+        warnings.append("Core uses math but has no Symbols table")
+    if profile in {"technical", "security"} and "**Abbreviations**" not in core:
+        warnings.append("Core has no Abbreviations table")
+    return warnings
+
+
+def figure_size_warnings(folder: Path) -> list[str]:
+    """A figure scales to the notes column (about 470 wide); a label that prints under 8 is unreadable on iPad."""
+    warnings = []
+    for svg_path in sorted(folder.glob("*.svg")):
+        svg = svg_path.read_text()
+        width = re.search(r'<svg[^>]*viewBox="[\d.]+ [\d.]+ ([\d.]+) ', svg)
+        sizes = [float(s) for s in re.findall(r'<text[^>]*font-size="([\d.]+)"[^>]*>\s*[^<\s]', svg)]
+        if not width or not sizes:
+            continue
+        scale = min(1.0, 470 / float(width.group(1)))
+        if min(sizes) * scale < 8:
+            warnings.append(f"figure {svg_path.name}: smallest label prints at {min(sizes) * scale:.1f}; "
+                            "draw on a 470-wide viewBox with labels 10 or larger")
+    return warnings
+
+
+ACRONYM_ROW = re.compile(r"^\|\s*([A-Za-z0-9][A-Za-z0-9&/.\-]*)\s*\|([^|]+)\|([^|]*)\|\s*$")
+
+
+def read_acronyms(kit: Path) -> list[tuple[str, str, str]]:
+    """acronyms.md rows: (short form, spelled out, Where cell); the exam's official list."""
+    path = kit / "acronyms.md"
+    if not path.is_file():
+        return []
+    rows = [ACRONYM_ROW.match(line) for line in path.read_text().splitlines()]
+    return [(m.group(1), m.group(2).strip(), m.group(3).strip()) for m in rows
+            if m and m.group(1) != "Acronym"]
+
+
+def acronyms_in(core: str, names: set[str]) -> set[str]:
+    return {n for n in names if re.search(rf"(?<![\w-]){re.escape(n)}(?![\w-])", core)}
+
+
+def abbreviation_forms(core: str) -> set[str]:
+    """Short forms in the Core's **Abbreviations** table ("CSO, CISO" counts as two)."""
+    table = re.search(r"\*\*Abbreviations\*\*\s*\n((?:\s*\|.*\n?)+)", core)
+    if not table:
+        return set()
+    forms = set()
+    for line in table.group(1).splitlines()[2:]:
+        first = line.strip().strip("|").split("|")[0]
+        forms |= {f.strip() for f in first.split(",") if f.strip()}
+    return forms
+
+
+def acronym_index(folders: list[Path], names: set[str]) -> dict[str, list[str]]:
+    """Which sections' Core uses each official acronym."""
+    where: dict[str, list[str]] = {n: [] for n in names}
+    for folder in folders:
+        notes = [p for p in folder.glob("*.md") if p.name.lower().endswith("study-notes.md")]
+        if len(notes) == 1:
+            for n in acronyms_in(section_core(notes[0]), names):
+                where[n].append(folder.name)
+    return where
+
+
+def acronym_warnings(kit: Path, folders: list[Path]) -> list[str]:
+    """A security kit spells out every official exam acronym where a section uses it."""
+    rows = read_acronyms(kit)
+    if not rows:
+        return ["security profile: add acronyms.md (the exam's official acronym list) and run acronym_map.py"]
+    names = {r[0] for r in rows}
+    warnings = []
+    for folder in folders:
+        notes = [p for p in folder.glob("*.md") if p.name.lower().endswith("study-notes.md")]
+        if len(notes) != 1:
+            continue
+        core = section_core(notes[0])
+        missing = sorted(acronyms_in(core, names) - abbreviation_forms(core))
+        if missing:
+            rel = folder.relative_to(kit).as_posix()
+            warnings.append(f"{rel}: official acronyms without an Abbreviations row: {', '.join(missing)}")
+    index = acronym_index(folders, names)
+    stale = sorted({r[0] for r in rows if r[2] != ", ".join(index[r[0]]) and not (r[2] == "later module"
+                                                                               and not index[r[0]])})
+    if stale:
+        warnings.append(f"acronyms.md Where is stale for {len(stale)} acronyms; run acronym_map.py --kit")
+    return warnings
+
+
+def check_objectives(kit: Path, folders: list[Path]) -> list[str]:
+    """A security kit maps every tested objective item to the notes (objectives.md)."""
+    path = kit / "objectives.md"
+    if not path.is_file():
+        return ["security profile needs objectives.md mapping exam objective items to sections"]
+    known = {f.name for f in folders}
+    errors, rows = [], 0
+    for line in path.read_text().splitlines():
+        if not OBJECTIVE_ROW.match(line):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        rows += 1
+        if len(cells) != 5:
+            errors.append(f"objectives.md malformed row: {line}")
+            continue
+        _, item, _, status, where = cells
+        if status not in OBJECTIVE_STATUSES:
+            errors.append(f"objectives.md {item}: status must be one of {', '.join(sorted(OBJECTIVE_STATUSES))}")
+        if status in {"covered", "covered elsewhere"}:
+            missing = [s for s in re.findall(r"\d+\.\d+", where) if s not in known]
+            if not re.findall(r"\d+\.\d+", where) or missing:
+                errors.append(f"objectives.md {item}: Where must name sections on hand")
+    if not rows:
+        errors.append("objectives.md has no objective rows")
+    return errors
+
+
 def check_section(folder: Path) -> list[str]:
     """Per-section filing contract; usable while other sections still collect."""
     errors: list[str] = []
@@ -354,6 +490,8 @@ def check_kit(kit: Path) -> list[str]:
                 not isinstance(data.get(key), str) or not data[key].strip()
                 for key in HUB_KEYS)):
             errors.append("hub.json needs nonempty " + ", ".join(HUB_KEYS))
+        if isinstance(data, dict) and data.get("profile") not in PROFILES:
+            errors.append("hub.json needs a profile: " + ", ".join(sorted(PROFILES)))
         if isinstance(data, dict):
             prefix = str(data.get("prefix", "")).strip()
             expected = PREFIX_BY_COURSE.get(course.name)
@@ -404,6 +542,13 @@ def check_kit(kit: Path) -> list[str]:
             if not (chapter / "README.md").is_file():
                 errors.append(f"{chapter.relative_to(kit).as_posix()}: missing README.md")
 
+    try:
+        hub_profile = json.loads(hub_path.read_text()).get("profile") if hub_path.is_file() else None
+    except (json.JSONDecodeError, AttributeError):
+        hub_profile = None
+    if hub_profile == "security":
+        errors += check_objectives(kit, folders)
+
     course_md = course / "COURSE.md"
     if course_md.is_file() and "Chapter-Kits" not in course_md.read_text():
         errors.append("COURSE.md must point at Chapter-Kits")
@@ -428,8 +573,16 @@ def kit_warnings(kit: Path) -> list[str]:
         warnings.append(
             f"{kit.parent.name} is not in PREFIX_BY_COURSE; the cross-course prefix check "
             "only guards the known courses")
+    try:
+        profile = json.loads((kit / "hub.json").read_text()).get("profile")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        profile = None
+    if profile == "security":
+        warnings += acronym_warnings(kit, section_folders(kit))
     for folder in section_folders(kit):
         rel = folder.relative_to(kit).as_posix()
+        warnings += [f"{rel}: {w}" for w in profile_warnings(folder, profile)]
+        warnings += [f"{rel}: {w}" for w in figure_size_warnings(folder)]
         ledger = folder / "ledger.md"
         if ledger.is_file() and not SOURCE_ROW.search(ledger.read_text()):
             warnings.append(

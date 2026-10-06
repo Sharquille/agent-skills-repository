@@ -62,8 +62,12 @@ definition or an argument in prose; a literature section may need none.
    | MA-235 | population, parameter, descriptive | sample, statistic | individuals, variables | inferential, traps, errors, undercoverage |
    | IT-100 | server, destination, receiver | your device, client, sender | data, packets, components | failure, loss, attacker |
    | EN-221, LA-122 | the other side, receiver, outcome | speaker, character, sender | message, channel, story parts | conflict, gap, noise |
+   | Security+ | protected asset, business function, goal | defender, organization, process, role | control category and type | attack, incident, security added late |
 
    A new course picks its mapping on its first figure and adds a row here.
+   Draw on a 470-wide `viewBox` with labels at 10 or larger; a wider canvas
+   shrinks to the column, and `validate_kit.py --kit` warns when a label
+   prints under 8.
 4. **Replace a table only when the figure holds every cell** (the levels
    staircase, the sampling-method panels). Otherwise keep the table and draw
    the relation the table cannot show.

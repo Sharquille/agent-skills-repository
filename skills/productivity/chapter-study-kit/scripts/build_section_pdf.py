@@ -59,6 +59,8 @@ ACRONYMS = {"Https": "HTTPS", "Http": "HTTP", "Html": "HTML", "Css": "CSS",
 PLAIN_EDGE = re.compile(r"^\s*(\w+)\s*-->\s*(\w+)\s*$")
 NODE_DEF = re.compile(r"^\s*(\w+)\s*[\(\[\{]")
 SCRATCH_PAGES = 3
+# Certification learners write in the margin and Practice.md, not on blank pads.
+SCRATCH_BY_PROFILE = {"security": 0}
 CORE_STOP = re.compile(r"(?i)^#\s+.*\b(quiz why|retrieval)\s*$")
 RETRIEVAL_MAP_SUFFIXES = ("decision-flow", "error-flow")
 # Homework bridge tools teach material the section does not earn; they stay on disk.
@@ -345,7 +347,8 @@ def blank_page(heading: str, hint: str = "", orientation: str = "portrait") -> s
             f"{note}</section>")
 
 
-def section_html(section: str, folder: Path, course: str, week: int, title: str) -> tuple[str, int]:
+def section_html(section: str, folder: Path, course: str, week: int, title: str,
+                 scratch: int = SCRATCH_PAGES) -> tuple[str, int]:
     """Return the notebook HTML and how many Mermaid diagrams it holds."""
     notes = sorted(folder.glob("*Study-Notes.md"))
     if len(notes) != 1:
@@ -374,15 +377,14 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str)
                                 "landscape"))
         pages.append(map_page(f"Retrieval · {name}: check", path.read_text()))
         diagrams += 1
-    pages += [blank_page(f"Scratch {i}") for i in range(1, SCRATCH_PAGES + 1)]
+    pages += [blank_page(f"Scratch {i}") for i in range(1, scratch + 1)]
 
     contents = [
         "Map: " + ", ".join(["concept map"] + [map_title(section, p) for p in legends]),
         "Notes: Core with a writing margin",
         "Retrieval: " + (", ".join(map_title(section, p) for p in sorts) or "none")
         + " (redraw first, then check)",
-        "Scratch: blank pages for working out answers",
-    ]
+    ] + (["Scratch: blank pages for working out answers"] if scratch else [])
     cover = f"""<section class="cover portrait">
 <p class="kicker">{html.escape(course)} · Week {week:02d} · GoodNotes notebook</p>
 <h1>{html.escape(section_folder_name(section, title))}</h1>
@@ -393,7 +395,7 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str)
     return page(html.escape(title), cover + "".join(pages)), diagrams
 
 
-def overview_html(kit: Path, course: str) -> tuple[str, int]:
+def overview_html(kit: Path, course: str, scratch: int = SCRATCH_PAGES) -> tuple[str, int]:
     """Course notebook for 00 Course Overview: whole overall map, then one page per chapter."""
     code = (kit / "overall-flow.mmd").read_text()
     try:
@@ -407,7 +409,7 @@ def overview_html(kit: Path, course: str) -> tuple[str, int]:
 <h1>Course map</h1>
 <div class="howto">Every section studied so far, grown from its sources. Redraw a chapter branch from memory, then check it here.</div>
 </section>"""
-    body = cover + "".join(pages) + blank_page("Scratch 1")
+    body = cover + "".join(pages) + (blank_page("Scratch 1") if scratch else "")
     return page("Course map", body), 1 + len(parts)
 
 
@@ -499,14 +501,16 @@ def build(kit: Path, only: str | None, downloads: bool) -> list[Path]:
     errors = validate_kit.check_kit(kit)
     if errors:
         raise ValueError("kit contract failed; run validate_kit.py --kit:\n  " + "\n  ".join(errors))
-    course = json.loads((kit / "hub.json").read_text())["goodnotes_course"]
+    hub = json.loads((kit / "hub.json").read_text())
+    course = hub["goodnotes_course"]
+    scratch = SCRATCH_BY_PROFILE.get(hub.get("profile"), SCRATCH_PAGES)
     built = []
     for section, folder in iter_sections(kit):
         if only and section != only:
             continue
         state = section_state(folder)
         week, title = state["week"], state["title"].strip()
-        page_html, diagrams = section_html(section, folder, course, week, title)
+        page_html, diagrams = section_html(section, folder, course, week, title, scratch)
         work = week_work(kit.parent, week)
         work.mkdir(parents=True, exist_ok=True)
         out = work / pdf_name(kit.parent, section, title)
@@ -518,7 +522,7 @@ def build(kit: Path, only: str | None, downloads: bool) -> list[Path]:
     if only and not built:
         raise ValueError(f"no section {only} in {kit}")
     # The overall map changes with every section, so its notebook is always rebuilt.
-    page_html, diagrams = overview_html(kit, course)
+    page_html, diagrams = overview_html(kit, course, scratch)
     out = kit.parent / "00-Course-Guide" / f"{kit.parent.name}_Course-Overview_GoodNotes.pdf"
     out.parent.mkdir(exist_ok=True)
     render(page_html, diagrams, out)

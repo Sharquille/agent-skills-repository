@@ -22,7 +22,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.12.3**. Read the canonical version before executing a synced copy.
+Workflow version: **2.13.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -111,6 +111,14 @@ It writes `state.json`, the `ledger.md` source table, and the
 `practice-plan.md` header only, and refuses an existing folder. Take the week
 from the course calendar, never from `Chapter-NN` (IT-100 6.4 is Week 2); the
 section notebook is filed under that week.
+
+Every kit names its course profile in `hub.json` (`quantitative`, `technical`,
+`security`, or `general`); the validator refuses a kit without one. Read
+[references/course-profiles.md](references/course-profiles.md) to pick it and
+for what it changes. A `security` kit (CompTIA Security+ lives at
+`Education/IT-Certifications/ComptiaSec+/Chapter-Kits`) also keeps
+`objectives.md`, the exam objective items mapped to sections, and
+`acronyms.md`, the official acronym list with the sections that use each.
 
 Record each original path in the ledger source table and any matching slides in
 `Chapter-Kits/SOURCES.md`. Register what is already on disk too: a PowerPoint
@@ -228,6 +236,13 @@ own the detail. Order and non-negotiables:
    table.
    Worked examples use Situation / Given / Steps / Answer / Check, and every
    number is given or produced by a visible step.
+   The kit's profile adds its own rules on top
+   ([references/course-profiles.md](references/course-profiles.md)): an
+   Abbreviations table for technical and security kits, scenario-clue TEST
+   MOVEs and objective coverage for security kits, and figures only for
+   structure in general kits. When rewriting an existing Core, keep every
+   sentence's meaning, heading number, figure, and Practice item, and compare
+   old and new before rebuilding.
 2. **Figures** (default for every section): follow the Figures section of
    [references/visual-language.md](references/visual-language.md). One idea
    per figure after the text it shows, built with `scripts/svg_figure.py`,

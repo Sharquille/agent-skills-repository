@@ -117,7 +117,7 @@ class KitTests(unittest.TestCase):
         (self.kit / 'hub.json').write_text(json.dumps({
             'title': 'T', 'prefix': 'T',
             'goodnotes_root': 'Monroe University', 'goodnotes_term': '2026 Fall',
-            'goodnotes_course': 'T-100 Test'}))
+            'goodnotes_course': 'T-100 Test', 'profile': 'quantitative'}))
         (self.kit / 'README.md').write_text('Map then Retrieval then Practice.md')
         (self.kit / 'SOURCES.md').write_text('# sources\n')
         (self.kit / 'overall-flow.prev.mmd').write_text((self.kit / 'overall-flow.mmd').read_text())
@@ -393,6 +393,9 @@ class KitTests(unittest.TestCase):
         self.assertIn('<div class="cue"><b>SKETCH</b>Draw the circle.</div>', page)
         self.assertNotIn('![', page)
         self.assertNotIn('[!TIP]', page)
+        self.assertIn('Scratch 3', page)
+        bare, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T', notebook.SCRATCH_BY_PROFILE['security'])
+        self.assertNotIn('Scratch', bare)
 
     def test_figure_checks_catch_unsafe_offpalette_unlabelled_and_invented_numbers(self):
         self.fill_live_contract()
@@ -464,6 +467,76 @@ class KitTests(unittest.TestCase):
         self.assertIn('KaTeX reported an equation error',
                       notebook.rendered_ok('<title>READY</title><span class="tex tex-error"></span>', 0, 0))
         self.assertEqual(notebook.rendered_ok('<title>READY</title><style>.tex-error{}</style><span data-ok="1">', 0, 1), [])
+
+    def test_profile_is_required_and_drives_warnings(self):
+        self.fill_live_contract()
+        hub = json.loads((self.kit / 'hub.json').read_text())
+        del hub['profile']
+        (self.kit / 'hub.json').write_text(json.dumps(hub))
+        self.assertIn('needs a profile', '\n'.join(validate.check_kit(self.kit)))
+        hub['profile'] = 'technical'
+        (self.kit / 'hub.json').write_text(json.dumps(hub))
+        (self.section / 'N-Study-Notes.md').write_text('# Core\n## A\n### 1. Idea\nText.\n\n**TEST MOVE:** Do.\n'
+                                                      '### 2. Next\nText.\n\n**Builds on:** Core 1.\n\n**TEST MOVE:** Do.\n')
+        self.assertEqual(validate.check_kit(self.kit), [])
+        warnings = '\n'.join(validate.kit_warnings(self.kit))
+        self.assertIn('headings 1 need a Why it works', warnings)
+        self.assertIn('no Abbreviations table', warnings)
+        hub['profile'] = 'quantitative'
+        (self.kit / 'hub.json').write_text(json.dumps(hub))
+        (self.section / 'N-Study-Notes.md').write_text('# Core\n### 1. Idea\n$P(A)$\n\n**Why it works:** x.\n\n**TEST MOVE:** Do.\n')
+        warnings = '\n'.join(validate.kit_warnings(self.kit))
+        self.assertIn('no Symbols table', warnings)
+        self.assertNotIn('Abbreviations', warnings)
+
+    def test_wide_figures_and_small_labels_warn(self):
+        (self.section / 'wide.svg').write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 730 300" role="img" aria-label="x">'
+            '<text x="1" y="1" font-size="10">a</text></svg>')
+        warnings = '\n'.join(validate.figure_size_warnings(self.section))
+        self.assertIn('prints at 6.4', warnings)
+        (self.section / 'wide.svg').write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 300" role="img" aria-label="x">'
+            '<text x="1" y="1" font-size="10">a</text></svg>')
+        self.assertEqual(validate.figure_size_warnings(self.section), [])
+
+    def test_security_profile_needs_a_wellformed_objective_map(self):
+        self.fill_live_contract()
+        hub = json.loads((self.kit / 'hub.json').read_text())
+        hub['profile'] = 'security'
+        (self.kit / 'hub.json').write_text(json.dumps(hub))
+        self.assertIn('needs objectives.md', '\n'.join(validate.check_kit(self.kit)))
+        (self.kit / 'objectives.md').write_text(
+            '| Objective | Item | Course sections | Status | Where in the notes |\n| --- | --- | --- | --- | --- |\n'
+            '| 1.1 | Technical | 1.1, 1.2 | covered | 1.1 Core 3 |\n'
+            '| 1.2 | Bollards | 1.1, 6.1 | later module | Module 6 |\n')
+        self.assertEqual(validate.check_kit(self.kit), [])
+        (self.kit / 'objectives.md').write_text(
+            '| 1.1 | Technical | 1.1 | done | 1.1 |\n| 1.2 | Honeypot | 1.1 | covered | 9.9 Core 1 |\n')
+        errors = '\n'.join(validate.check_kit(self.kit))
+        self.assertIn('status must be one of', errors)
+        self.assertIn('Where must name sections on hand', errors)
+
+    def test_security_acronyms_need_an_abbreviations_row_and_a_current_map(self):
+        self.fill_live_contract()
+        folders = validate.section_folders(self.kit)
+        self.assertIn('add acronyms.md', '\n'.join(validate.acronym_warnings(self.kit, folders)))
+        (self.section / 'N-Study-Notes.md').write_text(
+            '# Core\n\n**Abbreviations**\n\n| Short form | Stands for | Meaning |\n| --- | --- | --- |\n'
+            '| CSO, CISO | Chief Security Officer, Chief Information Security Officer | x |\n\n'
+            '### 1. Roles\nThe CISO and the CSO read the ACL. AES-256 protects it.\n')
+        (self.kit / 'acronyms.md').write_text(
+            '| Acronym | Spelled out | Where |\n| --- | --- | --- |\n'
+            '| ACL | Access Control List | 1.1 |\n| CISO | Chief Information Security Officer | 1.1 |\n'
+            '| AES | Advanced Encryption Standard | later module |\n| AES-256 | AES 256-bit | 1.1 |\n'
+            '| XSS | Cross-site Scripting | later module |\n')
+        warnings = '\n'.join(validate.acronym_warnings(self.kit, folders))
+        self.assertIn('without an Abbreviations row: ACL, AES-256', warnings)
+        self.assertNotIn('CISO,', warnings)
+        self.assertNotIn('stale', warnings)
+        (self.kit / 'acronyms.md').write_text(
+            '| Acronym | Spelled out | Where |\n| --- | --- | --- |\n| ACL | Access Control List | later module |\n')
+        self.assertIn('stale for 1 acronyms', '\n'.join(validate.acronym_warnings(self.kit, folders)))
 
     def test_orientation_is_fixed_before_printing(self):
         page = notebook.MAP_SECTION + 'a</section>' + notebook.MAP_SECTION + 'b</section>'
