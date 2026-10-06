@@ -333,7 +333,7 @@ def figure_size_warnings(folder: Path) -> list[str]:
     return warnings
 
 
-ACRONYM_ROW = re.compile(r"^\|\s*([A-Za-z0-9][A-Za-z0-9&/.\-]*)\s*\|([^|]+)\|([^|]*)\|\s*$")
+ACRONYM_ROW = re.compile(r"^\|\s*([A-Za-z0-9][A-Za-z0-9&/.+\- ]*?)\s*\|([^|]+)\|([^|]*)\|\s*$")
 
 
 def read_acronyms(kit: Path) -> list[tuple[str, str, str]]:

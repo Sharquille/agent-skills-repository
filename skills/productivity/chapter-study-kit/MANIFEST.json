@@ -17,8 +17,8 @@
     "scripts/ocr_pdf.swift": "9ca7fc099e5326f879d19d307034e777b6bb0030c9bf2bf03ec7f7ca925f6524",
     "scripts/svg_figure.py": "958af25c274b5529b67339d99a5d61c7430318c91dd4856654bf600a9d8a8962",
     "scripts/sync_skill.py": "aa42424eb86465910f93f23f62df191fd651a0657edf0768629538d379134a61",
-    "scripts/validate_kit.py": "b46aebfc61edd0f3ffd731b2b019330939eeae63a0968980db3a77f94ae56d6d",
-    "tests/test_kit.py": "e669f63f09006a3a1dfd0d3f4c56666b6663086eea9eca15e9926f64bac72018"
+    "scripts/validate_kit.py": "1f322d507a4287d367cfa2c5ac0afef66d6446b8ce42cedf710f053409f4d6c9",
+    "tests/test_kit.py": "c4143466946710c3bd2b83186d67d845504d0fb3243b6ce7cbbe351bbdf7b4e0"
   },
   "version": "2.13.0"
 }

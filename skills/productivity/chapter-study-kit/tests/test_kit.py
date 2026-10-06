@@ -529,7 +529,9 @@ class KitTests(unittest.TestCase):
             '| Acronym | Spelled out | Where |\n| --- | --- | --- |\n'
             '| ACL | Access Control List | 1.1 |\n| CISO | Chief Information Security Officer | 1.1 |\n'
             '| AES | Advanced Encryption Standard | later module |\n| AES-256 | AES 256-bit | 1.1 |\n'
-            '| XSS | Cross-site Scripting | later module |\n')
+            '| XSS | Cross-site Scripting | later module |\n'
+            '| PCI DSS | Payment Card Industry Data Security Standard | later module |\n| TACACS+ | Terminal Access Controller Access Control System Plus | later module |\n')
+        self.assertTrue({'PCI DSS', 'TACACS+'} <= {r[0] for r in validate.read_acronyms(self.kit)})
         warnings = '\n'.join(validate.acronym_warnings(self.kit, folders))
         self.assertIn('without an Abbreviations row: ACL, AES-256', warnings)
         self.assertNotIn('CISO,', warnings)
