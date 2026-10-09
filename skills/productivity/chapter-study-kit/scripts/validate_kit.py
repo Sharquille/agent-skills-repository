@@ -20,6 +20,22 @@ PREFIX_BY_COURSE = {
 # How a course is tested decides what its notes must carry (references/course-profiles.md).
 PROFILES = {"quantitative", "technical", "security", "general"}
 EXPLAINED = re.compile(r"\*\*(?:Why[^*]*|Builds on|Read [^*]*aloud)[:*]")
+# A reason line; two on one heading usually say the same thing twice.
+REASON_LINE = re.compile(r"\*\*(?:Why[^*]*|Builds on)[:*]")
+# A margin glossary: a TIP whose body starts with **TERMS:** and lists "- **IdP**: meaning".
+TERMS_BOX = re.compile(r"(?m)^>[ \t]?\[!TIP\][ \t]*\n>[ \t]?\*\*TERMS:\*\*[ \t]*\n((?:>[ \t]?- .+\n?)+)")
+TERM_ITEM = re.compile(r"^>[ \t]?- \*\*([^*]+)\*\*")
+TERMS_PER_BOX = 6
+# Relevance highlights and cited web additions (references/relevance-research.md).
+HIGH_YIELD = re.compile(r"(?m)^>[ \t]?\[!IMPORTANT\][ \t]*\n>[ \t]?\*\*HIGH YIELD:\*\*[ \t]*(.+)$")
+CURRENT_EXAM = re.compile(r"\*\*CURRENT EXAM \((W\d{3})\):\*\*")
+# | W001 | A | SY0-701 | title | ... : the third cell is the exam version the source covers.
+WEB_SOURCE_ROW = re.compile(r"(?m)^\|\s*(W\d{3})\s*\|\s*[ABCD]\s*\|\s*([^|]+?)\s*\|")
+ANY_VERSION = "any"
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+RESEARCH_MODES = {"off", "web"}
+# University work is graded on the course's own material: no web research there.
+SOURCES_ONLY_ROOT = "Monroe-University"
 OBJECTIVE_ROW = re.compile(r"^\|\s*(\d\.\d)\s*\|")
 OBJECTIVE_STATUSES = {"covered", "covered elsewhere", "later module", "gap"}
 SKIP_NAMES = {".DS_Store", "README.md"}
@@ -27,6 +43,9 @@ STATUSES = {"collecting", "ready", "complete"}
 COVERAGES = {"partial", "full"}
 # "import" is the on-iPad check: the user confirms the notebook reads well in GoodNotes.
 VERIFICATIONS = ("local", "render", "import")
+# A section written under the relevance workflow (it has a revised date) also needs
+# its Sol review resolved before it is complete (references/sol-review.md).
+REVIEWED = "review"
 CHECK_RESULTS = {"pending", "passed", "failed"}
 SOURCE_ROW = re.compile(r"^\|\s*S\d+\s*\|", re.M)
 OUTCOME_ROW = re.compile(r"^\| (?:\d+[a-z]?) \|")
@@ -283,6 +302,9 @@ def check_state(state_path: Path) -> list[str]:
         errors.append(f"state.json status must be one of {', '.join(sorted(STATUSES))}")
     if state.get("coverage") not in COVERAGES:
         errors.append(f"state.json coverage must be one of {', '.join(sorted(COVERAGES))}")
+    revised = state.get("revised")
+    if revised is not None and not (isinstance(revised, str) and ISO_DATE.match(revised)):
+        errors.append("state.json revised must be a YYYY-MM-DD date")
     title = state.get("title")
     if not isinstance(title, str) or not title.strip():
         errors.append("state.json needs a short human title for the GoodNotes route")
@@ -291,6 +313,9 @@ def check_state(state_path: Path) -> list[str]:
             isinstance(verification, dict)
             and all(verification.get(key) == "passed" for key in VERIFICATIONS)):
         errors.append("state.json complete needs verification local, render, and import all passed")
+    if (state.get("status") == "complete" and "revised" in state
+            and not (isinstance(verification, dict) and verification.get(REVIEWED) == "passed")):
+        errors.append("state.json complete needs verification review passed (Sol review, references/sol-review.md)")
     return errors
 
 
@@ -306,14 +331,25 @@ def profile_warnings(folder: Path, profile: str | None) -> list[str]:
     core = section_core(notes[0])
     warnings = []
     blocks = re.split(r"(?m)^(?=### \d+[a-z]?\. )", core)[1:]
-    bare = [re.match(r"### (\d+[a-z]?)\.", b).group(1) for b in blocks
-            if "**TEST MOVE:**" in b and not EXPLAINED.search(b) and "**Worked example:" not in b]
-    if bare:
-        warnings.append(f"headings {', '.join(bare)} need a Why it works / Builds on / Read it aloud line")
+    number = lambda b: re.match(r"### (\d+[a-z]?)\.", b).group(1)
+    if profile == "quantitative":
+        bare = [number(b) for b in blocks
+                if "**TEST MOVE:**" in b and not EXPLAINED.search(b) and "**Worked example:" not in b]
+        if bare:
+            warnings.append(f"headings {', '.join(bare)} need a Why it works / Builds on / Read it aloud line")
+    repeated = [number(b) for b in blocks if len(REASON_LINE.findall(b)) > 1]
+    if repeated:
+        warnings.append(f"headings {', '.join(repeated)} have more than one Why / Builds on line; keep the one that adds a reason")
+    flagged = len(HIGH_YIELD.findall(core))
+    if blocks and flagged * 2 > len(blocks):
+        warnings.append(f"{flagged} of {len(blocks)} headings are HIGH YIELD; keep it to about a third")
+    crowded = sum(len(m.group(1).strip().splitlines()) > TERMS_PER_BOX for m in TERMS_BOX.finditer(core))
+    if crowded:
+        warnings.append(f"{crowded} TERMS boxes hold more than {TERMS_PER_BOX} terms; split them by heading")
     if profile == "quantitative" and "$" in core and "**Symbols" not in core:
         warnings.append("Core uses math but has no Symbols table")
-    if profile in {"technical", "security"} and "**Abbreviations**" not in core:
-        warnings.append("Core has no Abbreviations table")
+    if profile in {"technical", "security"} and "**Abbreviations**" not in core and not TERMS_BOX.search(core):
+        warnings.append("Core has no margin TERMS boxes")
     return warnings
 
 
@@ -351,15 +387,16 @@ def acronyms_in(core: str, names: set[str]) -> set[str]:
 
 
 def abbreviation_forms(core: str) -> set[str]:
-    """Short forms in the Core's **Abbreviations** table ("CSO, CISO" counts as two)."""
+    """Short forms the Core defines: margin TERMS entries, or a legacy **Abbreviations** table.
+
+    "CSO, CISO" counts as two in either place.
+    """
+    firsts = [m.group(1) for box in TERMS_BOX.finditer(core)
+              for m in map(TERM_ITEM.match, box.group(1).splitlines()) if m]
     table = re.search(r"\*\*Abbreviations\*\*\s*\n((?:\s*\|.*\n?)+)", core)
-    if not table:
-        return set()
-    forms = set()
-    for line in table.group(1).splitlines()[2:]:
-        first = line.strip().strip("|").split("|")[0]
-        forms |= {f.strip() for f in first.split(",") if f.strip()}
-    return forms
+    if table:
+        firsts += [line.strip().strip("|").split("|")[0] for line in table.group(1).splitlines()[2:]]
+    return {f.strip() for first in firsts for f in first.split(",") if f.strip()}
 
 
 def acronym_index(folders: list[Path], names: set[str]) -> dict[str, list[str]]:
@@ -388,7 +425,7 @@ def acronym_warnings(kit: Path, folders: list[Path]) -> list[str]:
         missing = sorted(acronyms_in(core, names) - abbreviation_forms(core))
         if missing:
             rel = folder.relative_to(kit).as_posix()
-            warnings.append(f"{rel}: official acronyms without an Abbreviations row: {', '.join(missing)}")
+            warnings.append(f"{rel}: official acronyms without a TERMS entry: {', '.join(missing)}")
     index = acronym_index(folders, names)
     stale = sorted({r[0] for r in rows if r[2] != ", ".join(index[r[0]]) and not (r[2] == "later module"
                                                                                and not index[r[0]])})
@@ -464,6 +501,40 @@ def check_section(folder: Path) -> list[str]:
             errors.append(f"{path.name} must be flowchart TD (quiz sort)")
     for pending in folder.glob("ocr-*.pending.txt"):
         errors.append(f"leftover pending OCR: {pending.name}")
+    return errors
+
+
+def check_relevance_research(kit: Path, folders: list[Path], hub: dict) -> list[str]:
+    """Web research is opt-in, pinned to the studied exam, cited, and locked off for Monroe University kits."""
+    errors = []
+    mode, exam = hub.get("relevance_research"), hub.get("exam")
+    if mode is not None and mode not in RESEARCH_MODES:
+        errors.append(f"hub.json relevance_research must be one of {', '.join(sorted(RESEARCH_MODES))}")
+    relevance = kit / "relevance.md"
+    versions = dict(WEB_SOURCE_ROW.findall(relevance.read_text())) if relevance.is_file() else {}
+    web_ids = set(versions)
+    cited = {}
+    for folder in folders:
+        notes = [p for p in folder.glob("*.md") if p.name.lower().endswith("study-notes.md")]
+        if len(notes) == 1:
+            for wid in CURRENT_EXAM.findall(notes[0].read_text()):
+                cited.setdefault(wid, folder.relative_to(kit).as_posix())
+    if SOURCES_ONLY_ROOT in kit.resolve().parts:
+        if mode == "web":
+            errors.append("Monroe University kits are sources-only; relevance_research cannot be web")
+        if web_ids:
+            errors.append("Monroe University kits are sources-only; relevance.md cannot list web sources")
+        errors += [f"{where}: CURRENT EXAM callout in a sources-only Monroe University kit" for where in cited.values()]
+        return errors
+    if mode == "web" and not (isinstance(exam, str) and exam.strip()):
+        errors.append("hub.json relevance_research web needs exam, the version studied (for example SY0-701)")
+    if cited and mode != "web":
+        errors.append("CURRENT EXAM callouts need hub.json relevance_research set to web")
+    for wid, where in sorted(cited.items()):
+        if wid not in web_ids:
+            errors.append(f"{where}: CURRENT EXAM cites {wid}, which relevance.md does not list")
+        elif versions[wid] not in {exam, ANY_VERSION}:
+            errors.append(f"{where}: CURRENT EXAM cites {wid}, which covers {versions[wid]}, not the studied {exam}")
     return errors
 
 
@@ -543,9 +614,11 @@ def check_kit(kit: Path) -> list[str]:
                 errors.append(f"{chapter.relative_to(kit).as_posix()}: missing README.md")
 
     try:
-        hub_profile = json.loads(hub_path.read_text()).get("profile") if hub_path.is_file() else None
+        hub = json.loads(hub_path.read_text()) if hub_path.is_file() else {}
+        hub_profile = hub.get("profile")
     except (json.JSONDecodeError, AttributeError):
-        hub_profile = None
+        hub, hub_profile = {}, None
+    errors += check_relevance_research(kit, folders, hub if isinstance(hub, dict) else {})
     if hub_profile == "security":
         errors += check_objectives(kit, folders)
 
@@ -581,6 +654,14 @@ def kit_warnings(kit: Path) -> list[str]:
         warnings += acronym_warnings(kit, section_folders(kit))
     for folder in section_folders(kit):
         rel = folder.relative_to(kit).as_posix()
+        try:
+            state = json.loads((folder / "state.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            state = {}
+        verification = state.get("verification") if isinstance(state, dict) else None
+        if (isinstance(state, dict) and "revised" in state
+                and not (isinstance(verification, dict) and verification.get(REVIEWED) == "passed")):
+            warnings.append(f"{rel}: Sol review pending (references/sol-review.md)")
         warnings += [f"{rel}: {w}" for w in profile_warnings(folder, profile)]
         warnings += [f"{rel}: {w}" for w in figure_size_warnings(folder)]
         ledger = folder / "ledger.md"

@@ -28,6 +28,7 @@ sync = load('sync_skill')
 scaffold = load('new_section')
 notebook = load('build_section_pdf')
 svgfig = load('svg_figure')
+review = load('review_brief')
 
 
 class KitTests(unittest.TestCase):
@@ -391,6 +392,13 @@ class KitTests(unittest.TestCase):
         self.assertIn('id="f1-ah"', page)
         self.assertIn('url(#f1-ah)', page)
         self.assertIn('<div class="cue"><b>SKETCH</b>Draw the circle.</div>', page)
+        (self.section / 'N-Study-Notes.md').write_text(
+            '# Core\n## A. Data\n\n### 1. Idea\n\n> [!TIP]\n> **TERMS:**\n> - **IdP**: identity provider, vouches for users\n'
+            '> - **OTP**: one-time <code>\n\nText.\n\n**TEST MOVE:** Decide.\n')
+        terms, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T')
+        self.assertIn('<div class="cue terms"><b>TERMS</b><div class="term"><b>IdP</b> identity provider, vouches for users</div>'
+                      '<div class="term"><b>OTP</b> one-time &lt;code&gt;</div></div>', terms)
+        self.assertNotIn('[!TIP]', terms)
         self.assertNotIn('![', page)
         self.assertNotIn('[!TIP]', page)
         self.assertIn('Scratch 3', page)
@@ -477,17 +485,116 @@ class KitTests(unittest.TestCase):
         hub['profile'] = 'technical'
         (self.kit / 'hub.json').write_text(json.dumps(hub))
         (self.section / 'N-Study-Notes.md').write_text('# Core\n## A\n### 1. Idea\nText.\n\n**TEST MOVE:** Do.\n'
-                                                      '### 2. Next\nText.\n\n**Builds on:** Core 1.\n\n**TEST MOVE:** Do.\n')
+                                                      '### 2. Next\nText.\n\n**Builds on:** Core 1.\n\n'
+                                                      '**Why it matters:** Same again.\n\n**TEST MOVE:** Do.\n')
         self.assertEqual(validate.check_kit(self.kit), [])
         warnings = '\n'.join(validate.kit_warnings(self.kit))
-        self.assertIn('headings 1 need a Why it works', warnings)
-        self.assertIn('no Abbreviations table', warnings)
+        self.assertNotIn('need a Why it works', warnings)
+        self.assertIn('headings 2 have more than one Why / Builds on line', warnings)
+        self.assertIn('no margin TERMS boxes', warnings)
+        terms = ''.join(f'> - **T{i}**: term {i}\n' for i in range(7))
+        (self.section / 'N-Study-Notes.md').write_text(f'# Core\n### 1. Idea\n\n> [!TIP]\n> **TERMS:**\n{terms}\nText.\n')
+        warnings = '\n'.join(validate.kit_warnings(self.kit))
+        self.assertNotIn('TERMS boxes,', warnings)
+        self.assertIn('1 TERMS boxes hold more than 6 terms', warnings)
         hub['profile'] = 'quantitative'
         (self.kit / 'hub.json').write_text(json.dumps(hub))
-        (self.section / 'N-Study-Notes.md').write_text('# Core\n### 1. Idea\n$P(A)$\n\n**Why it works:** x.\n\n**TEST MOVE:** Do.\n')
+        (self.section / 'N-Study-Notes.md').write_text('# Core\n### 1. Idea\n$P(A)$\n\n**TEST MOVE:** Do.\n')
         warnings = '\n'.join(validate.kit_warnings(self.kit))
         self.assertIn('no Symbols table', warnings)
-        self.assertNotIn('Abbreviations', warnings)
+        self.assertIn('headings 1 need a Why it works', warnings)
+        self.assertNotIn('TERMS', warnings)
+
+    def research_kit(self, root):
+        kit = Path(self.temp.name) / root / 'Chapter-Kits'
+        section = kit / 'Chapter-04' / '4.2'
+        section.mkdir(parents=True)
+        (section / 'N-Study-Notes.md').write_text(
+            '# Core\n### 1. Tokens\n\n> [!NOTE]\n> **CURRENT EXAM (W002):** New wording.\n')
+        (kit / 'relevance.md').write_text(
+            '# Relevance\n\nResearch: web (2026-10-08). Exam: SY0-701.\n\n'
+            '| ID | Rank | Exam | Title | Publisher | URL | Retrieved |\n| --- | --- | --- | --- | --- | --- | --- |\n'
+            '| W001 | A | SY0-701 | Objectives | CompTIA | https://x | 2026-10-08 |\n'
+            '| W002 | A | SY0-801 | Objectives | CompTIA | https://y | 2026-10-08 |\n'
+            '| W003 | B | any | SP 800-63B | NIST | https://z | 2026-10-08 |\n'
+            '| W004 | D | SY0-701 | Exam experience post | Reddit | https://r | 2026-10-08 |\n')
+        return kit, [section]
+
+    def test_monroe_kits_are_locked_out_of_web_research(self):
+        kit, folders = self.research_kit('Monroe-University/2026-Fall/IT-100')
+        errors = '\n'.join(validate.check_relevance_research(kit, folders, {'relevance_research': 'web'}))
+        self.assertIn('relevance_research cannot be web', errors)
+        self.assertIn('cannot list web sources', errors)
+        self.assertIn('CURRENT EXAM callout in a sources-only', errors)
+
+    def test_web_research_is_pinned_to_the_studied_exam(self):
+        kit, folders = self.research_kit('IT-Certifications/ComptiaSec+')
+        errors = '\n'.join(validate.check_relevance_research(kit, folders, {'relevance_research': 'web'}))
+        self.assertIn('needs exam', errors)
+        hub = {'relevance_research': 'web', 'exam': 'SY0-701'}
+        errors = '\n'.join(validate.check_relevance_research(kit, folders, hub))
+        self.assertIn('W002, which covers SY0-801, not the studied SY0-701', errors)
+        notes = folders[0] / 'N-Study-Notes.md'
+        notes.write_text(notes.read_text().replace('W002', 'W003'))
+        self.assertEqual(validate.check_relevance_research(kit, folders, hub), [])
+        self.assertIn('W004', dict(validate.WEB_SOURCE_ROW.findall((kit / 'relevance.md').read_text())))
+        notes.write_text(notes.read_text().replace('W003', 'W009'))
+        self.assertIn('W009, which relevance.md does not list',
+                      '\n'.join(validate.check_relevance_research(kit, folders, hub)))
+        self.assertIn('need hub.json relevance_research set to web',
+                      '\n'.join(validate.check_relevance_research(kit, folders, {'relevance_research': 'off'})))
+        self.assertIn('must be one of', '\n'.join(validate.check_relevance_research(kit, [], {'relevance_research': 'yes'})))
+
+    def test_high_yield_prints_as_a_highlight_and_warns_when_overused(self):
+        self.fill_live_contract()
+        hy = '> [!IMPORTANT]\n> **HIGH YIELD:** Domain 4 <28%>.\n\n'
+        (self.section / 'N-Study-Notes.md').write_text(
+            f'# Core\n## A\n### 1. One\n\n{hy}Text.\n\n**TEST MOVE:** Do.\n### 2. Two\n\n{hy}Text.\n\n**TEST MOVE:** Do.\n'
+            '### 3. Three\nText.\n\n**TEST MOVE:** Do.\n')
+        self.assertIn('2 of 3 headings are HIGH YIELD', '\n'.join(validate.profile_warnings(self.section, 'technical')))
+        page, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T', 0, 'Studying SY0-701 · notes revised 2026-10-08')
+        self.assertIn('<p class="hy"><b>HIGH YIELD</b> Domain 4 &lt;28%&gt;.</p>', page)
+        self.assertIn('<p class="basis">Studying SY0-701 · notes revised 2026-10-08</p>', page)
+        state = {'revised': '2026-10-08'}
+        (self.kit / 'relevance.md').write_text('Research: web (2026-10-07). Exam: SY0-701.\n')
+        self.assertEqual(notebook.study_basis(self.kit, {'exam': 'SY0-701', 'study_basis': 'Security Pro 8.0'}, state),
+                         'Studying SY0-701 · Security Pro 8.0 · notes revised 2026-10-08 · relevance checked 2026-10-07 (web)')
+        (self.section / 'state.json').write_text(json.dumps({
+            'status': 'ready', 'week': 1, 'coverage': 'partial', 'title': 'Data Basics', 'revised': '8 Oct'}))
+        self.assertIn('revised must be a YYYY-MM-DD date', '\n'.join(validate.check_state(self.section / 'state.json')))
+
+    def test_revised_sections_need_a_sol_review(self):
+        self.fill_live_contract()
+        passed = {'local': 'passed', 'render': 'passed', 'import': 'passed'}
+        state = {'status': 'complete', 'week': 1, 'coverage': 'partial', 'title': 'Data Basics',
+                 'verification': dict(passed)}
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertEqual(validate.check_state(self.section / 'state.json'), [])
+        self.assertNotIn('Sol review', '\n'.join(validate.kit_warnings(self.kit)))
+        state['revised'] = '2026-10-08'
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertIn('needs verification review passed', '\n'.join(validate.check_state(self.section / 'state.json')))
+        state['status'] = 'ready'
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertIn('Sol review pending', '\n'.join(validate.kit_warnings(self.kit)))
+        state['verification']['review'] = 'passed'
+        (self.section / 'state.json').write_text(json.dumps(state))
+        self.assertNotIn('Sol review', '\n'.join(validate.kit_warnings(self.kit)))
+
+    def test_review_brief_is_self_contained_and_keeps_paths_local(self):
+        self.fill_live_contract()
+        (self.section / 'ledger.md').write_text(
+            '# ledger\n\n| S101 | `~/Downloads/private.pdf` | p. 1 |\n\n## Earned\n\n- Soft token: sent by SMS (S101 p. 1)\n')
+        (self.section / 'N-Study-Notes.md').write_text('# Core\n### 1. Idea\nText.\n\n# 1.1 Retrieval\nHidden.\n')
+        text = review.brief(self.section, None)
+        self.assertIn('===== LEDGER =====', text)
+        self.assertIn('Soft token - sent by SMS', text)
+        self.assertNotIn('Downloads', text)
+        self.assertNotIn('Hidden.', text)
+        self.assertNotIn('OLD CORE', text)
+        old = self.section.parent / 'old.md'
+        old.write_text('# Core\n### 1. Idea\nOld text.\n')
+        self.assertIn('===== OLD CORE =====\n\n# Core\n### 1. Idea\nOld text.', review.brief(self.section, old))
 
     def test_wide_figures_and_small_labels_warn(self):
         (self.section / 'wide.svg').write_text(
@@ -533,8 +640,13 @@ class KitTests(unittest.TestCase):
             '| PCI DSS | Payment Card Industry Data Security Standard | later module |\n| TACACS+ | Terminal Access Controller Access Control System Plus | later module |\n')
         self.assertTrue({'PCI DSS', 'TACACS+'} <= {r[0] for r in validate.read_acronyms(self.kit)})
         warnings = '\n'.join(validate.acronym_warnings(self.kit, folders))
-        self.assertIn('without an Abbreviations row: ACL, AES-256', warnings)
+        self.assertIn('without a TERMS entry: ACL, AES-256', warnings)
         self.assertNotIn('CISO,', warnings)
+        (self.section / 'N-Study-Notes.md').write_text(
+            '# Core\n\n### 1. Roles\n\n> [!TIP]\n> **TERMS:**\n> - **ACL**: Access Control List, who may do what\n'
+            '> - **CSO, CISO**: security officers\n> - **AES-256**: a 256-bit key cipher\n\n'
+            'The CISO and the CSO read the ACL. AES-256 protects it.\n')
+        self.assertNotIn('without a TERMS entry', '\n'.join(validate.acronym_warnings(self.kit, folders)))
         self.assertNotIn('stale', warnings)
         (self.kit / 'acronyms.md').write_text(
             '| Acronym | Spelled out | Where |\n| --- | --- | --- |\n| ACL | Access Control List | later module |\n')

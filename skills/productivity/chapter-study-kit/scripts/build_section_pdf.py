@@ -79,6 +79,10 @@ CHAPTER_HUB = re.compile(r"^CH(\d+)_\d+$")
 FIGURE_LINE = validate_kit.FIGURE_LINE
 # A margin prompt is a TIP callout whose body starts with **SKETCH:** or **RECALL:**.
 CUE = re.compile(r"(?m)^>[ \t]?\[!TIP\][ \t]*\n>[ \t]?\*\*(SKETCH|RECALL):\*\*[ \t]*(.+)$")
+TERMS_BOX = validate_kit.TERMS_BOX
+HIGH_YIELD = validate_kit.HIGH_YIELD
+RESEARCH_DATE = re.compile(r"(?m)^Research: (web|offline) \((\d{4}-\d{2}-\d{2})\)")
+TERM_LINE = re.compile(r"^>[ \t]?- \*\*([^*]+)\*\*:?[ \t]*(.*)$")
 MAP_SECTION = '<section class="map landscape">'
 ORIENT = re.compile(r'data-map="(\d+)"[^>]*data-orient="(portrait|landscape)"')
 GFM_ALERT = re.compile(
@@ -317,12 +321,23 @@ def restore_math(body: str, found: list[tuple[str, bool]]) -> str:
     return re.sub(r"@@MATH(\d+)@@", lambda m: tag(int(m.group(1))), body)
 
 
+def terms_html(lines: str) -> str:
+    """A margin glossary box: each short form in bold, then what it means."""
+    items = [TERM_LINE.match(line) for line in lines.strip().splitlines()]
+    rows = "".join(f'<div class="term"><b>{html.escape(m.group(1))}</b> {html.escape(m.group(2))}</div>'
+                   for m in items if m)
+    return f'\n<div class="cue terms"><b>TERMS</b>{rows}</div>\n'
+
+
 def core_html(notes: Path) -> str:
     """Core only (no Quiz why / Retrieval); each level-2 source section opens a page."""
     text = extract_core(notes.read_text())
     text = re.sub(r"^# .*\n", "", text, count=1)  # the cover carries the title
     counter = iter(range(1, 1000))
     text = FIGURE_LINE.sub(lambda m: inline_figure(notes, next(counter), m.group(2)), text)
+    text = TERMS_BOX.sub(lambda m: terms_html(m.group(1)), text)
+    text = HIGH_YIELD.sub(lambda m: f'\n<p class="hy"><b>HIGH YIELD</b> {html.escape(m.group(1).strip())}</p>\n',
+                          text)
     text = CUE.sub(lambda m: f'\n<div class="cue"><b>{m.group(1)}</b>{html.escape(m.group(2).strip())}</div>\n',
                    text)
     text = GFM_ALERT.sub(lambda m: f"> **{m.group(1).upper()}:** ", text)
@@ -347,8 +362,21 @@ def blank_page(heading: str, hint: str = "", orientation: str = "portrait") -> s
             f"{note}</section>")
 
 
+def study_basis(kit: Path, hub: dict, state: dict) -> str:
+    """What this notebook studies and how current it is, for the cover."""
+    parts = [f"Studying {hub['exam']}" if hub.get("exam") else ""]
+    parts.append(hub.get("study_basis", ""))
+    if state.get("revised"):
+        parts.append(f"notes revised {state['revised']}")
+    relevance = kit / "relevance.md"
+    checked = RESEARCH_DATE.search(relevance.read_text()) if relevance.is_file() else None
+    if checked:
+        parts.append(f"relevance checked {checked.group(2)} ({checked.group(1)})")
+    return " · ".join(p for p in parts if p)
+
+
 def section_html(section: str, folder: Path, course: str, week: int, title: str,
-                 scratch: int = SCRATCH_PAGES) -> tuple[str, int]:
+                 scratch: int = SCRATCH_PAGES, basis: str = "") -> tuple[str, int]:
     """Return the notebook HTML and how many Mermaid diagrams it holds."""
     notes = sorted(folder.glob("*Study-Notes.md"))
     if len(notes) != 1:
@@ -388,6 +416,7 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str,
     cover = f"""<section class="cover portrait">
 <p class="kicker">{html.escape(course)} · Week {week:02d} · GoodNotes notebook</p>
 <h1>{html.escape(section_folder_name(section, title))}</h1>
+{f'<p class="basis">{html.escape(basis)}</p>' if basis else ''}
 <ol class="contents">{''.join(f'<li>{html.escape(c)}</li>' for c in contents)}</ol>
 <div class="howto"><strong>First pass:</strong> Map → Notes → Practice.md in Obsidian.<br>
 <strong>Return visits:</strong> start closed-book. Redraw a Retrieval map or answer Practice items before you look back.</div>
@@ -510,7 +539,8 @@ def build(kit: Path, only: str | None, downloads: bool) -> list[Path]:
             continue
         state = section_state(folder)
         week, title = state["week"], state["title"].strip()
-        page_html, diagrams = section_html(section, folder, course, week, title, scratch)
+        page_html, diagrams = section_html(section, folder, course, week, title, scratch,
+                                           study_basis(kit, hub, state))
         work = week_work(kit.parent, week)
         work.mkdir(parents=True, exist_ok=True)
         out = work / pdf_name(kit.parent, section, title)
@@ -544,6 +574,7 @@ section:last-of-type {{ break-after: auto; }}  /* the closing <script> is the la
 .portrait {{ page: portraitpage; }}
 .landscape {{ page: landscapepage; }}
 .cover h1 {{ font-size: 30pt; color: var(--navy); margin: 0.2in 0 0.3in; }}
+.basis {{ color: var(--muted); font-size: 10pt; margin: -0.15in 0 0.25in; }}
 .kicker {{ color: var(--muted); letter-spacing: .04em; text-transform: uppercase; font-size: 9pt; margin-top: 1.2in; }}
 .contents li {{ margin: 6pt 0; }}
 .howto {{ margin-top: .4in; padding: 12pt 14pt; background: var(--tint); border-left: 4px solid var(--navy); }}
@@ -568,6 +599,13 @@ h2.section {{ break-after: avoid; }}  /* never strand a section title at a page 
 .cue {{ float: right; clear: right; width: 2.0in; margin: 2pt -2.28in 6pt 0; padding: 5pt 7pt; border: 1.2px dashed var(--navy);
   border-radius: 4pt; font-size: 8.5pt; line-height: 1.35; color: var(--navy); background: #fff; }}
 .cue b {{ display: block; letter-spacing: .06em; font-size: 7.5pt; margin-bottom: 2pt; }}
+p.hy {{ background: #FFF1B8; border-left: 4px solid #E0B000; padding: 3pt 7pt; border-radius: 2pt; font-size: 9.5pt;
+  break-inside: avoid; break-after: avoid; }}
+p.hy b {{ letter-spacing: .06em; font-size: 8pt; margin-right: 4pt; }}
+.cue.terms {{ border-style: solid; border-width: 1px; background: var(--tint); color: var(--ink); }}
+.cue.terms b {{ color: var(--navy); }}
+.cue.terms .term {{ margin: 0 0 2.5pt; }}
+.cue.terms .term b {{ display: inline; letter-spacing: 0; font-size: 8.5pt; margin: 0; }}
 h3 {{ font-size: 11.5pt; margin: 14pt 0 3pt; break-after: avoid; }}
 p {{ margin: 0 0 6pt; }}
 p.test {{ background: var(--tint); padding: 4pt 7pt; border-radius: 3pt; break-inside: avoid; }}

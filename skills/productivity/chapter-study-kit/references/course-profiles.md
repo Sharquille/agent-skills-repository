@@ -33,12 +33,14 @@ real calculations still writes traced worked examples for them.
 
 ## technical
 
-- Open each section with an **Abbreviations** table: short form, what it stands
-  for, what it means, and the Core heading that teaches it. Take expansions
+- Define abbreviations and technical words in margin **TERMS** boxes beside
+  the heading that first uses them, not in an up-front table
+  ([notes-contract.md](notes-contract.md#margin-definitions)). Take expansions
   from the sources; when a source only uses the short form, give the standard
-  expansion and keep the meaning tied to the notes.
-- Every heading gets a **Why it works / Why it matters** or **Builds on** line
-  that links it to the idea it depends on, so the section reads as a system.
+  expansion.
+- A heading that depends on an earlier one carries a short *Builds on* tag, and
+  a reason line only when it adds a cause; the visuals and those tags make the
+  section read as a system.
 - Figures: data flows and request/response paths, layered stacks, component
   diagrams (input → process → output), timelines of packets or events,
   before/after state (what survives a power-off).
@@ -49,6 +51,11 @@ real calculations still writes traced worked examples for them.
 
 Everything in `technical`, plus:
 
+- **Exam objectives decide relevance.** An item `objectives.md` maps to this
+  section is Tier 1; a source detail no objective names is Tier 3 and stays in
+  the ledger. `hub.json` pins the exam studied (`"exam": "SY0-701"`); web
+  research ranks against that version only
+  ([relevance-research.md](relevance-research.md)).
 - **Exam objectives are the coverage spine.** The kit keeps `objectives.md`:
   one row per tested objective item mapped to Chapters on hand, with its
   status. A term in the objective list is a tested glossary entry: it must be
@@ -59,8 +66,8 @@ Everything in `technical`, plus:
   built from the exam objectives PDF with `scripts/acronym_map.py --kit
   <Chapter-Kits> --from-json <pairs.json>` (rerun without `--from-json` after a
   rewrite to refresh **Where**). Every official acronym a section's Core uses
-  gets a row in that section's Abbreviations table, spelled out as the list
-  spells it.
+  gets a TERMS entry beside its first use in that section, spelled out as the
+  list spells it.
 - **No scratch pages.** The notebook keeps the Retrieval redraw pages but drops
   the blank Scratch pads; answers go in the margin and `Practice.md`.
 - **Visuals carry the relationships**, because policy-heavy material is easy
@@ -76,9 +83,10 @@ Everything in `technical`, plus:
   in a question points to it, because the exam asks "given a scenario."
 - Keep corrections the ledger records (a source conflict, an outdated claim)
   visible at the affected heading; a figure must not contradict them.
-- **Guard against drift.** When rewriting, keep every existing Core sentence's
-  meaning, heading number, figure, and Practice item unless the ledger shows it
-  wrong; compare old and new Core before rebuilding.
+- **Guard against drift.** When rewriting, keep every Tier 1 item, figure, and
+  Practice item unless the ledger shows it wrong. Detail you cut goes to the
+  ledger's Context list, never just deleted. Recheck `objectives.md` coverage
+  before rebuilding.
 
 ## general
 
@@ -96,9 +104,11 @@ contract. Warnings name what to add; errors block the notebook build.
 | Check | quantitative | technical | security | general |
 | --- | --- | --- | --- | --- |
 | `hub.json` names a known profile | error | error | error | error |
-| Every idea heading has a why / builds-on / read-aloud line | warning | warning | warning | warning |
+| Every idea heading has a why / builds-on / read-aloud line | warning | | | |
+| No heading has more than one Why / Builds on line | warning | warning | warning | warning |
 | Section opens with **Symbols** when Core has math | warning | | | |
-| Section opens with **Abbreviations** | | warning | warning | |
+| Core has margin **TERMS** boxes (or a legacy Abbreviations table) | | warning | warning | |
+| No TERMS box holds more than six entries | warning | warning | warning | warning |
 | `objectives.md` exists and every row is well formed | | | error | |
-| Official acronyms the Core uses have an Abbreviations row; `acronyms.md` is current | | | warning | |
+| Official acronyms the Core uses have a TERMS entry; `acronyms.md` is current | | | warning | |
 | A figure label prints at 8 or larger | warning | warning | warning | warning |

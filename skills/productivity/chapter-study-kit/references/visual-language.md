@@ -48,8 +48,10 @@ inside sample, levels of measurement, sampling methods, frame and
 undercoverage, selection then assignment). Skip ideas that are only a
 definition or an argument in prose; a literature section may need none.
 
-1. **One idea per figure, and the text stays.** A figure adds a picture of
-   the mechanism; it never replaces the explanation or the TEST MOVE.
+1. **One idea per figure; the text adds only what the figure cannot.** The
+   figure carries the structure, so the prose around it gives the reason or
+   decision and does not describe the picture again
+   ([notes-contract.md](notes-contract.md#say-it-once)). The TEST MOVE stays.
 2. **Labels on the picture, in the course's words** from Core and the ledger.
    Numbers come only from the notes or ledger; `validate_kit.py` rejects a
    multi-digit, decimal, or percent value it cannot find there. Placeholders

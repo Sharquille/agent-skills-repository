@@ -11,7 +11,8 @@ description: >-
   Do not use for week-folder bootstrap (continue-study-week), testing the
   learner on finished kits (chapter-competency-loop), ELI5 pages
   (eli5-explainer), Obsidian visualize-study-chapter, or graded submission
-  writing. Consult only if this turn names a panel.
+  writing. Every section build gets a read-only Sol review; other consult
+  panels run only when this turn names one.
 # --- provenance ---
 category: productivity
 source: self-authored (this repository); migrated from Education/.cursor/skills
@@ -22,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.13.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.15.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -65,6 +66,10 @@ manifest, synced copies, Mermaid bump):
 - One course per Chapter-Kits folder and per notebook.
 - Notebook pages carry no student IDs, emails, credentials, or personal
   filenames.
+- Kits under `Monroe-University/` are sources-only: no web research and no
+  CURRENT EXAM callouts. Other kits may research relevance on the web, pinned
+  to the exam version studied
+  ([references/relevance-research.md](references/relevance-research.md)).
 - Coverage is what the sources supplied; understanding is what the student has
   shown. Never infer mastery from a finished kit or invent attempts, scores,
   or dates.
@@ -77,6 +82,7 @@ manifest, synced copies, Mermaid bump):
 | Open a week folder, "bootstrap week N" | `continue-study-week` (a Cursor skill in `Education/.cursor/skills`; if it is not available here, say so instead of improvising) |
 | "Test me", "am I ready", practice exam on finished sections | `chapter-competency-loop` (reads this kit's Core, ledger, `practice-plan.md`, and `study-log.md`) |
 | ELI5 or picture-first page for one section | `eli5-explainer` (an optional view, not a kit file) |
+| Sol review of every section build | [references/sol-review.md](references/sol-review.md); always, before the notebook |
 | A named consult panel | [references/consult-panel.md](references/consult-panel.md); skip it on a routine drop |
 
 ## Workflow
@@ -85,11 +91,11 @@ manifest, synced copies, Mermaid bump):
 - [ ] 0. Non-negotiables (no git-init, no graded writing, no unearned map nodes)
 - [ ] 1. Check batch state, register original sources, and wait if collecting
 - [ ] 2. Extract locally by format; verify every page/image/slide
-- [ ] 3. Write ledger.md (earned / not earned)
+- [ ] 3. Write ledger.md (earned / not earned / relevance tiers); research relevance if allowed
 - [ ] 4. Chapter maps
 - [ ] 5. Expand overall map (backup first)
 - [ ] 6. Source-grounded editorial review + Practice outcome plan + Core notes + figures
-- [ ] 7. `validate_kit.py --kit` then the GoodNotes notebook PDF
+- [ ] 7. Sol review, then `validate_kit.py --kit` and the GoodNotes notebook PDF
 - [ ] 8. Chapter README + file into Chapter-Kits + GoodNotes folder rule
 ```
 
@@ -180,6 +186,19 @@ Write `$SECTION/ledger.md` before any map or notes:
   analogy) from general knowledge.
 - **Not earned:** later sections, syllabus previews, anything the PDF only
   names for later.
+- **Relevance:** tag each earned item Tier 1 (tested: an objective line, an
+  official quiz answer, or a source-taught trap; name the match), Tier 2
+  (supporting: a Tier 1 explanation needs it), or Tier 3 (context). Tier 3
+  items go in a **Context** list and stay out of Core. Rules:
+  [references/notes-contract.md](references/notes-contract.md#relevance-first).
+
+Relevance research ranks Tier 1 items and marks the heaviest **HIGH YIELD**.
+Outside `Monroe-University/`, with `"relevance_research": "web"` and `"exam"`
+in `hub.json`, check the current objectives and credible sources for the
+pinned exam version when the network is available, and record them in the
+kit's `relevance.md`; offline, rank from `objectives.md` and the sources.
+Read [references/relevance-research.md](references/relevance-research.md)
+first. Set `state.json` `revised` to the date whenever Core is rewritten.
 
 Screenshots earn ledger entries and map nodes as a textbook page does; later
 screenshots may fill gaps in the same section once their evidence is recorded.
@@ -227,9 +246,13 @@ own the detail. Order and non-negotiables:
 
 1. Map first. Then one canonical `*Study-Notes.md`: numbered, unslop, portable
    GFM alerts only. Core follows the lecture's objective spine (A–E or
-   equivalent), with level-2 source sections and level-3 idea headings. Each
-   heading follows the notes contract's explanation order (what it is, why it
-   works, what it builds on, a worked example for a calculation, TEST MOVE).
+   equivalent), with level-2 source sections and level-3 idea headings. It
+   prints Tier 1 items and what they depend on, and says each fact once: a
+   visual wherever an idea has structure, prose only for the reason or
+   decision the visual cannot show, and definitions in margin TERMS boxes
+   beside first use. Each heading follows the notes contract's explanation
+   order (what it is, why it works when not already plain, a builds-on tag, a
+   worked example for a calculation, TEST MOVE as clue and decision).
    Notation-heavy sections open with a Symbols table; math is `$...$`.
    Codes and labels are spelled out before use; every formula gets Read it
    aloud / Use it when / Don't use it when; several formulas get a Which rule
@@ -237,12 +260,13 @@ own the detail. Order and non-negotiables:
    Worked examples use Situation / Given / Steps / Answer / Check, and every
    number is given or produced by a visible step.
    The kit's profile adds its own rules on top
-   ([references/course-profiles.md](references/course-profiles.md)): an
-   Abbreviations table for technical and security kits, scenario-clue TEST
-   MOVEs and objective coverage for security kits, and figures only for
-   structure in general kits. When rewriting an existing Core, keep every
-   sentence's meaning, heading number, figure, and Practice item, and compare
-   old and new before rebuilding.
+   ([references/course-profiles.md](references/course-profiles.md)): margin
+   TERMS for every abbreviation in technical and security kits, scenario-clue
+   TEST MOVEs and objective-driven relevance for security kits, and figures
+   only for structure in general kits. When rewriting an existing Core, keep
+   every Tier 1 item, figure, and Practice item; move cut detail to the
+   ledger's Context list, and compare old and new Tier 1 coverage before
+   rebuilding.
 2. **Figures** (default for every section): follow the Figures section of
    [references/visual-language.md](references/visual-language.md). One idea
    per figure after the text it shows, built with `scripts/svg_figure.py`,
@@ -268,6 +292,14 @@ own the detail. Order and non-negotiables:
    python3 "$SKILL_DIR/scripts/validate_kit.py" --section "$SECTION"
    ```
 
+9. **Sol review.** Send the section to Sol through `agent-orchestra` with
+   `scripts/review_brief.py` (add `--before` with the old notes on a rewrite),
+   check each finding against the ledger and sources, apply what holds up,
+   rerun item 8, and record `verification.review` and `review_note` in
+   `state.json`. Several sections run in parallel, one call each. Commands,
+   fallbacks, and how to judge findings:
+   [references/sol-review.md](references/sol-review.md).
+
 If the user later sends the quiz they actually missed, fold those stems into
 Quiz why **on disk**. Refresh Practice.md only with new-wording transfer items,
 then **re-run item 8 above**.
@@ -286,14 +318,15 @@ publishing; report them.
 ```sh
 python3 "$SKILL_DIR/scripts/validate_kit.py" --kit "$KIT"
 python3 "$SKILL_DIR/scripts/validate_kit.py" --sources "$KIT/SOURCES.md"
-python3 "$SKILL_DIR/scripts/build_section_pdf.py" --kit "$KIT" --section 3.2 --downloads
+python3 "$SKILL_DIR/scripts/build_section_pdf.py" --kit "$KIT" --section 3.2
 ```
 
 `validate_kit.py --section` takes a folder path; `build_section_pdf.py
 --section` takes the section ID. Omit `--section` to rebuild every section
 (after a style change, for example). Each section becomes one PDF in its week's
-`Work/` folder, named `<COURSE>_<section>_<Title>_GoodNotes.pdf`, and
-`--downloads` copies it to Downloads for AirDrop. Every run also rebuilds
+`Work/` folder, named `<COURSE>_<section>_<Title>_GoodNotes.pdf`. That copy
+is the one to open; pass `--downloads` (a copy to Downloads for AirDrop) only
+when the user asks, because the duplicates pile up. Every run also rebuilds
 `00-Course-Guide/<COURSE>_Course-Overview_GoodNotes.pdf` from `overall-flow.mmd`:
 the whole map, then one page per chapter. The live file stays one map.
 
@@ -352,12 +385,16 @@ Week-NN_.../Work/<COURSE>_<section>_<Title>_GoodNotes.pdf
 ## Done
 
 - New nodes exist only on the earned overall map plus that section's maps.
+- Sol reviewed the section, its findings were checked and resolved, and
+  `state.json` records the result.
 - Local checks and the notebook render check passed; the on-iPad check is
   reported separately.
 - Notes are source-grounded, editorially reviewed, and follow the lecture
-  checklist. Core figures show each spatial or contrastive idea, and every
-  level-2 group has one margin prompt. `practice-plan.md` reconciles the outcome count to eligible
-  Practice questions; `Practice.md` is tap-to-reveal transfer, not the book quiz.
+  checklist. Core prints Tier 1 items and their support once each, with
+  definitions in the margin; Tier 3 context sits in the ledger. Core figures
+  show each spatial or contrastive idea, and every level-2 group has one margin
+  prompt. `practice-plan.md` reconciles the outcome count to eligible Practice
+  questions; `Practice.md` is tap-to-reveal transfer, not the book quiz.
 - Status is complete only per step 7; otherwise it stays ready and the
   summary names each pending check. Complete does not mean mastered.
 - User can AirDrop one notebook PDF per section (plus the course map) to iPad.
