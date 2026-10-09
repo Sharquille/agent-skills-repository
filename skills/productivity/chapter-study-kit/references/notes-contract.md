@@ -231,7 +231,7 @@ Obsidian Reading view.
 | --- | --- |
 | Notebook **Map pages** | Concept map + extra legend flows (levels, methods, pitfalls, tools) |
 | Notebook **Notes pages** | Core and its figures, with TERMS definitions and SKETCH/RECALL prompts in the writing margin |
-| Notebook **Retrieval pages** | TD sort maps only (`*-decision-flow.mmd`, `*-error-flow.mmd`), each behind a blank redraw page |
+| Notebook **Retrieval pages** | TD sort maps only (`*-decision-flow.mmd`, `*-error-flow.mmd`), each behind a blank redraw page unless the kit's `blank_pages` is `none` |
 | Obsidian `Practice.md` | Tap-to-reveal transfer items |
 | Canonical `*Study-Notes.md` | Core + Quiz why (if printed) + author restudy pointer |
 

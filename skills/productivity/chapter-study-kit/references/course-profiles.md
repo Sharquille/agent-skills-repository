@@ -68,8 +68,11 @@ Everything in `technical`, plus:
   rewrite to refresh **Where**). Every official acronym a section's Core uses
   gets a TERMS entry beside its first use in that section, spelled out as the
   list spells it.
-- **No scratch pages.** The notebook keeps the Retrieval redraw pages but drops
-  the blank Scratch pads; answers go in the margin and `Practice.md`.
+- **No blank pages.** The notebook drops both the Scratch pads and the blank
+  redraw page before each Retrieval sort map; answers go in the margin and
+  `Practice.md`, and the sort maps print as pages to check against. This is
+  the `security` default for `hub.json` `blank_pages` (see
+  [Blank pages](#blank-pages)).
 - **Visuals carry the relationships**, because policy-heavy material is easy
   to read and hard to keep:
   - comparison matrices (control category × control type, model × who decides)
@@ -96,6 +99,21 @@ Everything in `technical`, plus:
   scales of distance or time. Most argument and definition stays text.
 - Margin prompts ask for the concept, never a worksheet or graded answer.
 
+## Blank pages
+
+`hub.json` `"blank_pages"` decides the notebook's empty pages. Without it, the
+profile decides: `security` kits get `none`, every other profile `all`.
+
+| Value | Redraw page before each sort map | Scratch pads | Use for |
+| --- | --- | --- | --- |
+| `all` | yes | 3 per section, 1 in the course map | Courses with working to do on paper: MA-235 math, a CCNA kit with subnetting practice |
+| `redraw` | yes | none | Redraw-from-memory practice without scratch work |
+| `none` | no | none | Certification reading where answers live in the margin and Practice.md (Security+) |
+
+Set it explicitly whenever a kit differs from its profile's default: a CCNA
+kit on the `security` or `technical` profile that needs subnetting space sets
+`"blank_pages": "all"`.
+
 ## Checks by profile
 
 `validate_kit.py --kit` reads the profile and adds these to the shared
@@ -104,6 +122,7 @@ contract. Warnings name what to add; errors block the notebook build.
 | Check | quantitative | technical | security | general |
 | --- | --- | --- | --- | --- |
 | `hub.json` names a known profile | error | error | error | error |
+| `hub.json` `blank_pages`, when set, is `all`, `redraw`, or `none` | error | error | error | error |
 | Every idea heading has a why / builds-on / read-aloud line | warning | | | |
 | No heading has more than one Why / Builds on line | warning | warning | warning | warning |
 | Section opens with **Symbols** when Core has math | warning | | | |

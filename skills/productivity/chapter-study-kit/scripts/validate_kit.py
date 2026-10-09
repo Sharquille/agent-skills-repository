@@ -34,6 +34,8 @@ WEB_SOURCE_ROW = re.compile(r"(?m)^\|\s*(W\d{3})\s*\|\s*[ABCD]\s*\|\s*([^|]+?)\s
 ANY_VERSION = "any"
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 RESEARCH_MODES = {"off", "web"}
+# hub.json "blank_pages": redraw pages plus scratch pads, redraw pages only, or neither.
+BLANK_MODES = {"all", "redraw", "none"}
 # University work is graded on the course's own material: no web research there.
 SOURCES_ONLY_ROOT = "Monroe-University"
 OBJECTIVE_ROW = re.compile(r"^\|\s*(\d\.\d)\s*\|")
@@ -619,6 +621,9 @@ def check_kit(kit: Path) -> list[str]:
     except (json.JSONDecodeError, AttributeError):
         hub, hub_profile = {}, None
     errors += check_relevance_research(kit, folders, hub if isinstance(hub, dict) else {})
+    blank = hub.get("blank_pages") if isinstance(hub, dict) else None
+    if blank is not None and blank not in BLANK_MODES:
+        errors.append(f"hub.json blank_pages must be one of {', '.join(sorted(BLANK_MODES))}")
     if hub_profile == "security":
         errors += check_objectives(kit, folders)
 

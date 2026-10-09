@@ -402,8 +402,28 @@ class KitTests(unittest.TestCase):
         self.assertNotIn('![', page)
         self.assertNotIn('[!TIP]', page)
         self.assertIn('Scratch 3', page)
-        bare, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T', notebook.SCRATCH_BY_PROFILE['security'])
+        redraw, scratch = notebook.blank_layout({'profile': 'security'})
+        bare, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T', scratch, redraw=redraw)
         self.assertNotIn('Scratch', bare)
+        self.assertEqual(notebook.blank_layout({'profile': 'security', 'blank_pages': 'all'}), (True, 3))
+        self.assertEqual(notebook.blank_layout({'profile': 'technical'}), (True, 3))
+        self.assertEqual(notebook.blank_layout({'profile': 'quantitative', 'blank_pages': 'redraw'}), (True, 0))
+
+    def test_blank_pages_none_drops_redraw_pages_and_keeps_the_sort_map(self):
+        self.fill_live_contract()
+        (self.section / 'T-1.1-decision-flow.mmd').write_text('flowchart TD\n A --> B\n')
+        with_redraw, _ = notebook.section_html('1.1', self.section, 'C', 1, 'T', 0)
+        self.assertIn('redraw from memory', with_redraw)
+        bare, diagrams = notebook.section_html('1.1', self.section, 'C', 1, 'T', 0, redraw=False)
+        self.assertNotIn('redraw from memory', bare)
+        self.assertNotIn('class="blank', bare)
+        self.assertIn('sort maps to check your answers', bare)
+        self.assertIn('Answer Practice items', bare)
+        self.assertGreaterEqual(diagrams, 1)
+        hub = json.loads((self.kit / 'hub.json').read_text())
+        hub['blank_pages'] = 'some'
+        (self.kit / 'hub.json').write_text(json.dumps(hub))
+        self.assertIn('blank_pages must be one of', '\n'.join(validate.check_kit(self.kit)))
 
     def test_figure_checks_catch_unsafe_offpalette_unlabelled_and_invented_numbers(self):
         self.fill_live_contract()

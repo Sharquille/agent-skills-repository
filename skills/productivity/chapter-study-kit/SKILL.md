@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.15.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.16.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -227,7 +227,8 @@ notes and never prints in the notebook, because the section does not earn it.
 Map pages        concept map (plus one page per section hub when it is large)
                  + extra legend flows (contrasts, shop steps, tools)
 Retrieval pages  TD sort maps only (*-decision-flow.mmd, *-error-flow.mmd),
-                 each behind a blank "redraw from memory" page
+                 each behind a blank "redraw from memory" page unless
+                 hub.json "blank_pages" is "none" (the security default)
 ```
 
 ### 5. Expand overall map
@@ -332,8 +333,9 @@ the whole map, then one page per chapter. The live file stays one map.
 
 Notebook order: cover → map pages (step 4) → Core with its figures and a ruled
 writing margin holding the SKETCH/RECALL prompts, each level-2 section after
-the first on a new page → redraw-then-check Retrieval pages →
-scratch pages. Core is the text before the first H1 titled Quiz why or
+the first on a new page → Retrieval sort maps (redraw-then-check when the
+kit keeps blank pages) → scratch pages when `blank_pages` is `all`
+([references/course-profiles.md](references/course-profiles.md#blank-pages)). Core is the text before the first H1 titled Quiz why or
 Retrieval. A concept map with 4+ hubs and 20+ edges also gets one page per hub.
 The build stops unless every Mermaid diagram drew and every equation typeset
 without an error, and a failed build leaves the previous PDF in place.

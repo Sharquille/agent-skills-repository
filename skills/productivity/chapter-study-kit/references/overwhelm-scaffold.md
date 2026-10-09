@@ -11,7 +11,8 @@ Core group on its notes pages, then attempt its Practice questions in Obsidian
 **Reading view**. Use optional Why it works only when Core is not enough.
 Official Quiz why stays on disk. After the alternatives in a contrast are each
 understood, use the notebook's Retrieval pages: redraw the TD sort map on the
-blank page, then turn the page to check.
+blank page, then turn the page to check. In a kit without blank pages, redraw
+it in the margin or answer its Practice items first, then check the map.
 
 **Return session:** begin closed-book. Answer a Practice item or reconstruct the
 relevant map branch before reopening anything. Check against Map/Core, repair

@@ -3,8 +3,9 @@
 
 Each ready section becomes a single PDF in its week's Work/ folder: cover,
 map pages (a large concept map also gets one page per section hub), Core
-notes with a writing margin, redraw-then-check Retrieval pages, and scratch
-pages. One AirDrop per section, filed once in GoodNotes.
+notes with a writing margin, Retrieval sort maps (each behind a blank redraw
+page unless the kit turns blank pages off), and scratch pages. One AirDrop per
+section, filed once in GoodNotes.
 
 Chrome renders the page twice: once to dump the DOM so a Mermaid failure
 stops the build, then to print. A pinned, integrity-checked Mermaid loads from
@@ -59,8 +60,12 @@ ACRONYMS = {"Https": "HTTPS", "Http": "HTTP", "Html": "HTML", "Css": "CSS",
 PLAIN_EDGE = re.compile(r"^\s*(\w+)\s*-->\s*(\w+)\s*$")
 NODE_DEF = re.compile(r"^\s*(\w+)\s*[\(\[\{]")
 SCRATCH_PAGES = 3
-# Certification learners write in the margin and Practice.md, not on blank pads.
-SCRATCH_BY_PROFILE = {"security": 0}
+# Blank pages per kit, from hub.json "blank_pages" (validate_kit.BLANK_MODES):
+# all = redraw pages + scratch pads, redraw = redraw pages only, none = neither.
+# Certification kits default to none: answers go in the margin and Practice.md.
+# A kit that needs working space (CCNA subnetting) sets "all".
+BLANK_BY_PROFILE = {"security": "none"}
+BLANK_LAYOUT = {"all": (True, SCRATCH_PAGES), "redraw": (True, 0), "none": (False, 0)}
 CORE_STOP = re.compile(r"(?i)^#\s+.*\b(quiz why|retrieval)\s*$")
 RETRIEVAL_MAP_SUFFIXES = ("decision-flow", "error-flow")
 # Homework bridge tools teach material the section does not earn; they stay on disk.
@@ -375,8 +380,14 @@ def study_basis(kit: Path, hub: dict, state: dict) -> str:
     return " · ".join(p for p in parts if p)
 
 
+def blank_layout(hub: dict) -> tuple[bool, int]:
+    """(redraw pages?, scratch page count) for this kit."""
+    mode = hub.get("blank_pages") or BLANK_BY_PROFILE.get(hub.get("profile"), "all")
+    return BLANK_LAYOUT[mode]
+
+
 def section_html(section: str, folder: Path, course: str, week: int, title: str,
-                 scratch: int = SCRATCH_PAGES, basis: str = "") -> tuple[str, int]:
+                 scratch: int = SCRATCH_PAGES, basis: str = "", redraw: bool = True) -> tuple[str, int]:
     """Return the notebook HTML and how many Mermaid diagrams it holds."""
     notes = sorted(folder.glob("*Study-Notes.md"))
     if len(notes) != 1:
@@ -400,10 +411,13 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str,
     pages.append(f'<section class="notes portrait"><div class="col">{core_html(notes[0])}</div></section>')
     for path in sorts:
         name = map_title(section, path)
-        pages.append(blank_page(f"Retrieval · {name}: redraw from memory",
-                                "Close your notes. Draw the sort tree here, then turn the page to check.",
-                                "landscape"))
-        pages.append(map_page(f"Retrieval · {name}: check", path.read_text()))
+        if redraw:
+            pages.append(blank_page(f"Retrieval · {name}: redraw from memory",
+                                    "Close your notes. Draw the sort tree here, then turn the page to check.",
+                                    "landscape"))
+            pages.append(map_page(f"Retrieval · {name}: check", path.read_text()))
+        else:
+            pages.append(map_page(f"Retrieval · {name}", path.read_text()))
         diagrams += 1
     pages += [blank_page(f"Scratch {i}") for i in range(1, scratch + 1)]
 
@@ -411,15 +425,16 @@ def section_html(section: str, folder: Path, course: str, week: int, title: str,
         "Map: " + ", ".join(["concept map"] + [map_title(section, p) for p in legends]),
         "Notes: Core with a writing margin",
         "Retrieval: " + (", ".join(map_title(section, p) for p in sorts) or "none")
-        + " (redraw first, then check)",
+        + (" (redraw first, then check)" if redraw else " (sort maps to check your answers)"),
     ] + (["Scratch: blank pages for working out answers"] if scratch else [])
+    return_move = "Redraw a Retrieval map or answer" if redraw else "Answer"
     cover = f"""<section class="cover portrait">
 <p class="kicker">{html.escape(course)} · Week {week:02d} · GoodNotes notebook</p>
 <h1>{html.escape(section_folder_name(section, title))}</h1>
 {f'<p class="basis">{html.escape(basis)}</p>' if basis else ''}
 <ol class="contents">{''.join(f'<li>{html.escape(c)}</li>' for c in contents)}</ol>
 <div class="howto"><strong>First pass:</strong> Map → Notes → Practice.md in Obsidian.<br>
-<strong>Return visits:</strong> start closed-book. Redraw a Retrieval map or answer Practice items before you look back.</div>
+<strong>Return visits:</strong> start closed-book. {return_move} Practice items before you look back.</div>
 </section>"""
     return page(html.escape(title), cover + "".join(pages)), diagrams
 
@@ -532,7 +547,7 @@ def build(kit: Path, only: str | None, downloads: bool) -> list[Path]:
         raise ValueError("kit contract failed; run validate_kit.py --kit:\n  " + "\n  ".join(errors))
     hub = json.loads((kit / "hub.json").read_text())
     course = hub["goodnotes_course"]
-    scratch = SCRATCH_BY_PROFILE.get(hub.get("profile"), SCRATCH_PAGES)
+    redraw, scratch = blank_layout(hub)
     built = []
     for section, folder in iter_sections(kit):
         if only and section != only:
@@ -540,7 +555,7 @@ def build(kit: Path, only: str | None, downloads: bool) -> list[Path]:
         state = section_state(folder)
         week, title = state["week"], state["title"].strip()
         page_html, diagrams = section_html(section, folder, course, week, title, scratch,
-                                           study_basis(kit, hub, state))
+                                           study_basis(kit, hub, state), redraw)
         work = week_work(kit.parent, week)
         work.mkdir(parents=True, exist_ok=True)
         out = work / pdf_name(kit.parent, section, title)
