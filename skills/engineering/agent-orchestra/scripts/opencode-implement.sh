@@ -267,8 +267,10 @@ esac
 
 implement_config="{\"permission\":$permmap,\"agent\":{\"implement-opencode\":{\"description\":\"Bounded implementation agent: file edits only, no shell.\",\"mode\":\"primary\",\"permission\":$permmap,\"prompt\":\"$agent_prompt\"}},\"share\":\"disabled\"$provider_block}"
 
-cmd=(opencode --pure run --agent implement-opencode --model "$MODEL" --dir "$DIR" --title implement)
-[ -n "$VARIANT" ] && cmd+=(--variant "$VARIANT")
+# OpenCode 2: variant on the model, cwd as the directory, and a private server
+# (--standalone) so the inline edit-only config applies (see consult-opencode.sh).
+cmd=(opencode run --standalone --agent implement-opencode --model "$MODEL${VARIANT:+#$VARIANT}" --title implement)
+cd "$DIR" || die "cannot enter --cd $DIR"
 cmd+=(-- "$guarded_prompt")
 
 echo "OpenCode implementation: edit-only agent (no shell); model=$MODEL; reasoning=${REASONING:-provider-default}; dir=$DIR; branch=${branch:-unknown}; timeout=${TIMEOUT}s" >&2

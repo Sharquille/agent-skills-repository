@@ -259,8 +259,12 @@ esac
 readonly_permissions="$permmap"
 readonly_config="{\"permission\":$permmap,\"agent\":{\"consult-opencode\":{\"description\":\"Read-only advisory consultant for code review, audits, planning, architecture, and hard bugs.\",\"mode\":\"primary\",\"permission\":$permmap,\"prompt\":\"$agent_prompt\"}},\"share\":\"disabled\"$provider_block}"
 
-cmd=(opencode --pure run --agent consult-opencode --model "$MODEL" --dir "$DIR")
-[ -n "$VARIANT" ] && cmd+=(--variant "$VARIANT")
+# OpenCode 2 has no --pure, --dir, or --variant: the variant rides on the model
+# (provider/model#variant), the working directory is the cwd, and --standalone
+# starts a private server so the inline read-only config below applies instead
+# of whatever the shared background service loaded.
+cmd=(opencode run --standalone --agent consult-opencode --model "$MODEL${VARIANT:+#$VARIANT}")
+cd "$DIR" || die "cannot enter --dir $DIR"
 [ -n "$TITLE" ] && cmd+=(--title "$TITLE")
 [ -n "$FORMAT" ] && cmd+=(--format "$FORMAT")
 if [ "$FILE_COUNT" -gt 0 ]; then
@@ -272,7 +276,7 @@ cmd+=(-- "$PROMPT")
 
 mode="standard"; [ -n "$SEALED" ] && mode="sealed"
 echo "Consulting OpenCode (read-only $mode agent; model=$MODEL; reasoning=${REASONING:-provider-default}; dir=$DIR; timeout=${TIMEOUT}s)..." >&2
-echo "opencode --pure run --agent consult-opencode --model $MODEL --dir $DIR <prompt>" >&2
+echo "opencode run --standalone --agent consult-opencode --model $MODEL${VARIANT:+#$VARIANT} (cwd $DIR) <prompt>" >&2
 
 export OPENCODE_CONFIG_CONTENT="$readonly_config"
 export OPENCODE_PERMISSION="$readonly_permissions"

@@ -128,7 +128,7 @@ if [ "$show_models" -eq 1 ]; then
 
   printf '\nOpenCode catalog (configured routes are useful only when listed):\n'
   if have opencode; then
-    if models_list="$(opencode --pure models 2>/dev/null)" && [ -n "$models_list" ]; then
+    if models_list="$(OPENCODE_DISABLE_DEFAULT_PLUGINS=1 opencode models 2>/dev/null)" && [ -n "$models_list" ]; then
       printf '%s\n' "$models_list"
     else
       warn "OpenCode model catalog unavailable; authentication or provider access may be missing"
@@ -203,7 +203,7 @@ if have opencode; then
     warn "opencode command exists but --version failed"
   fi
   auth_inventory=""
-  if [ "$opencode_installed" = yes ] && auth_inventory="$(opencode --pure auth list 2>/dev/null)"; then
+  if [ "$opencode_installed" = yes ] && auth_inventory="$(OPENCODE_DISABLE_DEFAULT_PLUGINS=1 opencode auth list 2>/dev/null)"; then
     if [ -n "$auth_inventory" ]; then
       if printf '%s\n' "$auth_inventory" | grep -qi 'openrouter'; then
         opencode_credentials=openrouter-reported
@@ -218,7 +218,7 @@ if have opencode; then
   else
     warn "OpenCode credential inventory unavailable; provider authentication is unknown"
   fi
-  if [ "$opencode_installed" = yes ] && models_list="$(opencode --pure models 2>/dev/null)" && [ -n "$models_list" ]; then
+  if [ "$opencode_installed" = yes ] && models_list="$(OPENCODE_DISABLE_DEFAULT_PLUGINS=1 opencode models 2>/dev/null)" && [ -n "$models_list" ]; then
     opencode_catalog=available
     ok "OpenCode model catalog available"
   else

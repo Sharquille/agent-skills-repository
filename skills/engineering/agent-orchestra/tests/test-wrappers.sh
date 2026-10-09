@@ -239,14 +239,9 @@ case "${1:-}" in
       'openrouter/xiaomi/mimo-v2.5-pro'
     ;;
   run)
-    dir=""
-    shift
-    while [ "$#" -gt 0 ]; do
-      case "$1" in
-        --dir) dir="$2"; shift 2 ;;
-        *) shift ;;
-      esac
-    done
+    # OpenCode 2 works in its cwd; --dir no longer exists.
+    dir="$PWD"
+    case " $* " in *" --dir "*|*" --pure "*) echo "fake opencode: flag removed in OpenCode 2" >&2; exit 64 ;; esac
     [ -n "${FAKE_WRITE_REL:-}" ] && printf 'delegate change\n' >>"$dir/$FAKE_WRITE_REL"
     if [ "${FAKE_COMMIT:-0}" -eq 1 ]; then
       git -C "$dir" add -A
@@ -265,8 +260,8 @@ assert_contains "$doctor_output" "model-listed" "doctor distinguishes catalog me
 assert_contains "$doctor_output" "invocation=unverified" "doctor never claims live callability"
 assert_contains "$doctor_output" "codex-native-subagents enabled=true default-model=gpt-5.6-luna reasoning=max max-concurrency=100" "doctor reports native Luna/max subagent defaults"
 doctor_calls="$(sed -n '1,20p' "$doctor_log")"
-assert_contains "$doctor_calls" "opencode --pure auth list" "doctor inspects the plugin-disabled credential inventory"
-assert_contains "$doctor_calls" "opencode --pure models" "doctor inspects the plugin-disabled model catalog"
+assert_contains "$doctor_calls" "opencode auth list" "doctor inspects the credential inventory"
+assert_contains "$doctor_calls" "opencode models" "doctor inspects the model catalog"
 case "$doctor_calls" in
   *"codex exec"*|*"codex review"*|*"opencode run"*) fail "doctor made a model call" ;;
   *) pass "doctor performs no model invocation" ;;
@@ -499,20 +494,23 @@ PATH="$fake_bin:$PATH" FAKE_CALL_LOG="$selector_log" FAKE_CONFIG_LOG="$config_lo
 worker_call="$(sed -n '1p' "$selector_log")"
 worker_config="$(sed -n '1p' "$config_log")"
 assert_contains "$worker_call" "--model opencode-go/deepseek-v4-flash" "direct worker defaults to Go DeepSeek V4 Flash"
-assert_contains "$worker_call" "--variant max" "direct worker selects the Go max reasoning variant"
+assert_contains "$worker_call" "--model opencode-go/deepseek-v4-flash#max" "direct worker selects the Go max reasoning variant"
+assert_contains "$worker_call" "run --standalone" "worker runs on a private server so its inline config applies"
+assert_not_contains "$worker_call" "--pure" "worker avoids the flag OpenCode 2 removed"
+assert_not_contains "$worker_call" "--dir" "worker avoids the flag OpenCode 2 removed"
 assert_not_contains "$worker_config" '"openrouter"' "Go worker does not inject OpenRouter routing"
 
 : >"$selector_log"
 PATH="$fake_bin:$PATH" FAKE_CALL_LOG="$selector_log" \
   "$SCRIPTS_DIR/opencode-implement.sh" --allow-write --cd "$worker_repo" --scope allowed --no-plan-gate --model openrouter/test/model --variant exact --timeout 0 -- "bounded edit" >/dev/null 2>&1 || fail "OpenCode override worker failed"
 override_call="$(sed -n '1p' "$selector_log")"
-assert_contains "$override_call" "--variant exact" "OpenCode implementation still forwards provider variants"
+assert_contains "$override_call" "--model openrouter/test/model#exact" "OpenCode implementation still forwards provider variants"
 
 : >"$selector_log"
 PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
   "$selector" implement --allow-write --cd "$worker_repo" --scope allowed --no-plan-gate --timeout 0 -- "bounded edit" >/dev/null 2>&1 || fail "default three-stage pipeline failed"
 pipeline_calls="$(grep -E '^(opencode|codex) ' "$selector_log")"
-assert_contains "$pipeline_calls" "opencode --pure run" "pipeline starts with the OpenCode worker"
+assert_contains "$pipeline_calls" "opencode run --standalone" "pipeline starts with the OpenCode worker"
 assert_contains "$pipeline_calls" 'model="gpt-5.6-luna"' "pipeline runs the Luna critique"
 assert_contains "$pipeline_calls" 'model="gpt-5.6-sol"' "pipeline runs the Sol overview"
 
