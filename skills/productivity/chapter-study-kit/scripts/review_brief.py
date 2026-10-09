@@ -33,7 +33,11 @@ REPORT in under 400 words, as bullet lists under these headings. Quote the exact
 3. CHANGED: wording that shifts meaning from the ledger{changed} (dropped hedges, narrowed or widened definitions).
 4. REPEATED: a fact stated twice inside one heading's body, TERMS, or figure labels. A TEST MOVE that names the
    concept as a scenario clue is not repetition.
-5. WRONG: technical errors against well-established references, with the correction.
+5. WRONG: technical errors against well-established references, with the correction. When the LEDGER shows the
+   source itself says it, label the finding SOURCE CONFLICT instead: the notes keep course wording plus a note.
+6. HIGH YIELD: any line that predicts how often something is asked, points at "the table" or "the figure" instead
+   of naming its signal, or calls an objective scenario-style when its verb under OBJECTIVES is not "Given a
+   scenario". Domain percentages come from EXAM WEIGHTS; do not flag them as unsupported.
 No praise, no summary."""
 
 
@@ -50,6 +54,16 @@ def ledger_claims(path: Path) -> str:
     return text[start.start():] if start else text
 
 
+def exam_context(kit: Path) -> str:
+    """Domain weights and objective verbs from the kit's relevance.md, so weights and verbs can be checked."""
+    path = kit / "relevance.md"
+    if not path.is_file():
+        return "(no relevance.md)"
+    text = path.read_text()
+    keep = [m.group(0).strip() for m in re.finditer(r"(?ms)^## (?:Domain weights|Objective verbs)\s*$.*?(?=^## |\Z)", text)]
+    return "\n\n".join(keep) or "(relevance.md has no Domain weights or Objective verbs section)"
+
+
 def scrub(text: str) -> str:
     return SECRET_SHAPE.sub(r"\1\2 -", text)
 
@@ -60,6 +74,7 @@ def brief(section: Path, before: Path | None) -> str:
         raise SystemExit(f"{section}: need exactly one *Study-Notes.md")
     parts = [ASK.format(lost=", though OLD CORE did" if before else "",
                         changed=" or from OLD CORE" if before else "")]
+    parts += ["===== EXAM WEIGHTS AND OBJECTIVES =====", exam_context(section.parent.parent)]
     parts += ["===== LEDGER =====", ledger_claims(section / "ledger.md")]
     practice = section / "Practice.md"
     titles = QUESTION.findall(practice.read_text()) if practice.is_file() else []

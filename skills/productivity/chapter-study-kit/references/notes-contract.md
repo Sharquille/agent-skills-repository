@@ -112,7 +112,13 @@ Each fact appears once per heading, in the channel that carries it best:
 - Definitions live in the margin ([Margin definitions](#margin-definitions)).
   The body uses the term with no parenthetical expansion.
 
-`validate_kit.py` warns when a heading carries more than one reason line.
+`validate_kit.py` warns when a heading carries more than one reason line. In
+a section with a `revised` date it also warns on a Builds on line over 25
+words, two sentences in one heading that share most of their content words, a
+HIGH YIELD line that points at "the table" or "the figure" instead of naming
+its signal, and a HIGH YIELD line that calls an objective scenario-style when
+its official verb is not "Given a scenario". A rewrite is not done while any
+of these remain.
 
 ## Margin definitions
 

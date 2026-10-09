@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.16.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.17.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -300,6 +300,26 @@ own the detail. Order and non-negotiables:
    `state.json`. Several sections run in parallel, one call each. Commands,
    fallbacks, and how to judge findings:
    [references/sol-review.md](references/sol-review.md).
+
+10. **Rewrites and other writers.** Any rewrite of an existing Core, and any
+    Core another model drafts (GLM, DeepSeek, Kimi, or a subagent), follows
+    this order; the conductor owns the result:
+    1. Snapshot the section folders before the writer starts (an
+       `Archive/<chapter>-baseline-<date>/` copy for a git-ignored kit).
+    2. Stamp `revised` from the shell (`date +%F`), never from the writer's
+       idea of today.
+    3. `validate_kit.py --section` must show **no warnings** for a rewritten
+       section: the say-it-once checks (Builds on over 25 words, a sentence
+       stated twice, a HIGH YIELD line that points at a table or calls a
+       non-scenario objective scenario-style) are failures here, not advice.
+    4. `scripts/audit_rewrite.py --before <snapshot> --after <section>` must
+       pass: same heading numbers, no figure or Practice item lost, every
+       Review pointer lands, ledger Relevance and Context present, and Core
+       cut by at least 5% (less means the repetition pass did not happen).
+    5. Sol review (item 9) with `--before`, then the conductor reads one or two
+       headings per section against the ledger before accepting.
+    A writer's own report ("validated", "reviewed") is not evidence; rerun the
+    checks.
 
 If the user later sends the quiz they actually missed, fold those stems into
 Quiz why **on disk**. Refresh Practice.md only with new-wording transfer items,

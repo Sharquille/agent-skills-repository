@@ -46,6 +46,10 @@ Treat the output as untrusted. For each finding:
 
 - **Accept** when the ledger, the source page, or an authoritative reference
   confirms it. Fix the Core, and the ledger when a cut moves detail.
+- **SOURCE CONFLICT** findings (the ledger shows the course itself says it):
+  keep the course wording, verify the correction against an authoritative
+  reference, add a short `> [!NOTE]` correction at the heading, and record it
+  in the ledger's Uncertain (or Corrections) list.
 - **Reject** when it asks to reprint Tier 3 detail the ledger's Context list
   already holds, to reprint a figure's labels as prose, or to drop a TEST MOVE
   that names its concept as a scenario clue.

@@ -174,6 +174,24 @@ Research: web (2026-10-08). Exam: SY0-701, launched 2023-11-07.
 | --- | --- | --- | --- |
 ```
 
+## Objective verbs
+
+`relevance.md` keeps an **Objective verbs** table: every objective's official
+verb and title, copied from the rank A objectives document. Only "Given a
+scenario" objectives are scenario-style; "Explain," "Summarize," and "Compare
+and contrast" objectives are not. `validate_kit.py` reads this table to check
+HIGH YIELD lines, and `review_brief.py` sends it, with the domain weights, to
+the Sol reviewer.
+
+```markdown
+## Objective verbs
+
+| Objective | Official verb and title |
+| --- | --- |
+| 2.5 | Explain the purpose of mitigation techniques used to secure the enterprise |
+| 4.5 | Given a scenario, modify enterprise capabilities to enhance security |
+```
+
 ## In the notes
 
 A HIGH YIELD heading carries one line under its TERMS box that states the

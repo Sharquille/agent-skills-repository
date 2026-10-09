@@ -26,6 +26,18 @@ REASON_LINE = re.compile(r"\*\*(?:Why[^*]*|Builds on)[:*]")
 TERMS_BOX = re.compile(r"(?m)^>[ \t]?\[!TIP\][ \t]*\n>[ \t]?\*\*TERMS:\*\*[ \t]*\n((?:>[ \t]?- .+\n?)+)")
 TERM_ITEM = re.compile(r"^>[ \t]?- \*\*([^*]+)\*\*")
 TERMS_PER_BOX = 6
+# Say it once (references/notes-contract.md): a Builds-on tag points back; it does not re-explain.
+BUILDS_ON_LINE = re.compile(r"(?m)^\*{1,2}Builds on[^\n]*")
+BUILDS_ON_WORDS = 25
+# Two sentences in one heading that share this share of their content words say the same thing.
+SENTENCE_OVERLAP = 0.6
+CONTENT_WORD = re.compile(r"[a-z]{4,}")
+MIN_CONTENT_WORDS = 6  # shorter sentences share words by chance
+# A HIGH YIELD line names its signal; pointing at "the table" or a broken fragment names nothing.
+VAGUE_HIGH_YIELD = re.compile(r"(?i)\bsource-teach\b|\b(?:the|two) (?:tables?|figure|\w+ row|\w+ column)\b[^.;]*\b(?:shows?|draws?|states?|applies|carry|carries)\b")
+OBJECTIVE_NUMBER = re.compile(r"\b([1-5]\.\d)\b")
+# relevance.md "## Objective verbs": | 2.5 | Explain ... |
+OBJECTIVE_VERB_ROW = re.compile(r"(?m)^\|\s*([1-5]\.\d)\s*\|\s*([^|]+?)\s*\|")
 # Relevance highlights and cited web additions (references/relevance-research.md).
 HIGH_YIELD = re.compile(r"(?m)^>[ \t]?\[!IMPORTANT\][ \t]*\n>[ \t]?\*\*HIGH YIELD:\*\*[ \t]*(.+)$")
 CURRENT_EXAM = re.compile(r"\*\*CURRENT EXAM \((W\d{3})\):\*\*")
@@ -325,6 +337,56 @@ def section_core(notes: Path) -> str:
     return re.split(r"(?im)^#\s+.*\b(?:quiz why|retrieval)\s*$", notes.read_text())[0]
 
 
+def objective_verbs(kit: Path) -> dict[str, str]:
+    """Each objective's official verb, from the kit's relevance.md Objective verbs table."""
+    path = kit / "relevance.md"
+    if not path.is_file():
+        return {}
+    text = path.read_text()
+    section = re.search(r"(?ms)^## Objective verbs\s*$(.*?)(?=^## |\Z)", text)
+    return dict(OBJECTIVE_VERB_ROW.findall(section.group(1))) if section else {}
+
+
+def sentences(block: str) -> list[set[str]]:
+    """Content-word sets for each prose sentence; callouts, tables, figures, and TEST MOVE are left out."""
+    prose = "\n".join(line for line in block.splitlines()
+                      if line.strip() and not line.lstrip().startswith((">", "|", "!", "#", "**TEST MOVE", "*SY0", "*Builds")))
+    parts = re.split(r"(?<=[.!?])\s+|\n+(?:[-*]|\d+\.)\s+", prose)
+    words = [set(CONTENT_WORD.findall(part.lower())) for part in parts]
+    return [w for w in words if len(w) >= MIN_CONTENT_WORDS]
+
+
+def say_once_warnings(blocks: list[str], number, verbs: dict[str, str]) -> list[str]:
+    """What a rewrite most often leaves behind: re-explaining tags, doubled sentences, vague or wrong highlights."""
+    warnings = []
+    long_tags = [number(b) for b in blocks
+                 if any(len(m.group().split()) > BUILDS_ON_WORDS for m in BUILDS_ON_LINE.finditer(b))]
+    if long_tags:
+        warnings.append(f"headings {', '.join(long_tags)} have a Builds on line over {BUILDS_ON_WORDS} words; "
+                        "make it a pointer (*Builds on 4.1 Core 7.*) and keep any reason in one sentence")
+    doubled = []
+    for b in blocks:
+        sets = sentences(b)
+        if any(a and c and len(a & c) / min(len(a), len(c)) >= SENTENCE_OVERLAP
+               for i, a in enumerate(sets) for c in sets[i + 1:]):
+            doubled.append(number(b))
+    if doubled:
+        warnings.append(f"headings {', '.join(doubled)} state a sentence twice; keep one")
+    for b in blocks:
+        for line in HIGH_YIELD.findall(b):
+            if VAGUE_HIGH_YIELD.search(line):
+                warnings.append(f"heading {number(b)}: HIGH YIELD points at a table or figure instead of naming the signal")
+            if "scenario-style" in line and verbs:
+                head = line.split("scenario-style")[0]
+                with_clause = re.search(r"\bwith ([1-5]\.\d)$", head.rstrip(", "))
+                claimed = [with_clause.group(1)] if with_clause else OBJECTIVE_NUMBER.findall(head)
+                wrong = [o for o in claimed if o in verbs and not verbs[o].lower().startswith("given a scenario")]
+                if wrong:
+                    warnings.append(f"heading {number(b)}: HIGH YIELD calls {', '.join(wrong)} scenario-style, but "
+                                    + "; ".join(f"{o} is \"{verbs[o]}\"" for o in wrong))
+    return warnings
+
+
 def profile_warnings(folder: Path, profile: str | None) -> list[str]:
     """What the course profile expects the Core to carry; advisory for older kits."""
     notes = [p for p in folder.glob("*.md") if p.name.lower().endswith("study-notes.md")]
@@ -342,6 +404,12 @@ def profile_warnings(folder: Path, profile: str | None) -> list[str]:
     repeated = [number(b) for b in blocks if len(REASON_LINE.findall(b)) > 1]
     if repeated:
         warnings.append(f"headings {', '.join(repeated)} have more than one Why / Builds on line; keep the one that adds a reason")
+    try:
+        rewritten = "revised" in json.loads((folder / "state.json").read_text())
+    except (OSError, json.JSONDecodeError, TypeError):
+        rewritten = False
+    if rewritten:  # notes written under the relevance workflow (2.14+); older kits are not held to it yet
+        warnings += say_once_warnings(blocks, number, objective_verbs(folder.parent.parent))
     flagged = len(HIGH_YIELD.findall(core))
     if blocks and flagged * 2 > len(blocks):
         warnings.append(f"{flagged} of {len(blocks)} headings are HIGH YIELD; keep it to about a third")

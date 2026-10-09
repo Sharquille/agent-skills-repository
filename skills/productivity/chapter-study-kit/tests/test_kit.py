@@ -29,6 +29,7 @@ scaffold = load('new_section')
 notebook = load('build_section_pdf')
 svgfig = load('svg_figure')
 review = load('review_brief')
+audit = load('audit_rewrite')
 
 
 class KitTests(unittest.TestCase):
@@ -615,6 +616,58 @@ class KitTests(unittest.TestCase):
         old = self.section.parent / 'old.md'
         old.write_text('# Core\n### 1. Idea\nOld text.\n')
         self.assertIn('===== OLD CORE =====\n\n# Core\n### 1. Idea\nOld text.', review.brief(self.section, old))
+
+    def test_rewritten_sections_are_held_to_say_it_once(self):
+        self.fill_live_contract()
+        (self.kit / 'relevance.md').write_text(
+            '## Objective verbs\n\n| Objective | Verb |\n| --- | --- |\n'
+            '| 2.5 | Explain the purpose of mitigation techniques |\n| 4.5 | Given a scenario, modify enterprise capabilities |\n')
+        long_tag = '*Builds on 4.1 Core 7*: ' + ' '.join(['word'] * 30) + '.'
+        notes = ('# Core\n### 1. Rules\n\n> [!IMPORTANT]\n> **HIGH YIELD:** Objective 2.5 Hardening (Domain 2, 22%) is scenario-style; the source teaches the rule the table draws.\n\n'
+                 'Firewall rules process packets from the top of the list downward always.\n'
+                 'Firewall rules always process packets from the top of the list downward.\n\n'
+                 + long_tag + '\n\n**TEST MOVE:** Do.\n'
+                 '### 2. Fine\n\n> [!IMPORTANT]\n> **HIGH YIELD:** Objectives 2.5 ACLs and 4.5 Rules (Domains 2 and 4), with 4.5 scenario-style; the source teaches first match.\n\nText.\n\n**TEST MOVE:** Do.\n')
+        (self.section / 'N-Study-Notes.md').write_text(notes)
+        state = json.loads((self.section / 'state.json').read_text())
+        self.assertNotIn('twice', '\n'.join(validate.profile_warnings(self.section, 'security')))
+        state['revised'] = '2026-10-09'
+        (self.section / 'state.json').write_text(json.dumps(state))
+        warnings = '\n'.join(validate.profile_warnings(self.section, 'security'))
+        self.assertIn('headings 1 have a Builds on line over 25 words', warnings)
+        self.assertIn('headings 1 state a sentence twice', warnings)
+        self.assertIn('heading 1: HIGH YIELD points at a table or figure', warnings)
+        self.assertIn('heading 1: HIGH YIELD calls 2.5 scenario-style', warnings)
+        self.assertNotIn('heading 2:', warnings)
+
+    def test_audit_rewrite_reports_what_a_rewrite_lost(self):
+        before = self.kit / 'before'
+        after = self.kit / 'after'
+        for folder, core, questions in ((before, '# Core\n### 1. A\n' + 'word ' * 100 + '\n![f](a.svg)\n### 2. B\nText.\n', 3),
+                                        (after, '# Core\n### 1. A\n' + 'word ' * 98 + '\n### 3. B\nText.\n', 2)):
+            folder.mkdir()
+            (folder / 'N-Study-Notes.md').write_text(core)
+            (folder / 'Practice.md').write_text(''.join(f'> [!question]- Q0{i}. x?\n> **Review:** Core 2\n' for i in range(questions)))
+        (after / 'ledger.md').write_text('## Relevance\n')
+        problems, facts = audit.audit(before, after)
+        text = '\n'.join(problems)
+        self.assertIn("heading numbers changed", text)
+        self.assertIn('figures dropped from Core: a.svg', text)
+        self.assertIn('Practice items fell from 3 to 2', text)
+        self.assertIn('Review pointers name missing headings: Core 2', text)
+        self.assertIn('Core cut only', text)
+        self.assertIn('no Context section', text)
+        self.assertIn('cut)', facts[0])
+
+    def test_review_brief_carries_exam_weights_and_verbs(self):
+        self.fill_live_contract()
+        (self.kit / 'relevance.md').write_text('## Domain weights\n\n| 2.0 Threats | 22% |\n\n## Objective verbs\n\n| 2.5 | Explain x |\n\n## Sources\n\nW001\n')
+        (self.section / 'N-Study-Notes.md').write_text('# Core\n### 1. Idea\nText.\n')
+        text = review.brief(self.section, None)
+        self.assertIn('| 2.0 Threats | 22% |', text)
+        self.assertIn('| 2.5 | Explain x |', text)
+        self.assertNotIn('W001', text)
+        self.assertIn('6. HIGH YIELD', text)
 
     def test_wide_figures_and_small_labels_warn(self):
         (self.section / 'wide.svg').write_text(
