@@ -1,6 +1,6 @@
 ---
 name: anki-study-sync
-description: "Generate a deterministic, question-first Anki text-import file from completed Obsidian study notes. Use when obsidian-study-loop has made a chapter content-ready and the learner wants high-volume recall practice in Anki. Preserve stable card identities across revisions, cite every card back to a vault-relative note heading, reject mixed-review deictic or duplicate-answer active cards, and treat Anki activity as practice rather than competency evidence. Do not use for grading mastery, changing study-loop status, reading Anki review history, deleting cards, or exporting cards from unverified learner mistakes."
+description: "Generate a deterministic, question-first Anki text-import file from completed Obsidian study notes or chapter-study-kit Core notes. Use when obsidian-study-loop has made a chapter content-ready, or a chapter-study-kit chapter is built, and the learner wants high-volume recall practice in Anki. Preserve stable card identities across revisions, cite every card back to a vault-relative note heading, reject mixed-review deictic or duplicate-answer active cards, and treat Anki activity as practice rather than competency evidence. Do not use for grading mastery, changing study-loop status, reading Anki review history, deleting cards, or exporting cards from unverified learner mistakes."
 # --- provenance ---
 category: productivity
 source: self-authored companion to obsidian-study-loop
@@ -64,6 +64,43 @@ or `retired`. Every card objective must appear in the manifest's unique
 `objectives` list, and every listed objective must have at least one active
 card. Every source is a vault-relative Markdown path plus an exact heading
 anchor. Verify that the note and heading exist before writing the manifest.
+
+## Chapter-kit source
+
+For courses built with `chapter-study-kit`, the **course folder is the vault**
+(for example `…/2026-Fall/MA-235/`). One manifest per chapter, so one import
+per chapter:
+
+| Field | Form |
+| --- | --- |
+| manifest | `<course>/_study/anki/<course>-chNN.json` |
+| `chapter_id` | `ma-235-ch05` |
+| `deck` | `MA-235::Chapter 05` |
+| objective | `5.2 Core 4 · Independent events, formula (4)` |
+| source | `Chapter-Kits/Chapter-05/5.2/MA-235_Ch5.2_Study-Notes.md#4. Independent events, formula (4)` |
+| `id` | `ma-235.5-2.core-4.<target>.<basic\|typed>` |
+| tags | `ma-235 ch05 sec-5-2 core-4` |
+
+Start from the scaffold, which lists every Core topic (between `# X.Y Core`
+and `# X.Y Retrieval`) with its exact heading, objective, ID prefix, tags, and
+body text, plus the manifest skeleton:
+
+```text
+scripts/kit_scaffold.py --course <course dir> --chapter 05 [--output scaffold.json]
+```
+
+- Write cards only from a topic's body text. Per topic, normally a concept
+  card and a condition or contrast card; for a formula, add *which formula
+  when* and *what each part means*. Follow **Card quality** below.
+- A worked-example or procedure-only topic may be left out of `objectives`;
+  the completion report lists every skipped topic and why.
+- `Practice.md` never becomes cards: those applied questions belong to the
+  learner's drills and competency checks, and memorized answers would hide
+  what they measure.
+- Anki stays practice: it never writes `study-log.md` and never changes a
+  topic's coverage status.
+
+Build and lint with the course folder as `--vault`.
 
 ## Stable identity
 

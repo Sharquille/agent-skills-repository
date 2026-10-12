@@ -84,6 +84,7 @@ manifest, synced copies, Mermaid bump):
 | ELI5 or picture-first page for one section | `eli5-explainer` (an optional view, not a kit file) |
 | Sol review of every section build | [references/sol-review.md](references/sol-review.md); always, before the notebook |
 | A named consult panel | [references/consult-panel.md](references/consult-panel.md); skip it on a routine drop |
+| Anki recall cards from a built chapter's Core notes | `anki-study-sync` (chapter-kit source); `Practice.md` never becomes cards |
 
 ## Workflow
 
@@ -391,6 +392,8 @@ at the kit and list the section notebook PDF. Do not copy maps or notes into
 `Work/`; the notebook PDF is the only kit output there.
 Delete leftover `ocr-*.pending.txt` after promote or failed inspect.
 Delete `overall-flow.candidate.mmd` after it becomes live + `.prev`.
+After filing, offer the chapter's Anki update through `anki-study-sync`
+(chapter-kit source) so new Core topics reach Anki.
 
 ```text
 Chapter-Kits/            # one folder per course; do not mix EN-221 into MA-235
