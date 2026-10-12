@@ -120,6 +120,21 @@ class KitScaffoldTests(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("#deck:MA-235::Chapter 05", out.stdout)
 
+    def test_code_and_slug_override_the_folder_name(self) -> None:
+        plus = self.course.parent / "ComptiaSec+"
+        self.course.rename(plus)
+        self.course = plus
+        out = subprocess.run(
+            [sys.executable, str(SCAFFOLD), "--course", str(plus), "--chapter", "5", "--code", "Security+", "--slug", "secplus"],
+            check=True, capture_output=True, text=True,
+        )
+        data = json.loads(out.stdout)
+        self.assertEqual(data["skeleton"]["deck"], "Security+::Chapter 05")
+        self.assertEqual(data["sections"][0]["topics"][0]["id_prefix"], "secplus.5-2.core-1")
+        bad = subprocess.run([sys.executable, str(SCAFFOLD), "--course", str(plus), "--chapter", "5"], capture_output=True, text=True)
+        self.assertEqual(bad.returncode, 1)
+        self.assertIn("--slug", bad.stderr)
+
     def test_missing_chapter_is_an_error(self) -> None:
         out = subprocess.run(
             [sys.executable, str(SCAFFOLD), "--course", str(self.course), "--chapter", "9"],

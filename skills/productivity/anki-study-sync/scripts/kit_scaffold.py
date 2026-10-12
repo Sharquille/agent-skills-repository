@@ -69,10 +69,13 @@ def core_topics(text: str) -> list[dict[str, object]]:
     return topics
 
 
-def scaffold(course: Path, chapter: str) -> dict[str, object]:
+def scaffold(course: Path, chapter: str, code: str | None = None, slug: str | None = None) -> dict[str, object]:
     course = course.expanduser().resolve()
-    code = course.name
-    slug = code.lower()
+    # A folder name like "ComptiaSec+" can't be used in card IDs; --code and --slug override it.
+    code = code or course.name
+    slug = slug or code.lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]*", slug):
+        raise ScaffoldError(f"slug {slug!r} can't be used in card IDs; pass --slug with lowercase letters, digits, . _ or -")
     chapter = f"{int(chapter):02d}"
     chapter_dir = course / "Chapter-Kits" / f"Chapter-{chapter}"
     if not chapter_dir.is_dir():
@@ -128,9 +131,11 @@ def main() -> int:
     ap.add_argument("--course", type=Path, required=True, help="course folder that holds Chapter-Kits/")
     ap.add_argument("--chapter", required=True, help="chapter number, e.g. 5 or 05")
     ap.add_argument("--output", type=Path, help="write JSON here instead of stdout")
+    ap.add_argument("--code", help="deck and objective name, default the course folder name (e.g. Security+)")
+    ap.add_argument("--slug", help="lowercase ID and tag prefix, default the code lowercased (e.g. secplus)")
     args = ap.parse_args()
     try:
-        data = json.dumps(scaffold(args.course, args.chapter), ensure_ascii=False, indent=2) + "\n"
+        data = json.dumps(scaffold(args.course, args.chapter, args.code, args.slug), ensure_ascii=False, indent=2) + "\n"
     except (ScaffoldError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
