@@ -98,6 +98,16 @@ class BuildAnkiImportTests(unittest.TestCase):
         self.assertIn("study-loop::typed", second_fields[3])
         self.assertNotEqual(first_fields[0], first_fields[2])
 
+    def test_objective_with_quotes_matches_its_cards(self) -> None:
+        data = self.manifest()
+        quoted = '"And" vs "or" & more'
+        data["objectives"] = [quoted if o == data["cards"][0]["objective"] else o for o in data["objectives"]]
+        for card in data["cards"]:
+            if card["objective"] == self.manifest()["cards"][0]["objective"]:
+                card["objective"] = quoted
+        result = self.run_script(data)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_rejects_duplicate_ids(self) -> None:
         manifest = self.manifest()
         manifest["cards"][1]["id"] = manifest["cards"][0]["id"]

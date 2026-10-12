@@ -219,7 +219,9 @@ def render(data: dict[str, object], vault: Path) -> str:
         seen.add(card_id)
     if duplicates:
         raise ManifestError("duplicate card IDs: " + ", ".join(sorted(duplicates)))
-    objectives = set(data["objectives"])
+    # Card objectives are HTML-escaped above; escape the declared list the same way so
+    # an objective with quotes or an ampersand ("And" vs "or") still matches.
+    objectives = {html_field(o, "objectives") for o in data["objectives"]}
     card_objectives = {str(card["objective"]) for card in cards}
     unknown = card_objectives - objectives
     if unknown:
