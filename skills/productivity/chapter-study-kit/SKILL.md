@@ -98,6 +98,7 @@ manifest, synced copies, Mermaid bump):
 - [ ] 6. Source-grounded editorial review + Practice outcome plan + Core notes + figures
 - [ ] 7. Sol review, then `validate_kit.py --kit` and the GoodNotes notebook PDF
 - [ ] 8. Chapter README + file into Chapter-Kits + GoodNotes folder rule
+- [ ] 9. Update the chapter's Anki deck (anki-study-sync); `validate_kit.py --kit` checks it
 ```
 
 ### 1. Register sources and batch state
@@ -392,8 +393,15 @@ at the kit and list the section notebook PDF. Do not copy maps or notes into
 `Work/`; the notebook PDF is the only kit output there.
 Delete leftover `ocr-*.pending.txt` after promote or failed inspect.
 Delete `overall-flow.candidate.mmd` after it becomes live + `.prev`.
-After filing, offer the chapter's Anki update through `anki-study-sync`
-(chapter-kit source) so new Core topics reach Anki.
+### 9. Anki deck (required)
+
+After filing, update the chapter's Anki deck with `anki-study-sync`
+(chapter-kit source) in the same session, so every new Core topic reaches
+Anki; do not leave it as a suggestion. `validate_kit.py --kit` warns when a
+ready section's Core topics are missing from `<course>/_study/anki/*-chNN.json`.
+`hub.json` `"anki"` sets the depth: `"full"` (default, tested courses: every
+Core topic as an active or deliberately retired objective), `"light"` (writing
+and presentation courses: a short fundamentals deck per chapter), or `"none"`.
 
 ```text
 Chapter-Kits/            # one folder per course; do not mix EN-221 into MA-235

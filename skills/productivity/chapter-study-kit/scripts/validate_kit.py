@@ -711,6 +711,53 @@ def check_kit(kit: Path) -> list[str]:
     return errors
 
 
+CORE_TOPIC = re.compile(r"(?m)^#{2,3}\s+(\d+)\.\s")
+
+
+def anki_warnings(kit: Path, folders: list[Path], mode: str) -> list[str]:
+    """A built section's Core topics should reach its chapter's Anki deck (anki-study-sync).
+
+    hub.json "anki": "full" (default) wants every numbered Core topic in the deck, as an
+    active or deliberately retired objective; "light" only wants the chapter to have a deck;
+    "none" skips the check.
+    """
+    if mode == "none":
+        return []
+    anki = kit.parent / "_study" / "anki"
+    warnings = []
+    for folder in folders:
+        try:
+            state = json.loads((folder / "state.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(state, dict) or state.get("status") not in ("ready", "complete"):
+            continue
+        chapter = re.sub(r"\D", "", folder.parent.name)
+        rel = folder.relative_to(kit).as_posix()
+        manifests = sorted(anki.glob(f"*-ch{int(chapter):02d}.json")) if chapter and anki.is_dir() else []
+        if not manifests:
+            warnings.append(f"{rel}: no Anki deck for this chapter yet; run anki-study-sync (chapter-kit source)")
+            continue
+        if mode != "full":
+            continue
+        listed = set()
+        for manifest in manifests:
+            try:
+                data = json.loads(manifest.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+            listed.update(str(o) for o in data.get("objectives", []) + data.get("retired_objectives", []))
+        notes = sorted(folder.glob("*Study-Notes.md"))
+        if not notes:
+            continue
+        topics = sorted({int(n) for n in CORE_TOPIC.findall(section_core(notes[0]))})
+        missing = [n for n in topics if not any(o.startswith(f"{folder.name} Core {n} ") for o in listed)]
+        if missing:
+            warnings.append(f"{rel}: Core topics {', '.join(map(str, missing))} are not in the chapter's "
+                            "Anki deck; run anki-study-sync (chapter-kit source)")
+    return warnings
+
+
 def kit_warnings(kit: Path) -> list[str]:
     """Advisory gaps that do not block a legacy kit from publishing."""
     kit = kit.resolve()
@@ -725,6 +772,11 @@ def kit_warnings(kit: Path) -> list[str]:
         profile = None
     if profile == "security":
         warnings += acronym_warnings(kit, section_folders(kit))
+    try:
+        anki_mode = json.loads((kit / "hub.json").read_text()).get("anki", "full")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        anki_mode = "full"
+    warnings += anki_warnings(kit, section_folders(kit), anki_mode)
     for folder in section_folders(kit):
         rel = folder.relative_to(kit).as_posix()
         try:

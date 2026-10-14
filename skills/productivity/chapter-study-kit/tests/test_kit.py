@@ -230,6 +230,26 @@ class KitTests(unittest.TestCase):
         (self.section / 'ledger.md').write_text('| S001 | a | b | c | d |\n')
         self.assertFalse([w for w in validate.kit_warnings(self.kit) if 'source table' in w])
 
+    def test_built_section_without_anki_cards_warns(self):
+        course = Path(self.temp.name) / 'MA-235'
+        kit = course / 'Chapter-Kits'
+        section = kit / 'Chapter-01' / '1.1'
+        section.mkdir(parents=True)
+        (kit / 'hub.json').write_text(json.dumps({'title': 'T', 'prefix': 'Statistics'}))
+        (section / 'state.json').write_text(json.dumps({'status': 'ready', 'week': 1}))
+        (section / 'N-Study-Notes.md').write_text('# 1.1 Core\n### 1. First\nA\n### 2. Second\nB\n# 1.1 Retrieval\n')
+        warn = lambda: '\n'.join(validate.anki_warnings(kit, [section], 'full'))
+        self.assertIn('no Anki deck', warn())
+        anki = course / '_study' / 'anki'
+        anki.mkdir(parents=True)
+        (anki / 'ma-235-ch01.json').write_text(json.dumps({'objectives': ['1.1 Core 1 · First']}))
+        self.assertIn('Core topics 2 are not', warn())
+        (anki / 'ma-235-ch01.json').write_text(json.dumps(
+            {'objectives': ['1.1 Core 1 · First'], 'retired_objectives': ['1.1 Core 2 · Second']}))
+        self.assertEqual(warn(), '')
+        (anki / 'ma-235-ch01.json').write_text(json.dumps({'objectives': ['1.1 Core 1 · First']}))
+        self.assertEqual(validate.anki_warnings(kit, [section], 'light'), [])
+
     def test_scaffold_creates_collecting_section_and_refuses_existing(self):
         folder = scaffold.scaffold(self.kit, '3.2', 3, 'Measures of Variation')
         self.assertEqual(folder, self.kit / 'Chapter-03' / '3.2')
