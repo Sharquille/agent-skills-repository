@@ -244,6 +244,13 @@ scripts/lint_anki_quality.py --vault <VAULT_PATH>
 That read-only sweep covers every manifest under `_study/anki/`. Fix findings
 before recording `## Anki handoff` as ready.
 
+The sweep also prints `warning:` lines for possible answer leakage: a front that
+already contains the answer's key term ("issued" on an "Issuer" card). The rule
+is word matching, so treat each warning as a candidate: reword a real leak and
+bump `revision`; tag a reviewed false alarm `leak-ok`. Choice and multi-part
+fronts are skipped, so a synonym-pair leak ("control or regulate") still needs
+the Sol review.
+
 ## Practice handoff
 
 When whisper-reading is preferred, give this routine once in the handoff,

@@ -72,3 +72,69 @@ def quality_errors(cards: Sequence[object]) -> list[str]:
             else:
                 seen_answers[answer_key] = card_id
     return errors
+
+
+# Answer leakage: the front already contains the answer's key term ("regulate" on a
+# card whose answer is "Regulatory"). Word matching cannot be precise, so this is a
+# warning for review, never a build failure. Choice fronts ("X or Y?", "How does X
+# differ from Y?") and multi-part fronts name their options on purpose and are skipped;
+# a synonym pair ("control or regulate") is skipped too, so Sol review still owns leaks.
+# Tag a reviewed false positive "leak-ok" to silence it.
+_LEAK_STOP = {
+    "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "by", "with", "its", "it",
+    "is", "are", "vs", "as", "at", "from", "into", "yes", "no", "not", "only",
+}
+_LEAK_GENERIC = {
+    "theory", "approach", "attack", "attacks", "control", "controls", "software", "function",
+    "license", "model", "rule", "rules", "distance", "touch", "type", "types", "irony",
+    "conflict", "character", "setting", "point", "view", "communication", "system", "systems",
+    "file", "files", "app", "apps", "data", "network", "person", "first", "third", "second",
+}
+_CHOICE = re.compile(
+    r"(?i)\b(or|vs\.?|versus|between|differ|differs|difference|compare|contrast|which of|"
+    r"of [^?]*,[^?]* and)\b|/"
+)
+_MULTI = re.compile(
+    r"(?i)\band which\b|\bname (one|two|three|four|five|\d)\b|, and (its|what|where|which)\b|"
+    r"\bwhat goes\b"
+)
+_WORD = re.compile(r"[a-z0-9]+(?:[-'][a-z0-9]+)*")
+
+
+def _stem(word: str) -> str:
+    return word[:5] if len(word) > 5 else word
+
+
+def leaked_term(prompt: str, answer: str) -> str | None:
+    """Return the answer's head phrase when every key word of it already appears on the front."""
+    if _CHOICE.search(prompt) or _MULTI.search(prompt):
+        return None
+    head = re.split(r"[.:;(,\n]|\s[-\u2013\u2014]\s", answer.strip(), maxsplit=1)[0]
+    if re.search(r"[=<>\u00f7\u00d7\u221a\u03a3^]", head):
+        return None  # a formula answer repeats the front's symbols by design
+    words = _WORD.findall(head.lower())
+    if not 1 <= len(words) <= 4:
+        return None
+    keys = [w for w in words if w not in _LEAK_STOP and w not in _LEAK_GENERIC and len(w) >= 5]
+    front = _WORD.findall(prompt.lower())
+    if keys and all(any(f.startswith(_stem(k)) for f in front) for k in keys):
+        return head.strip()
+    return None
+
+
+def leak_warnings(cards: Sequence[object]) -> list[str]:
+    """Active cards whose front appears to give away the answer. Advisory only."""
+    warnings: list[str] = []
+    for index, raw in enumerate(cards):
+        if not isinstance(raw, Mapping) or str(raw.get("status") or "").strip() != "active":
+            continue
+        tags = raw.get("tags") if isinstance(raw.get("tags"), list) else []
+        prompt, answer = raw.get("prompt"), raw.get("answer")
+        if "leak-ok" in tags or not isinstance(prompt, str) or not isinstance(answer, str):
+            continue
+        term = leaked_term(prompt, answer)
+        if term:
+            card_id = str(raw.get("id") or f"cards[{index}]")
+            warnings.append(f"{card_id}: front may give away the answer ({term!r}); "
+                            "reword it, or tag leak-ok after review")
+    return warnings

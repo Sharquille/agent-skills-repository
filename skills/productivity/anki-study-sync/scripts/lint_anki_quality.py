@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from anki_quality import quality_errors
+from anki_quality import leak_warnings, quality_errors
 
 
 def parse_args() -> argparse.Namespace:
@@ -52,7 +52,10 @@ def main() -> int:
                 print(f"ERROR: {path} is outside {handoff}", file=sys.stderr)
                 failed += 1
                 continue
-            findings = quality_errors(load_cards(path))
+            cards = load_cards(path)
+            findings = quality_errors(cards)
+            for warning in leak_warnings(cards):
+                print(f"warning: {path.name}: {warning}", file=sys.stderr)
         except RuntimeError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             failed += 1
