@@ -231,6 +231,31 @@ class BuildAnkiImportTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("card objectives are not declared", result.stderr)
 
+    def test_retired_objective_drops_a_topic(self) -> None:
+        manifest = self.manifest()
+        manifest["cards"][0]["status"] = "retired"
+        manifest["objectives"] = ["First objective"]
+        manifest["retired_objectives"] = ["Second objective"]
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        row = next(r for r in result.stdout.splitlines() if "\tcourse.ch1.second.typed\t" in r)
+        self.assertIn("study-loop::retired", row)
+
+    def test_rejects_active_card_on_retired_objective(self) -> None:
+        manifest = self.manifest()
+        manifest["objectives"] = ["First objective"]
+        manifest["retired_objectives"] = ["Second objective"]
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("retired objectives with an active card", result.stderr)
+
+    def test_rejects_objective_both_active_and_retired(self) -> None:
+        manifest = self.manifest()
+        manifest["retired_objectives"] = ["Second objective"]
+        result = self.run_script(manifest)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("both active and retired", result.stderr)
+
     def test_rejects_objective_without_active_card(self) -> None:
         manifest = self.manifest()
         manifest["cards"][0]["status"] = "retired"

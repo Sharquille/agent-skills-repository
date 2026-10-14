@@ -130,9 +130,11 @@ def load_manifest(path: Path) -> dict[str, object]:
         "objectives",
         "cards",
     }
-    if set(data) != expected:
+    # Optional: objectives dropped from study on purpose; their cards must all be retired.
+    if set(data) - {"retired_objectives"} != expected:
         raise ManifestError(
             "manifest fields must be exactly: " + ", ".join(sorted(expected))
+            + " (plus optional retired_objectives)"
         )
     if data["schema"] != "anki-study-sync.manifest":
         raise ManifestError("schema must be anki-study-sync.manifest")
@@ -154,6 +156,15 @@ def load_manifest(path: Path) -> dict[str, object]:
     if len(set(normalized_objectives)) != len(normalized_objectives):
         raise ManifestError("objectives must be unique")
     data["objectives"] = normalized_objectives
+    retired = data.get("retired_objectives", [])
+    if not isinstance(retired, list):
+        raise ManifestError("retired_objectives must be a list")
+    data["retired_objectives"] = [
+        scalar(objective, f"retired_objectives[{index}]")
+        for index, objective in enumerate(retired)
+    ]
+    if set(data["retired_objectives"]) & set(normalized_objectives):
+        raise ManifestError("an objective cannot be both active and retired")
     if not isinstance(data["cards"], list) or not data["cards"]:
         raise ManifestError("cards must be a non-empty list")
     return data
@@ -222,8 +233,9 @@ def render(data: dict[str, object], vault: Path) -> str:
     # Card objectives are HTML-escaped above; escape the declared list the same way so
     # an objective with quotes or an ampersand ("And" vs "or") still matches.
     objectives = {html_field(o, "objectives") for o in data["objectives"]}
+    retired_objectives = {html_field(o, "retired_objectives") for o in data["retired_objectives"]}
     card_objectives = {str(card["objective"]) for card in cards}
-    unknown = card_objectives - objectives
+    unknown = card_objectives - objectives - retired_objectives
     if unknown:
         raise ManifestError(
             "card objectives are not declared: " + ", ".join(sorted(unknown))
@@ -231,6 +243,11 @@ def render(data: dict[str, object], vault: Path) -> str:
     active_objectives = {
         str(card["objective"]) for card in cards if card["status"] == "active"
     }
+    revived = active_objectives & retired_objectives
+    if revived:
+        raise ManifestError(
+            "retired objectives with an active card: " + ", ".join(sorted(revived))
+        )
     missing = objectives - active_objectives
     if missing:
         raise ManifestError(

@@ -62,7 +62,9 @@ Required manifest and card fields are exactly the fields shown. `type` is
 `Basic` note type and preserves the distinction as a tag. `status` is `active`
 or `retired`. Every card objective must appear in the manifest's unique
 `objectives` list, and every listed objective must have at least one active
-card. Every source is a vault-relative Markdown path plus an exact heading
+card. To drop a whole topic from study (for example, trimming a deck to
+fundamentals), move its objective to the optional `retired_objectives` list
+and retire all of its cards; the generator rejects an active card there. Every source is a vault-relative Markdown path plus an exact heading
 anchor. Verify that the note and heading exist before writing the manifest.
 
 ## Chapter-kit source
