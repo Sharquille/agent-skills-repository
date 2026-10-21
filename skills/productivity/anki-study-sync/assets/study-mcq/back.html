@@ -1,0 +1,66 @@
+<div id="mcq-back"></div>
+<div id="mcq" data-correct="{{Correct}}" data-key="{{text:Question}}">
+  <div class="mcq-q">{{Question}}</div>
+  <div id="mcq-verdict" class="mcq-verdict"></div>
+  <div class="mcq-opts"></div>
+  <div class="mcq-src" data-letter="A" hidden>{{A}}</div>
+  <div class="mcq-src" data-letter="B" hidden>{{B}}</div>
+  <div class="mcq-src" data-letter="C" hidden>{{C}}</div>
+  <div class="mcq-src" data-letter="D" hidden>{{D}}</div>
+</div>
+<div class="mcq-why"><b>Why:</b> {{Why}}</div>
+<div class="mcq-src-note">{{Source}}</div>
+
+<script>
+(function () {
+  var card = document.getElementById('mcq');
+  if (!card) return;
+  var back = !!document.getElementById('mcq-back');
+  var src = [].slice.call(card.querySelectorAll('.mcq-src')).filter(function (e) { return e.innerHTML.trim(); });
+  var correct = (card.getAttribute('data-correct') || '').trim().toUpperCase();
+  var key = 'mcq:' + (card.getAttribute('data-key') || '');
+  var store = null;
+  try { store = window.sessionStorage; } catch (e) {}
+  var state = null;
+  if (back) {
+    try { state = JSON.parse(store.getItem(key)); } catch (e) {}
+    if (!state && window.__mcq && window.__mcq.key === key) state = window.__mcq;
+  }
+  if (!state) {
+    var order = src.map(function (_, i) { return i; });
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1)); var t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    state = { key: key, order: back ? src.map(function (_, i) { return i; }) : order, pick: null };
+  }
+  function save() { window.__mcq = state; try { store.setItem(key, JSON.stringify(state)); } catch (e) {} }
+  if (!back) save();
+  var box = card.querySelector('.mcq-opts');
+  box.innerHTML = '';
+  state.order.forEach(function (idx, pos) {
+    var el = src[idx];
+    var letter = el.getAttribute('data-letter');
+    var b = document.createElement('div');
+    b.className = 'mcq-opt';
+    b.innerHTML = '<span class="mcq-tag">' + 'ABCD'.charAt(pos) + '</span><span class="mcq-txt">' + el.innerHTML + '</span>';
+    if (back) {
+      if (letter === correct) b.className += ' right';
+      if (state.pick === letter && letter !== correct) b.className += ' wrong';
+      if (state.pick === letter) b.className += ' picked';
+    } else {
+      b.onclick = function () {
+        state.pick = letter; save();
+        [].forEach.call(box.children, function (c) { c.className = 'mcq-opt'; });
+        b.className = 'mcq-opt picked';
+      };
+    }
+    box.appendChild(b);
+  });
+  var verdict = document.getElementById('mcq-verdict');
+  if (back && verdict) {
+    if (!state.pick) { verdict.textContent = 'No option picked.'; verdict.className = 'mcq-verdict none'; }
+    else if (state.pick === correct) { verdict.textContent = 'Correct'; verdict.className = 'mcq-verdict ok'; }
+    else { verdict.textContent = 'Not quite: the green option is right'; verdict.className = 'mcq-verdict no'; }
+  }
+})();
+</script>

@@ -144,7 +144,7 @@ class BuildAnkiImportTests(unittest.TestCase):
         manifest["cards"][0]["type"] = "image-occlusion"
         result = self.run_script(manifest)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("basic or typed", result.stderr)
+        self.assertIn("basic, typed, or mcq", result.stderr)
 
     def test_rejects_missing_source_heading(self) -> None:
         manifest = self.manifest()
@@ -295,3 +295,69 @@ class BuildAnkiImportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class McqTests(BuildAnkiImportTests):
+    def mcq_manifest(self, **change: object) -> dict[str, object]:
+        manifest = self.manifest()
+        card = {
+            "id": "course.ch1.first.router.mcq",
+            "objective": "First objective",
+            "type": "mcq",
+            "prompt": "Traffic must be forwarded between your LAN and the Internet. Which device does that?",
+            "answer": "A router forwards packets between networks.",
+            "choices": ["A router", "A modem", "A switch", "A DNS server"],
+            "source": "Notes/Chapter 1.md#First",
+            "revision": 1,
+            "status": "active",
+            "tags": ["course"],
+        }
+        card.update(change)
+        manifest["cards"].append(card)
+        return manifest
+
+    def test_mcq_goes_to_quiz_output_with_correct_letter(self) -> None:
+        out = self.vault / "_study" / "anki" / "chapter-1.tsv"
+        path = self.vault / "_study" / "anki" / "manifest.json"
+        path.write_text(json.dumps(self.mcq_manifest()), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(SCRIPT), str(path), "--vault", str(self.vault), "--output", str(out)],
+                                text=True, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("A modem", out.read_text(encoding="utf-8"))
+        quiz = (self.vault / "_study" / "anki" / "chapter-1-quiz.tsv").read_text(encoding="utf-8")
+        self.assertIn("#deck:Course::Chapter 1::Quiz", quiz)  # mixed deck: quiz in a subdeck
+        self.assertIn("#notetype:Study MCQ", quiz)
+        row = quiz.strip().splitlines()[-1].split("\t")
+        options, letter = row[1:5], row[5]
+        self.assertEqual(options["ABCD".index(letter)], "A router")
+        self.assertEqual(sorted(options), sorted(["A router", "A modem", "A switch", "A DNS server"]))
+
+    def test_mcq_needs_four_choices(self) -> None:
+        result = self.run_script(self.mcq_manifest(choices=["A router", "A modem", "A switch"]))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("exactly 4 options", result.stderr)
+
+    def test_mcq_rejects_all_of_the_above(self) -> None:
+        result = self.run_script(self.mcq_manifest(choices=["A router", "A modem", "A switch", "All of the above"]))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("all/none/both", result.stderr)
+
+    def test_mcq_rejects_question_that_names_the_answer(self) -> None:
+        result = self.run_script(self.mcq_manifest(prompt="Which device, a router or a modem, forwards packets?"))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("gives away the correct option", result.stderr)
+
+    def test_quiz_only_deck_is_the_chapter_deck(self) -> None:
+        manifest = self.mcq_manifest()
+        manifest["cards"] = [c for c in manifest["cards"] if c["type"] == "mcq"]
+        manifest["objectives"] = ["First objective"]
+        out = self.vault / "_study" / "anki" / "chapter-1.tsv"
+        path = self.vault / "_study" / "anki" / "manifest.json"
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(SCRIPT), str(path), "--vault", str(self.vault), "--output", str(out)],
+                                text=True, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(out.exists())
+        quiz = (self.vault / "_study" / "anki" / "chapter-1-quiz.tsv").read_text(encoding="utf-8")
+        self.assertIn("#deck:Course::Chapter 1\n", quiz)
+

@@ -16,7 +16,7 @@ from anki_quality import quality_errors
 
 
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
-CARD_TYPES = {"basic", "typed"}
+CARD_TYPES = {"basic", "typed", "mcq"}
 CARD_STATUSES = {"active", "retired"}
 CARD_FIELDS = {
     "id",
@@ -29,6 +29,11 @@ CARD_FIELDS = {
     "status",
     "tags",
 }
+
+
+MCQ_NOTETYPE = "Study MCQ"
+MCQ_CHOICES = 4
+NOT_A_CHOICE = re.compile(r"(?i)\b(all|none|both|neither) of the (above|options|choices)\b")
 
 
 class ManifestError(RuntimeError):
@@ -172,9 +177,10 @@ def load_manifest(path: Path) -> dict[str, object]:
 
 def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
     label = f"cards[{index}]"
-    if not isinstance(raw, dict) or set(raw) != CARD_FIELDS:
+    expected = CARD_FIELDS | ({"choices"} if isinstance(raw, dict) and raw.get("type") == "mcq" else set())
+    if not isinstance(raw, dict) or set(raw) != expected:
         raise ManifestError(
-            f"{label} fields must be exactly: {', '.join(sorted(CARD_FIELDS))}"
+            f"{label} fields must be exactly: {', '.join(sorted(expected))}"
         )
     card_id = scalar(raw["id"], f"{label}.id")
     if not ID_PATTERN.fullmatch(card_id):
@@ -183,7 +189,7 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
         )
     card_type = scalar(raw["type"], f"{label}.type")
     if card_type not in CARD_TYPES:
-        raise ManifestError(f"{label}.type must be basic or typed")
+        raise ManifestError(f"{label}.type must be basic, typed, or mcq")
     status = scalar(raw["status"], f"{label}.status")
     if status not in CARD_STATUSES:
         raise ManifestError(f"{label}.status must be active or retired")
@@ -201,7 +207,20 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
         normalized_tags.append(normalized)
     if status == "retired":
         normalized_tags.append("study-loop::retired")
+    choices: list[str] = []
+    if card_type == "mcq":
+        raw_choices = raw["choices"]
+        if not isinstance(raw_choices, list) or len(raw_choices) != MCQ_CHOICES:
+            raise ManifestError(f"{label}.choices must list exactly {MCQ_CHOICES} options, the correct one first")
+        choices = [html_field(choice, f"{label}.choices[{i}]") for i, choice in enumerate(raw_choices)]
+        if len({c.lower() for c in choices}) != MCQ_CHOICES:
+            raise ManifestError(f"{label}.choices must be four different options")
+        if any(NOT_A_CHOICE.search(c) for c in choices):
+            raise ManifestError(f"{label}.choices must not use all/none/both of the above; write a real alternative")
+        if choices[0].lower() in html_field(raw["prompt"], f"{label}.prompt").lower():
+            raise ManifestError(f"{label}: the question gives away the correct option ({raw_choices[0]!r})")
     return {
+        "choices": choices,
         "id": card_id,
         "objective": html_field(raw["objective"], f"{label}.objective"),
         "type": card_type,
@@ -214,7 +233,54 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
     }
 
 
+def mcq_position(card_id: str) -> int:
+    """Where the correct option is stored (stable per card); the card shuffles on screen anyway."""
+    return sum(card_id.encode()) % MCQ_CHOICES
+
+
+def render_quiz(data: dict[str, object], cards: list[dict[str, object]]) -> str | None:
+    """Multiple-choice cards as a Study MCQ import.
+
+    A quiz-only deck (no Basic cards at all) is the chapter deck itself; a mixed deck
+    keeps its quiz cards in a ::Quiz subdeck so the two note types stay apart.
+    """
+    quiz = [card for card in cards if card["type"] == "mcq"]
+    if not quiz:
+        return None
+    deck = scalar(data["deck"], "deck")
+    if any(card["type"] != "mcq" for card in cards):
+        deck = f"{deck}::Quiz"
+    chapter_id = scalar(data["chapter_id"], "chapter_id")
+    lines = [
+        "#separator:tab",
+        "#html:true",
+        f"#deck:{deck}",
+        f"#notetype:{MCQ_NOTETYPE}",
+        f"#tags:study-loop::chapter::{chapter_id}",
+        "#columns:Question\tA\tB\tC\tD\tCorrect\tWhy\tSource\tGUID\tTags",
+        "#guid column:9",
+        "#tags column:10",
+    ]
+    for card in sorted(quiz, key=lambda item: str(item["id"])):
+        choices = list(card["choices"])
+        position = mcq_position(str(card["id"]))
+        options = choices[1:]
+        options.insert(position, choices[0])
+        tags = set(card["tags"]) | {"study-loop::mcq", f"study-loop::revision::{card['revision']}",
+                                    f"study-loop::status::{card['status']}"}
+        source = f"{card['objective']}"
+        lines.append("\t".join((str(card["prompt"]), *options, "ABCD"[position], str(card["answer"]),
+                                 source, str(card["id"]), " ".join(sorted(tags)))))
+    return "\n".join(lines) + "\n"
+
+
 def render(data: dict[str, object], vault: Path) -> str:
+    basic, quiz = render_all(data, vault)
+    return basic if basic is not None else quiz or ""
+
+
+def render_all(data: dict[str, object], vault: Path) -> tuple[str, str | None]:
+    """The Basic import and, when the manifest has mcq cards, the Study MCQ quiz import."""
     quality = quality_errors(data["cards"])
     if quality:
         raise ManifestError("mixed-review quality: " + "; ".join(quality))
@@ -267,6 +333,8 @@ def render(data: dict[str, object], vault: Path) -> str:
         "#tags column:4",
     ]
     for card in sorted(cards, key=lambda item: str(item["id"])):
+        if card["type"] == "mcq":
+            continue
         card_tags = set(card["tags"])
         card_tags.add(f"study-loop::{card['type']}")
         card_tags.add(f"study-loop::revision::{card['revision']}")
@@ -286,7 +354,8 @@ def render(data: dict[str, object], vault: Path) -> str:
                 )
             )
         )
-    return "\n".join(lines) + "\n"
+    basic = "\n".join(lines) + "\n" if any(card["type"] != "mcq" for card in cards) else None
+    return basic, render_quiz(data, cards)
 
 
 def atomic_write(path: Path, content: str) -> None:
@@ -315,16 +384,21 @@ def main() -> int:
             raise ManifestError(
                 "manifest must be inside the vault's _study/anki directory"
             )
-        content = render(load_manifest(manifest), vault)
+        content, quiz = render_all(load_manifest(manifest), vault)
         if args.output is None:
-            sys.stdout.write(content)
+            sys.stdout.write("\n".join(part for part in (content, quiz) if part))
         else:
             output = args.output.expanduser().resolve()
             if not output.is_relative_to(handoff_root):
                 raise ManifestError(
                     "output must be inside the vault's _study/anki directory"
                 )
-            atomic_write(output, content)
+            if content is not None:
+                atomic_write(output, content)
+            elif output.exists():
+                print(f"note: {output.name} is stale (this deck is quiz-only now); delete it", file=sys.stderr)
+            if quiz:
+                atomic_write(output.with_name(output.stem + "-quiz.tsv"), quiz)
     except ManifestError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

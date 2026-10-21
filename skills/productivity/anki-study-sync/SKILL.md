@@ -154,6 +154,56 @@ If the learner wants randomized new-card practice, point them to Anki's Deck
 Options and let them choose a random gather or sort order. This file handoff
 does not change deck options.
 
+## Multiple-choice cards
+
+`"type": "mcq"` makes a tap-to-answer quiz card for a decision between
+look-alikes. It adds one field, `choices`: exactly four options with the
+**correct one first**. `answer` holds the one-line reason shown on the back.
+
+```json
+{
+  "id": "it-100.3-1.core-16.latency.mcq",
+  "objective": "3.1 Core 16 · Latency",
+  "type": "mcq",
+  "prompt": "Large downloads are fast, but every click in an online game feels slow. Which measure is the problem?",
+  "choices": ["Latency", "Jitter", "Packet loss", "Bandwidth"],
+  "answer": "Latency is how long one trip takes; high bandwidth can coexist with high latency.",
+  "source": "Chapter-Kits/Chapter-03/3.1/IT-100_Ch3.1_Study-Notes.md#16. Latency",
+  "revision": 1,
+  "status": "active",
+  "tags": ["it-100", "ch03", "sec-3-1", "core-16"]
+}
+```
+
+The builder writes mcq cards to `<output stem>-quiz.tsv` for the **Study MCQ**
+note type. A quiz-only manifest imports straight into the chapter deck and
+writes no Basic TSV; a mixed manifest puts its quiz cards in a `::Quiz` subdeck
+so the two note types stay apart. The builder stores the correct option
+at a stable position per card; the card shuffles the options on screen every
+review and marks the pick right or wrong on the back. Install the note type
+once per Anki profile by importing `assets/study-mcq-notetype.apkg`
+(`scripts/make_mcq_notetype.py` rebuilds it from `assets/study-mcq/`).
+
+Authoring rules (the builder rejects the first three):
+
+- Exactly four distinct options; never "all/none/both of the above".
+- The question must not contain the correct option's text.
+- Write a scenario stem that forces the decision ("Which measure is the
+  problem?"), not a definition the options restate.
+- Every wrong option is a real alternative from the same Core topic or a
+  neighbouring one, the thing a learner actually confuses (latency vs jitter vs
+  packet loss), never a joke option. Keep the four options similar in length
+  and form so the longest one isn't the giveaway.
+- `answer` is one sentence that says why the right option wins, ideally naming
+  what separates it from the best wrong one.
+- Quiz-only decks: for a course tested by multiple choice (IT-100,
+  Security+), every card is mcq, with no recall cards mixed in, because one card
+  style per deck keeps review clear and makes "all cards mature" mean the
+  chapter is done. Rebuild such a chapter as a fresh manifest (no retired rows)
+  after the learner deletes the old deck in Anki. Math courses are the
+  exception: they pair method-choice mcq cards with calculation cards. The
+  two-cards-per-topic cap counts mcq cards too.
+
 ## Card quality
 
 Active cards must survive mixed review: shuffled into unrelated cards from the
