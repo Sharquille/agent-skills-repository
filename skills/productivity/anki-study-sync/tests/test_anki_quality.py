@@ -73,3 +73,15 @@ class OverlapTests(unittest.TestCase):
             self.card("b", "What is jitter?", "Variation in packet delay."),
         ]})
         self.assertEqual(w, [])
+
+
+class SourceTagTests(unittest.TestCase):
+    def test_source_tagged_front_is_an_error(self):
+        from anki_quality import quality_errors
+        cards = [{"id": "a", "prompt": "What five file-naming conventions does IT-100 Module 6 list?", "answer": "x", "status": "active"},
+                 {"id": "b", "prompt": "In the lecture's model, what does ROM contain?", "answer": "y", "status": "active"},
+                 {"id": "c", "prompt": "What does ROM contain?", "answer": "z", "status": "active"}]
+        errors = quality_errors(cards)
+        self.assertTrue(any(e.startswith("a:") for e in errors))
+        self.assertTrue(any(e.startswith("b:") for e in errors))
+        self.assertFalse(any(e.startswith("c:") for e in errors))

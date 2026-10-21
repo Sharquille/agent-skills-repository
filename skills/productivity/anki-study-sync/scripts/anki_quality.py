@@ -14,6 +14,10 @@ DEICTIC_PROMPT = re.compile(
     r"from the (?:note|section|chapter|lab)"
     r")\b"
 )
+SOURCE_TAG_PROMPT = re.compile(
+    r"(?i)\b(?:module \d+|the lecture(?:'s)?|lecture's|figure \d+[-.]?\d*|fig\. ?\d+|"
+    r"the textbook|the slides?|the deck|[A-Z]{2,3}-\d{3}\b)"
+)
 LAB_NUMBER_PROMPT = re.compile(
     r"(?i)(?:\b\d+\.\d+(?:\.\d+)?\b.{0,40}\b(?:exercise|lab)\b|"
     r"\b(?:exercise|lab)\b.{0,40}\b\d+\.\d+(?:\.\d+)?\b)"
@@ -42,6 +46,11 @@ def quality_errors(cards: Sequence[object]) -> list[str]:
                 errors.append(
                     f"{card_id}: prompt depends on section or course context; "
                     "name the retrieval target so the card stands alone in mixed review"
+                )
+            if SOURCE_TAG_PROMPT.search(prompt):
+                errors.append(
+                    f"{card_id}: prompt names where the idea was taught (module, lecture, "
+                    "figure, slides, or course code); ask about the idea itself"
                 )
             if LAB_NUMBER_PROMPT.search(prompt):
                 errors.append(

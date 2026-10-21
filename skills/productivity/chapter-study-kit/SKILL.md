@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.18.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.18.1**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -404,8 +404,10 @@ Core topic as an active or deliberately retired objective), `"light"` (writing
 and presentation courses: a short fundamentals deck per chapter), or `"none"`.
 Before the handoff, run `anki-study-sync`'s lint with `--strict-overlap` over
 the whole course: a new chapter's cards must not repeat a term or method an
-earlier chapter already carded. Keep one card per idea, at most two per Core
-topic, with acronyms folded into concept cards and no trivia.
+earlier chapter already carded, then read `subject_report.py` for same-meaning
+repeats the word check misses. Keep one card per idea, at most two per Core
+topic, with acronyms folded into concept cards, no trivia, and no front that
+names its module, lecture, or figure.
 
 ```text
 Chapter-Kits/            # one folder per course; do not mix EN-221 into MA-235

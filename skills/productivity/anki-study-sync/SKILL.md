@@ -271,6 +271,18 @@ scripts/lint_anki_quality.py --vault <VAULT_PATH> --strict-overlap
 Resolve each hit by keeping one card (fold the other's detail into it) or, for
 a deliberate pair, tag both cards `overlap-ok`.
 
+Word overlap misses two cards that ask the same thing in different words
+("What does an IP address identify?" and "What does an IP address support?").
+Before the handoff, also read the subject report and keep one card per subject
+unless the cards test different facets (what X is vs when to use X):
+
+```text
+scripts/subject_report.py --vault <VAULT_PATH>
+```
+
+The build rejects a front that names where the idea was taught ("Module 6",
+"the lecture's model", "Figure 6-28", a course code): ask about the idea.
+
 ## Practice handoff
 
 When whisper-reading is preferred, give this routine once in the handoff,
