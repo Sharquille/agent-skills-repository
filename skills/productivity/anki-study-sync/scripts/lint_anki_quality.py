@@ -8,12 +8,17 @@ import json
 import sys
 from pathlib import Path
 
-from anki_quality import leak_warnings, quality_errors
+from anki_quality import leak_warnings, overlap_warnings, quality_errors
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vault", type=Path, required=True)
+    parser.add_argument(
+        "--strict-overlap",
+        action="store_true",
+        help="Fail when any course-wide overlap warning remains (use before a deck handoff)",
+    )
     parser.add_argument(
         "--manifest",
         type=Path,
@@ -46,6 +51,7 @@ def main() -> int:
             return 1
         paths = sorted(handoff.glob("*.json"))
     failed = 0
+    decks: dict[str, list[object]] = {}
     for path in paths:
         try:
             if not path.is_relative_to(handoff):
@@ -53,6 +59,7 @@ def main() -> int:
                 failed += 1
                 continue
             cards = load_cards(path)
+            decks[path.name] = cards
             findings = quality_errors(cards)
             for warning in leak_warnings(cards):
                 print(f"warning: {path.name}: {warning}", file=sys.stderr)
@@ -65,6 +72,12 @@ def main() -> int:
             print(f"ERROR: {path.name}", file=sys.stderr)
             for finding in findings:
                 print(f"  {finding}", file=sys.stderr)
+    overlaps = overlap_warnings(decks)
+    for warning in overlaps:
+        print(f"warning: {warning}", file=sys.stderr)
+    if overlaps and args.strict_overlap:
+        print(f"ERROR: {len(overlaps)} course-wide overlap warning(s) remain", file=sys.stderr)
+        failed += 1
     if failed:
         return 1
     print(f"OK: {len(paths)} Anki manifest(s) passed mixed-review checks")

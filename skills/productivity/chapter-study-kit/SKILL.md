@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.17.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.18.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -402,6 +402,10 @@ ready section's Core topics are missing from `<course>/_study/anki/*-chNN.json`.
 `hub.json` `"anki"` sets the depth: `"full"` (default, tested courses: every
 Core topic as an active or deliberately retired objective), `"light"` (writing
 and presentation courses: a short fundamentals deck per chapter), or `"none"`.
+Before the handoff, run `anki-study-sync`'s lint with `--strict-overlap` over
+the whole course: a new chapter's cards must not repeat a term or method an
+earlier chapter already carded. Keep one card per idea, at most two per Core
+topic, with acronyms folded into concept cards and no trivia.
 
 ```text
 Chapter-Kits/            # one folder per course; do not mix EN-221 into MA-235

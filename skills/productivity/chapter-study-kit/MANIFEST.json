@@ -1,6 +1,6 @@
 {
   "files": {
-    "SKILL.md": "4be3af7f6b889eb67f01a188ea6a3f7554107bf9ac7cde5a2ebd8bf499ff0032",
+    "SKILL.md": "4784cc51cdfc49329f9063321a4ff308b22f8d20f488216718962b4f939b4067",
     "references/consult-panel.md": "5b7fcdf21baf26022751e3455a97ef5ae7b761bde6ce28896c2baf155bbbe8c2",
     "references/course-profiles.md": "41de7409ad543387bc96688c828b0798d12b15b0f72c151e2116105db08af2d5",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
@@ -21,8 +21,8 @@
     "scripts/review_brief.py": "2c76127f441ae5e64702a9243c48c44809c6926a46e2afe9d457071e8fb4bbcc",
     "scripts/svg_figure.py": "958af25c274b5529b67339d99a5d61c7430318c91dd4856654bf600a9d8a8962",
     "scripts/sync_skill.py": "aa42424eb86465910f93f23f62df191fd651a0657edf0768629538d379134a61",
-    "scripts/validate_kit.py": "9d3f5a8939497d6fe2c971d5739ac41fc01ac8514aeff42dbcb7bb91b71d3974",
-    "tests/test_kit.py": "02e10aa1a1448ef30bf7150f18ef9c9fb6ff7a0f3fc395a47d0be1791272b23b"
+    "scripts/validate_kit.py": "fdae1c233fc52a5de76c0152812d856a1bf63f276737092dca63d09212633574",
+    "tests/test_kit.py": "9d6b19f791fd9b1153024cb0f192b7e5685352f2eafff8380b237390797dd316"
   },
-  "version": "2.17.0"
+  "version": "2.18.0"
 }

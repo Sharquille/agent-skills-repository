@@ -35,3 +35,41 @@ class LeakTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OverlapTests(unittest.TestCase):
+    def card(self, cid, prompt, answer, tags=None):
+        return {"id": cid, "prompt": prompt, "answer": answer, "status": "active", "tags": tags or []}
+
+    def test_same_term_across_decks(self):
+        from anki_quality import overlap_warnings
+        w = overlap_warnings({
+            "ch04.json": [self.card("a", "What is fair use?", "Limited use without permission.")],
+            "ch05.json": [self.card("b", "What is the fair use?", "Use of copyrighted work for review.")],
+        })
+        self.assertEqual(len(w), 1)
+        self.assertIn("both define 'fair use'", w[0])
+
+    def test_acronym_card_redundant_with_concept_card(self):
+        from anki_quality import overlap_warnings
+        w = overlap_warnings({"ch03.json": [
+            self.card("a", "What does DNS stand for?", "Domain Name System."),
+            self.card("b", "How does DNS find a server?", "It resolves a name to an IP address."),
+        ]})
+        self.assertTrue(any("DNS expansion card" in x for x in w))
+
+    def test_contrast_pair_tagged_ok_is_silent(self):
+        from anki_quality import overlap_warnings
+        w = overlap_warnings({"ch04.json": [
+            self.card("a", "What does the GET HTTP method do?", "Requests data from a source.", ["overlap-ok"]),
+            self.card("b", "What does the GET HTTP method do in a form?", "Requests data from a source.", ["overlap-ok"]),
+        ]})
+        self.assertEqual(w, [])
+
+    def test_distinct_cards_pass(self):
+        from anki_quality import overlap_warnings
+        w = overlap_warnings({"ch03.json": [
+            self.card("a", "What is latency?", "Delay: how long data takes to travel."),
+            self.card("b", "What is jitter?", "Variation in packet delay."),
+        ]})
+        self.assertEqual(w, [])

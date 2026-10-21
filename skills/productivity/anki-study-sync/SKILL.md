@@ -206,10 +206,17 @@ the same card.
 
 ### Retrieval and coverage
 
-- Cover each objective broadly enough for recall practice: normally a core
-  concept card, a condition or contrast card, and an example cue when the note
-  supports them. Add more only for genuinely distinct retrieval targets; never
-  pad a chapter to a fixed quota.
+- Cover each objective lean: at most two cards per Core topic, normally the
+  concept and one condition, contrast, or method card. A third only when the
+  objective itself names three separate terms. Never pad a chapter to a quota.
+- One card per idea across the whole course, not just the chapter. Before
+  adding a card, check the earlier chapters' manifests for the same term or
+  method; the overlap sweep below flags repeats.
+- Fold an acronym into its concept card ("What does VoIP (Voice over IP)
+  use…?") instead of a separate "What does X stand for?" card.
+- Skip trivia: brand and product lists, history and dates, storage capacities,
+  interface steps (keys, menus, clicks), and care tips. Merge sibling facts
+  (GET and POST, AND/OR/NOT) into one card.
 - One retrieval target per card.
 - Name that target on the front. Do not use "this section", "this chapter",
   "this course", "listed in", or a numbered lab/exercise as the cue.
@@ -250,6 +257,19 @@ is word matching, so treat each warning as a candidate: reword a real leak and
 bump `revision`; tag a reviewed false alarm `leak-ok`. Choice and multi-part
 fronts are skipped, so a synonym-pair leak ("control or regulate") still needs
 the Sol review.
+
+The sweep also compares every active card against every other card in the
+course, across all chapter manifests, and prints `warning: overlap:` when two
+cards define the same term, when an acronym card repeats a card that already
+uses the acronym, or when two cards share most of their content words. Before
+a deck handoff run it strict, so a new chapter can't repeat an earlier one:
+
+```text
+scripts/lint_anki_quality.py --vault <VAULT_PATH> --strict-overlap
+```
+
+Resolve each hit by keeping one card (fold the other's detail into it) or, for
+a deliberate pair, tag both cards `overlap-ok`.
 
 ## Practice handoff
 

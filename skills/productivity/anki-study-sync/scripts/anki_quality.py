@@ -138,3 +138,70 @@ def leak_warnings(cards: Sequence[object]) -> list[str]:
             warnings.append(f"{card_id}: front may give away the answer ({term!r}); "
                             "reword it, or tag leak-ok after review")
     return warnings
+
+
+# Course-wide overlap: one card per idea across every chapter manifest. Advisory, like
+# leak warnings: word matching can't judge meaning, so each hit is a candidate to merge,
+# retire, or tag "overlap-ok" after review (a deliberate contrast pair such as GET vs POST).
+_DEFINE = re.compile(
+    r"(?i)^\s*(?:in [^,?]+, )?what (?:is|are|was|were) (?:an? |the )?(?P<term>[^?]{2,60}?)\??\s*$"
+    r"|^\s*what does (?:an? |the )?(?P<term2>[^?]{1,40}?) (?:stand for|do|mean|measure|identify|describe|hold)\b"
+)
+_ACRONYM = re.compile(r"(?i)^\s*what does (?:an? |the )?(?P<acr>[A-Z][A-Za-z0-9]{1,7}) stand for\??\s*$")
+_OVERLAP_STOP = _LEAK_STOP | {
+    "what", "which", "how", "does", "do", "why", "when", "where", "who", "can", "you", "your",
+    "that", "this", "these", "be", "has", "have", "one", "two", "three", "four", "five", "name",
+    "use", "used", "using", "than", "more", "most", "less", "each", "any", "other", "instead",
+}
+OVERLAP_SIMILARITY = 0.75
+
+
+def _term_key(term: str) -> str:
+    words = [w for w in _WORD.findall(term.lower()) if w not in _LEAK_STOP]
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w for w in words)
+
+
+def _content(text: str) -> set[str]:
+    return {_stem(w) for w in _WORD.findall(text.lower()) if w not in _OVERLAP_STOP and len(w) > 2}
+
+
+def overlap_warnings(decks: Mapping[str, Sequence[object]]) -> list[str]:
+    """Pairs of active cards, in one manifest or across manifests, that likely test the same idea."""
+    cards = []
+    for deck, rows in decks.items():
+        for index, raw in enumerate(rows):
+            if not isinstance(raw, Mapping) or str(raw.get("status") or "").strip() != "active":
+                continue
+            prompt, answer = raw.get("prompt"), raw.get("answer")
+            if not isinstance(prompt, str) or not isinstance(answer, str):
+                continue
+            tags = raw.get("tags") if isinstance(raw.get("tags"), list) else []
+            m = _DEFINE.search(prompt)
+            term = _term_key((m.group("term") or m.group("term2"))) if m else ""
+            acr = _ACRONYM.search(prompt)
+            cards.append({
+                "label": f"{raw.get('id') or f'cards[{index}]'} ({deck})", "prompt": prompt,
+                "answer": answer, "ok": "overlap-ok" in tags, "term": term,
+                "acronym": acr.group("acr") if acr else "", "words": _content(prompt + " " + answer),
+            })
+    warnings: list[str] = []
+    for i, a in enumerate(cards):
+        for b in cards[i + 1:]:
+            if a["ok"] and b["ok"]:
+                continue
+            reason = ""
+            if a["term"] and a["term"] == b["term"]:
+                reason = f"both define {a['term']!r}"
+            else:
+                for x, y in ((a, b), (b, a)):
+                    if x["acronym"] and re.search(rf"\b{re.escape(x['acronym'])}\b", y["prompt"] + " " + y["answer"]):
+                        reason = f"{x['acronym']} expansion card repeats a card that uses {x['acronym']}"
+                        break
+                if not reason and a["words"] and b["words"]:
+                    shared = len(a["words"] & b["words"]) / min(len(a["words"]), len(b["words"]))
+                    if shared >= OVERLAP_SIMILARITY:
+                        reason = f"{shared:.0%} of content words shared"
+            if reason:
+                warnings.append(f"overlap: {a['label']} ~ {b['label']}: {reason}; "
+                                "keep one card, or tag both overlap-ok after review")
+    return warnings
