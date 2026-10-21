@@ -208,7 +208,11 @@ the same card.
 
 - Cover each objective lean: at most two cards per Core topic, normally the
   concept and one condition, contrast, or method card. A third only when the
-  objective itself names three separate terms. Never pad a chapter to a quota.
+  objective itself names three separate terms, or for a formula topic, which
+  may carry the formula, when to use it, and its one documented trap. Never
+  pad a chapter to a quota. In a math deck, cards that look alike but test
+  different decisions (sample vs population formula, left vs right skew) stay
+  and are tagged `overlap-ok`.
 - One card per idea across the whole course, not just the chapter. Before
   adding a card, check the earlier chapters' manifests for the same term or
   method; the overlap sweep below flags repeats.

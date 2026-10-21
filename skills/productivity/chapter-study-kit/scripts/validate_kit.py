@@ -758,6 +758,39 @@ def anki_warnings(kit: Path, folders: list[Path], mode: str) -> list[str]:
     return warnings
 
 
+def deck_quality_warnings(kit: Path, mode: str) -> list[str]:
+    """Course-wide Anki deck hygiene from anki-study-sync: source-tagged fronts and overlaps.
+
+    Keeps "one card per idea" enforced on every kit check, not just remembered: a new
+    chapter's cards must not repeat a term or method an earlier chapter already carded.
+    Skipped with a note when the sibling anki-study-sync scripts aren't installed beside
+    this skill.
+    """
+    anki = kit.parent / "_study" / "anki"
+    if mode == "none" or not anki.is_dir():
+        return []
+    scripts = Path(__file__).resolve().parents[2] / "anki-study-sync" / "scripts"
+    if not (scripts / "anki_quality.py").is_file():
+        return ["Anki deck overlap check skipped: anki-study-sync is not installed beside this skill"]
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("anki_quality", scripts / "anki_quality.py")
+    quality = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(quality)
+    decks, warnings = {}, []
+    for manifest in sorted(anki.glob("*.json")):
+        try:
+            cards = json.loads(manifest.read_text()).get("cards", [])
+        except (OSError, json.JSONDecodeError, AttributeError):
+            continue
+        decks[manifest.name] = cards
+        warnings += [f"Anki {manifest.name}: {e}" for e in quality.quality_errors(cards)]
+    overlaps = quality.overlap_warnings(decks)
+    if overlaps:
+        warnings.append(f"Anki decks: {len(overlaps)} course-wide overlap(s), e.g. {overlaps[0]}; "
+                        "run lint_anki_quality.py --strict-overlap and subject_report.py")
+    return warnings
+
+
 def kit_warnings(kit: Path) -> list[str]:
     """Advisory gaps that do not block a legacy kit from publishing."""
     kit = kit.resolve()
@@ -777,6 +810,7 @@ def kit_warnings(kit: Path) -> list[str]:
     except (OSError, json.JSONDecodeError, AttributeError):
         anki_mode = "full"
     warnings += anki_warnings(kit, section_folders(kit), anki_mode)
+    warnings += deck_quality_warnings(kit, anki_mode)
     for folder in section_folders(kit):
         rel = folder.relative_to(kit).as_posix()
         try:
