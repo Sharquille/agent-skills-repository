@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from anki_quality import leak_warnings, overlap_warnings, quality_errors
+from anki_quality import leak_warnings, official_acronyms, overlap_warnings, quality_errors
 
 
 def parse_args() -> argparse.Namespace:
@@ -72,7 +72,9 @@ def main() -> int:
             print(f"ERROR: {path.name}", file=sys.stderr)
             for finding in findings:
                 print(f"  {finding}", file=sys.stderr)
-    overlaps = overlap_warnings(decks)
+    acronyms_md = vault / "Chapter-Kits" / "acronyms.md"
+    official = official_acronyms(acronyms_md.read_text(encoding="utf-8")) if acronyms_md.is_file() else frozenset()
+    overlaps = overlap_warnings(decks, official)
     for warning in overlaps:
         print(f"warning: {warning}", file=sys.stderr)
     if overlaps and args.strict_overlap:

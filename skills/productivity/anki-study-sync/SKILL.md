@@ -275,6 +275,12 @@ scripts/lint_anki_quality.py --vault <VAULT_PATH> --strict-overlap
 Resolve each hit by keeping one card (fold the other's detail into it) or, for
 a deliberate pair, tag both cards `overlap-ok`.
 
+When the vault has `Chapter-Kits/acronyms.md` (an exam's official acronym
+list, as in a Security+ kit), an expansion card for an acronym on that list is
+tested content, so the sweep doesn't flag it for repeating a concept card; two
+cards that define the same acronym are still flagged. An acronym not on the
+list follows the normal rule: fold its expansion into the concept card.
+
 Word overlap misses two cards that ask the same thing in different words
 ("What does an IP address identify?" and "What does an IP address support?").
 Before the handoff, also read the subject report and keep one card per subject

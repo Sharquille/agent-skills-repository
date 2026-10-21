@@ -85,3 +85,17 @@ class SourceTagTests(unittest.TestCase):
         self.assertTrue(any(e.startswith("a:") for e in errors))
         self.assertTrue(any(e.startswith("b:") for e in errors))
         self.assertFalse(any(e.startswith("c:") for e in errors))
+
+
+class OfficialAcronymTests(unittest.TestCase):
+    def test_official_acronym_card_allowed_but_double_definition_flagged(self):
+        from anki_quality import official_acronyms, overlap_warnings
+        official = official_acronyms("| Acronym | Spelled out |\n| --- | --- |\n| ARP | Address Resolution Protocol |\n")
+        self.assertEqual(official, frozenset({"ARP"}))
+        c = lambda i, p, a: {"id": i, "prompt": p, "answer": a, "status": "active", "tags": []}
+        decks = {"ch05.json": [c("a", "What does ARP stand for?", "Address Resolution Protocol."),
+                               c("b", "How does ARP poisoning work?", "It spoofs MAC-to-IP replies.")]}
+        self.assertEqual(overlap_warnings(decks, official), [])
+        self.assertTrue(overlap_warnings(decks))
+        decks["ch06.json"] = [c("d", "What does ARP stand for?", "Address resolution protocol, for mapping IPs.")]
+        self.assertTrue(any("both define 'arp'" in w for w in overlap_warnings(decks, official)))

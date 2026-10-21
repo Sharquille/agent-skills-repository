@@ -174,8 +174,30 @@ def _content(text: str) -> set[str]:
     return {_stem(w) for w in _WORD.findall(text.lower()) if w not in _OVERLAP_STOP and len(w) > 2}
 
 
-def overlap_warnings(decks: Mapping[str, Sequence[object]]) -> list[str]:
-    """Pairs of active cards, in one manifest or across manifests, that likely test the same idea."""
+def official_acronyms(text: str) -> frozenset[str]:
+    """Acronyms from a kit's acronyms.md table (first column), e.g. an exam's official list."""
+    found, in_body = set(), False
+    for line in text.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if not line.lstrip().startswith("|"):
+            in_body = False
+            continue
+        if re.fullmatch(r"[\s|:-]+", line):
+            in_body = True  # the divider: rows above it are the header
+            continue
+        if in_body and cells and re.fullmatch(r"[A-Z][A-Za-z0-9&/.-]{1,14}", cells[0]):
+            found.add(cells[0])
+            found.update(part for part in cells[0].split("/") if len(part) > 1)
+    return frozenset(found)
+
+
+def overlap_warnings(decks: Mapping[str, Sequence[object]], official: frozenset[str] = frozenset()) -> list[str]:
+    """Pairs of active cards, in one manifest or across manifests, that likely test the same idea.
+
+    An expansion card ("What does ARP stand for?") for an acronym on an official list is
+    tested content in its own right, so it is not flagged for repeating a concept card;
+    two cards that both define the same acronym still are.
+    """
     cards = []
     for deck, rows in decks.items():
         for index, raw in enumerate(rows):
@@ -203,7 +225,7 @@ def overlap_warnings(decks: Mapping[str, Sequence[object]]) -> list[str]:
                 reason = f"both define {a['term']!r}"
             else:
                 for x, y in ((a, b), (b, a)):
-                    if x["acronym"] and re.search(rf"\b{re.escape(x['acronym'])}\b", y["prompt"] + " " + y["answer"]):
+                    if x["acronym"] and x["acronym"].upper() not in {o.upper() for o in official} and re.search(rf"\b{re.escape(x['acronym'])}\b", y["prompt"] + " " + y["answer"]):
                         reason = f"{x['acronym']} expansion card repeats a card that uses {x['acronym']}"
                         break
                 if not reason and a["words"] and b["words"]:

@@ -784,7 +784,9 @@ def deck_quality_warnings(kit: Path, mode: str) -> list[str]:
             continue
         decks[manifest.name] = cards
         warnings += [f"Anki {manifest.name}: {e}" for e in quality.quality_errors(cards)]
-    overlaps = quality.overlap_warnings(decks)
+    acronyms_md = kit / "acronyms.md"
+    official = quality.official_acronyms(acronyms_md.read_text()) if acronyms_md.is_file() else frozenset()
+    overlaps = quality.overlap_warnings(decks, official)
     if overlaps:
         warnings.append(f"Anki decks: {len(overlaps)} course-wide overlap(s), e.g. {overlaps[0]}; "
                         "run lint_anki_quality.py --strict-overlap and subject_report.py")
