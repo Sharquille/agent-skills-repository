@@ -16,7 +16,7 @@ from anki_quality import quality_errors
 
 
 ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
-CARD_TYPES = {"basic", "typed", "mcq"}
+CARD_TYPES = {"basic", "typed", "mcq", "calc"}
 CARD_STATUSES = {"active", "retired"}
 CARD_FIELDS = {
     "id",
@@ -34,6 +34,24 @@ CARD_FIELDS = {
 MCQ_NOTETYPE = "Study MCQ"
 MCQ_CHOICES = 4
 NOT_A_CHOICE = re.compile(r"(?i)\b(all|none|both|neither) of the (above|options|choices)\b")
+
+# Calculation cards (assets/study-calc/calc.js solves them; keep these kinds in step with
+# its KINDS table). Each kind lists the placeholders its prompt must use and its default
+# range for r, where a negative bound counts back from n.
+CALC_NOTETYPE = "Study Calc"
+CALC_KINDS: dict[str, tuple[frozenset[str], tuple[int, int] | None]] = {
+    "binom-order": (frozenset({"seq"}), None),
+    "binom-count": (frozenset({"n", "r"}), (1, -1)),
+    "binom-exact": (frozenset({"n", "r"}), (1, -1)),
+    "binom-atmost": (frozenset({"n", "r"}), (1, -2)),
+    "binom-atleast": (frozenset({"n", "r"}), (2, -1)),
+    "binom-atleast1": (frozenset({"n"}), None),
+    "binom-mean": (frozenset({"n"}), None),
+    "binom-sd": (frozenset({"n"}), None),
+}
+CALC_PLACEHOLDERS = {"n", "p", "q", "r", "pct", "inv", "seq"}
+PLACEHOLDER = re.compile(r"\{([a-z]+)\}")
+NON_BASIC = {"mcq", "calc"}
 
 
 class ManifestError(RuntimeError):
@@ -177,7 +195,8 @@ def load_manifest(path: Path) -> dict[str, object]:
 
 def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
     label = f"cards[{index}]"
-    expected = CARD_FIELDS | ({"choices"} if isinstance(raw, dict) and raw.get("type") == "mcq" else set())
+    extra = {"mcq": {"choices"}, "calc": {"kind", "params"}}
+    expected = CARD_FIELDS | (extra.get(raw.get("type"), set()) if isinstance(raw, dict) else set())
     if not isinstance(raw, dict) or set(raw) != expected:
         raise ManifestError(
             f"{label} fields must be exactly: {', '.join(sorted(expected))}"
@@ -189,7 +208,7 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
         )
     card_type = scalar(raw["type"], f"{label}.type")
     if card_type not in CARD_TYPES:
-        raise ManifestError(f"{label}.type must be basic, typed, or mcq")
+        raise ManifestError(f"{label}.type must be basic, typed, mcq, or calc")
     status = scalar(raw["status"], f"{label}.status")
     if status not in CARD_STATUSES:
         raise ManifestError(f"{label}.status must be active or retired")
@@ -219,8 +238,13 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
             raise ManifestError(f"{label}.choices must not use all/none/both of the above; write a real alternative")
         if choices[0].lower() in html_field(raw["prompt"], f"{label}.prompt").lower():
             raise ManifestError(f"{label}: the question gives away the correct option ({raw_choices[0]!r})")
+    kind, params = "", ""
+    if card_type == "calc":
+        kind, params = validate_calc(raw, label)
     return {
         "choices": choices,
+        "kind": kind,
+        "params": params,
         "id": card_id,
         "objective": html_field(raw["objective"], f"{label}.objective"),
         "type": card_type,
@@ -233,6 +257,53 @@ def validate_card(raw: object, index: int, vault: Path) -> dict[str, object]:
     }
 
 
+def _int_pair(value: object, label: str) -> tuple[int, int]:
+    if (not isinstance(value, list) or len(value) != 2
+            or any(not isinstance(x, int) or isinstance(x, bool) for x in value)):
+        raise ManifestError(f"{label} must be a [low, high] pair of whole numbers")
+    return value[0], value[1]
+
+
+def validate_calc(raw: dict, label: str) -> tuple[str, str]:
+    """Check a calc card's kind, params, and prompt placeholders; return (kind, params JSON)."""
+    kind = scalar(raw["kind"], f"{label}.kind")
+    if kind not in CALC_KINDS:
+        raise ManifestError(f"{label}.kind must be one of: {', '.join(sorted(CALC_KINDS))}")
+    needed, default_r = CALC_KINDS[kind]
+    params = raw["params"]
+    if not isinstance(params, dict) or not set(params) <= {"n", "p", "r", "labels"} or "n" not in params:
+        raise ManifestError(f"{label}.params must have n, plus optional p, r, labels")
+    lo_n, hi_n = _int_pair(params["n"], f"{label}.params.n")
+    # P(r) kinds stay within the binomial table (n <= 20); a mean or SD has no table to match.
+    top = 200 if kind in {"binom-mean", "binom-sd"} else 20
+    if not 2 <= lo_n <= hi_n <= top:
+        raise ManifestError(f"{label}.params.n must satisfy 2 <= low <= high <= {top}")
+    probs = params.get("p", [0.5])
+    if (not isinstance(probs, list) or not probs
+            or any(not isinstance(x, (int, float)) or isinstance(x, bool) or not 0 < x < 1 for x in probs)):
+        raise ManifestError(f"{label}.params.p must be a list of probabilities strictly between 0 and 1")
+    spec = params.get("r", default_r)
+    if "r" in params:
+        spec = _int_pair(params["r"], f"{label}.params.r")
+    if spec is not None:
+        for n in (lo_n, hi_n):
+            lo, hi = (b if b >= 0 else n + b for b in spec)
+            if not 0 <= lo <= hi <= n:
+                raise ManifestError(f"{label}.params.r gives an empty or out-of-range r for n = {n}")
+    if kind == "binom-order":
+        names = params.get("labels")
+        if not isinstance(names, list) or len(names) != 2 or any(not isinstance(x, str) or not x.strip() for x in names):
+            raise ManifestError(f"{label}.params.labels must name the success and the failure, such as [\"right\", \"wrong\"]")
+    used = set(PLACEHOLDER.findall(str(raw["prompt"])))
+    if used - CALC_PLACEHOLDERS:
+        raise ManifestError(f"{label}.prompt uses unknown placeholders: {', '.join(sorted(used - CALC_PLACEHOLDERS))}")
+    if needed - used:
+        raise ManifestError(f"{label}.prompt must show {', '.join('{' + x + '}' for x in sorted(needed - used))}")
+    if kind != "binom-count" and not used & {"p", "pct", "inv"}:
+        raise ManifestError(f"{label}.prompt must give the probability as {{p}}, {{pct}}, or {{inv}}")
+    return kind, html.escape(json.dumps(params, separators=(",", ":"), sort_keys=True))
+
+
 def mcq_position(card_id: str) -> int:
     """Where the correct option is stored (stable per card); the card shuffles on screen anyway."""
     return sum(card_id.encode()) % MCQ_CHOICES
@@ -241,15 +312,13 @@ def mcq_position(card_id: str) -> int:
 def render_quiz(data: dict[str, object], cards: list[dict[str, object]]) -> str | None:
     """Multiple-choice cards as a Study MCQ import.
 
-    A quiz-only deck (no Basic cards at all) is the chapter deck itself; a mixed deck
-    keeps its quiz cards in a ::Quiz subdeck so the two note types stay apart.
+    A deck with no Basic cards at all is the chapter deck itself; a mixed deck keeps its
+    quiz and calc cards in a ::Quiz subdeck so the note types stay apart.
     """
     quiz = [card for card in cards if card["type"] == "mcq"]
     if not quiz:
         return None
-    deck = scalar(data["deck"], "deck")
-    if any(card["type"] != "mcq" for card in cards):
-        deck = f"{deck}::Quiz"
+    deck = practice_deck(data, cards)
     chapter_id = scalar(data["chapter_id"], "chapter_id")
     lines = [
         "#separator:tab",
@@ -274,13 +343,42 @@ def render_quiz(data: dict[str, object], cards: list[dict[str, object]]) -> str 
     return "\n".join(lines) + "\n"
 
 
+def practice_deck(data: dict[str, object], cards: list[dict[str, object]]) -> str:
+    deck = scalar(data["deck"], "deck")
+    return f"{deck}::Quiz" if any(card["type"] not in NON_BASIC for card in cards) else deck
+
+
+def render_calc(data: dict[str, object], cards: list[dict[str, object]]) -> str | None:
+    """Calculation cards as a Study Calc import, in the same deck as the quiz cards."""
+    calc = [card for card in cards if card["type"] == "calc"]
+    if not calc:
+        return None
+    chapter_id = scalar(data["chapter_id"], "chapter_id")
+    lines = [
+        "#separator:tab",
+        "#html:true",
+        f"#deck:{practice_deck(data, cards)}",
+        f"#notetype:{CALC_NOTETYPE}",
+        f"#tags:study-loop::chapter::{chapter_id}",
+        "#columns:Prompt\tKind\tParams\tMethod\tSource\tGUID\tTags",
+        "#guid column:6",
+        "#tags column:7",
+    ]
+    for card in sorted(calc, key=lambda item: str(item["id"])):
+        tags = set(card["tags"]) | {"study-loop::calc", f"study-loop::revision::{card['revision']}",
+                                    f"study-loop::status::{card['status']}"}
+        lines.append("\t".join((str(card["prompt"]), str(card["kind"]), str(card["params"]), str(card["answer"]),
+                                 str(card["objective"]), str(card["id"]), " ".join(sorted(tags)))))
+    return "\n".join(lines) + "\n"
+
+
 def render(data: dict[str, object], vault: Path) -> str:
-    basic, quiz = render_all(data, vault)
-    return basic if basic is not None else quiz or ""
+    basic, quiz, calc = render_all(data, vault)
+    return basic if basic is not None else quiz or calc or ""
 
 
-def render_all(data: dict[str, object], vault: Path) -> tuple[str, str | None]:
-    """The Basic import and, when the manifest has mcq cards, the Study MCQ quiz import."""
+def render_all(data: dict[str, object], vault: Path) -> tuple[str | None, str | None, str | None]:
+    """The Basic, Study MCQ, and Study Calc imports; each is None when it has no cards."""
     quality = quality_errors(data["cards"])
     if quality:
         raise ManifestError("mixed-review quality: " + "; ".join(quality))
@@ -333,7 +431,7 @@ def render_all(data: dict[str, object], vault: Path) -> tuple[str, str | None]:
         "#tags column:4",
     ]
     for card in sorted(cards, key=lambda item: str(item["id"])):
-        if card["type"] == "mcq":
+        if card["type"] in NON_BASIC:
             continue
         card_tags = set(card["tags"])
         card_tags.add(f"study-loop::{card['type']}")
@@ -354,8 +452,8 @@ def render_all(data: dict[str, object], vault: Path) -> tuple[str, str | None]:
                 )
             )
         )
-    basic = "\n".join(lines) + "\n" if any(card["type"] != "mcq" for card in cards) else None
-    return basic, render_quiz(data, cards)
+    basic = "\n".join(lines) + "\n" if any(card["type"] not in NON_BASIC for card in cards) else None
+    return basic, render_quiz(data, cards), render_calc(data, cards)
 
 
 def atomic_write(path: Path, content: str) -> None:
@@ -384,9 +482,9 @@ def main() -> int:
             raise ManifestError(
                 "manifest must be inside the vault's _study/anki directory"
             )
-        content, quiz = render_all(load_manifest(manifest), vault)
+        content, quiz, calc = render_all(load_manifest(manifest), vault)
         if args.output is None:
-            sys.stdout.write("\n".join(part for part in (content, quiz) if part))
+            sys.stdout.write("\n".join(part for part in (content, quiz, calc) if part))
         else:
             output = args.output.expanduser().resolve()
             if not output.is_relative_to(handoff_root):
@@ -399,6 +497,8 @@ def main() -> int:
                 print(f"note: {output.name} is stale (this deck is quiz-only now); delete it", file=sys.stderr)
             if quiz:
                 atomic_write(output.with_name(output.stem + "-quiz.tsv"), quiz)
+            if calc:
+                atomic_write(output.with_name(output.stem + "-calc.tsv"), calc)
     except ManifestError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

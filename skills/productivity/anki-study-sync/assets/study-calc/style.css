@@ -1,0 +1,41 @@
+.card { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 19px; line-height: 1.45;
+        color: #1F2933; background: #FFFFFF; text-align: left; padding: 6px 4px; }
+.calc-q { font-weight: 600; margin: 4px 0 6px; }
+.calc-round { font-size: 15px; color: #5B6B7A; margin-bottom: 12px; }
+.calc-in { width: 100%; box-sizing: border-box; font-size: 22px; padding: 10px 14px; border: 2px solid #C9D3DD;
+           border-radius: 12px; background: #F8FAFC; color: inherit; font-variant-numeric: tabular-nums; }
+.calc-in:focus { outline: none; border-color: #1F3A5F; background: #EEF3F8; }
+.calc-hint { margin-top: 14px; font-size: 14px; color: #5B6B7A; }
+.calc-yours { font-size: 15px; color: #5B6B7A; margin-bottom: 6px; }
+.calc-verdict { font-weight: 700; padding: 10px 14px; border-radius: 10px; border: 2px solid #C9D3DD; }
+.calc-verdict.ok { color: #2E7D4F; border-color: #2E7D4F; background: #E7F4EC; }
+.calc-verdict.no { color: #B3261E; border-color: #B3261E; background: #FBEAEA; }
+.calc-verdict.none { color: #5B6B7A; }
+.calc-steps { margin-top: 16px; padding: 12px 14px; border-left: 4px solid #1F3A5F; background: #F5F8FB; border-radius: 6px; }
+.calc-steps-h { font-weight: 700; margin-bottom: 4px; }
+.calc-steps ol { margin: 0; padding-left: 1.3em; }
+.calc-steps li { margin: 4px 0; }
+.calc-steps code { font-size: 15px; background: #E6ECF2; padding: 1px 5px; border-radius: 4px; }
+.calc-how { margin-top: 16px; padding: 12px 14px; border-left: 4px solid #B7791F; background: #FDF8EE; border-radius: 6px; }
+.calc-how > div { margin: 3px 0; }
+.calc-how-h { font-weight: 700; margin-bottom: 4px; }
+.calc-rows { margin: 6px 0 2px; font-size: 16px; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.calc-final { font-weight: 700; margin-top: 8px; }
+.calc-table { border-collapse: collapse; margin: 8px 0 4px; font-size: 16px; font-variant-numeric: tabular-nums; }
+.calc-table th, .calc-table td { padding: 2px 12px; border-bottom: 1px solid #D5DDE5; text-align: left; }
+.calc-table tr.keep td { background: #E7F4EC; }
+.calc-table tr.drop td { color: #8A97A5; }
+.calc-table tr.total td { font-weight: 700; border-bottom: none; }
+.calc-why { margin-top: 16px; padding: 12px 14px; border-left: 4px solid #6FA98A; background: #F3FAF6; border-radius: 6px; }
+.calc-src-note { margin-top: 10px; font-size: 12px; color: #8A97A5; }
+.nightMode .card, .night_mode .card, .card.nightMode { color: #E6EDF3; background: #1E2328; }
+.nightMode .calc-in, .night_mode .calc-in { background: #262C33; border-color: #3B4550; }
+.nightMode .calc-in:focus, .night_mode .calc-in:focus { border-color: #9CC3F0; background: #22344A; }
+.nightMode .calc-verdict.ok, .night_mode .calc-verdict.ok { color: #6FCF97; border-color: #6FCF97; background: #1E3A2A; }
+.nightMode .calc-verdict.no, .night_mode .calc-verdict.no { color: #F28B82; border-color: #F28B82; background: #3D2222; }
+.nightMode .calc-steps, .night_mode .calc-steps { background: #222B34; border-color: #9CC3F0; }
+.nightMode .calc-steps code, .night_mode .calc-steps code { background: #2F3A45; }
+.nightMode .calc-table th, .nightMode .calc-table td, .night_mode .calc-table th, .night_mode .calc-table td { border-color: #3B4550; }
+.nightMode .calc-table tr.keep td, .night_mode .calc-table tr.keep td { background: #1E3A2A; }
+.nightMode .calc-why, .night_mode .calc-why { background: #1F2D25; }
+.nightMode .calc-how, .night_mode .calc-how { background: #2E2818; border-color: #E0B15A; }

@@ -140,6 +140,8 @@ def leak_warnings(cards: Sequence[object]) -> list[str]:
         tags = raw.get("tags") if isinstance(raw.get("tags"), list) else []
         prompt, answer = raw.get("prompt"), raw.get("answer")
         choices = raw.get("choices")
+        if raw.get("type") == "calc":
+            continue  # the answer is computed per review; "answer" holds the method line
         if raw.get("type") == "mcq" and isinstance(choices, list) and choices:
             answer = choices[0]  # the correct option, not the explanation
         if "leak-ok" in tags or not isinstance(prompt, str) or not isinstance(answer, str):

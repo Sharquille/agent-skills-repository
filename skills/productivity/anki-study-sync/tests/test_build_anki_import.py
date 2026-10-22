@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import html
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -144,7 +146,7 @@ class BuildAnkiImportTests(unittest.TestCase):
         manifest["cards"][0]["type"] = "image-occlusion"
         result = self.run_script(manifest)
         self.assertEqual(result.returncode, 1)
-        self.assertIn("basic, typed, or mcq", result.stderr)
+        self.assertIn("basic, typed, mcq, or calc", result.stderr)
 
     def test_rejects_missing_source_heading(self) -> None:
         manifest = self.manifest()
@@ -361,3 +363,96 @@ class McqTests(BuildAnkiImportTests):
         quiz = (self.vault / "_study" / "anki" / "chapter-1-quiz.tsv").read_text(encoding="utf-8")
         self.assertIn("#deck:Course::Chapter 1\n", quiz)
 
+
+
+class CalcTests(BuildAnkiImportTests):
+    def calc_manifest(self, **change: object) -> dict[str, object]:
+        manifest = self.manifest()
+        card = {
+            "id": "course.ch1.first.exact.calc",
+            "objective": "First objective",
+            "type": "calc",
+            "kind": "binom-exact",
+            "params": {"n": [5, 9], "p": [0.6, 0.7]},
+            "prompt": "Seeds germinate with probability {p}. You plant {n}. What is the probability that exactly {r} germinate?",
+            "answer": "Exactly r successes: P(r) = C(n,r) p^r q^(n-r).",
+            "source": "Notes/Chapter 1.md#First",
+            "revision": 1,
+            "status": "active",
+            "tags": ["course"],
+        }
+        card.update(change)
+        manifest["cards"].append(card)
+        return manifest
+
+    def build(self, manifest: dict[str, object]) -> subprocess.CompletedProcess[str]:
+        path = self.vault / "_study" / "anki" / "manifest.json"
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+        out = self.vault / "_study" / "anki" / "chapter-1.tsv"
+        return subprocess.run([sys.executable, str(SCRIPT), str(path), "--vault", str(self.vault), "--output", str(out)],
+                              text=True, capture_output=True, check=False)
+
+    def test_calc_goes_to_calc_output(self) -> None:
+        result = self.build(self.calc_manifest())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calc = (self.vault / "_study" / "anki" / "chapter-1-calc.tsv").read_text(encoding="utf-8")
+        self.assertIn("#deck:Course::Chapter 1::Quiz", calc)
+        self.assertIn("#notetype:Study Calc", calc)
+        row = calc.strip().splitlines()[-1].split("\t")
+        self.assertEqual(row[1], "binom-exact")
+        self.assertEqual(json.loads(html.unescape(row[2])), {"n": [5, 9], "p": [0.6, 0.7]})
+        self.assertEqual(row[5], "course.ch1.first.exact.calc")
+        self.assertNotIn("germinate", (self.vault / "_study" / "anki" / "chapter-1.tsv").read_text(encoding="utf-8"))
+
+    def test_rejects_unknown_kind_and_missing_placeholder(self) -> None:
+        self.assertIn("kind must be one of", self.build(self.calc_manifest(kind="normal-z")).stderr)
+        missing_r = self.calc_manifest(prompt="Seeds germinate with probability {p}. You plant {n}. Find P(4).")
+        self.assertIn("must show {r}", self.build(missing_r).stderr)
+        typo = self.calc_manifest(prompt="Probability {p}, {n} seeds, exactly {r}, {k} more.")
+        self.assertIn("unknown placeholders: k", self.build(typo).stderr)
+
+    def test_rejects_r_range_outside_n(self) -> None:
+        bad = self.calc_manifest(params={"n": [3, 9], "p": [0.5], "r": [4, -1]})
+        self.assertIn("out-of-range r for n = 3", self.build(bad).stderr)
+
+    def test_order_needs_labels(self) -> None:
+        card = {"kind": "binom-order", "params": {"n": [3, 4], "p": [0.25]},
+                "prompt": "You guess with {inv} choices each. Probability of {seq}?"}
+        self.assertIn("labels must name", self.build(self.calc_manifest(**card)).stderr)
+
+
+class CalcScriptTests(unittest.TestCase):
+    """The card's own solver (assets/study-calc/calc.js), run under node when it is installed."""
+
+    def run_node(self, code: str) -> str:
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node is not installed")
+        js = Path(__file__).resolve().parents[1] / "assets" / "study-calc" / "calc.js"
+        result = subprocess.run([node, "-e", f"const m = require({json.dumps(str(js))});\n{code}"],
+                                text=True, capture_output=True, check=True)
+        return result.stdout.strip()
+
+    def test_kinds_match_the_builder(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        from build_anki_import import CALC_KINDS
+        kinds = json.loads(self.run_node("console.log(JSON.stringify(Object.keys(m.KINDS)))"))
+        self.assertEqual(sorted(kinds), sorted(CALC_KINDS))
+        how = json.loads(self.run_node("console.log(JSON.stringify(Object.keys(m.HOW)))"))
+        self.assertEqual(sorted(how), sorted(CALC_KINDS))  # every kind explains its formula
+
+    def test_matches_worked_examples(self) -> None:
+        out = json.loads(self.run_node("""
+const v = (n, p, r, x) => Object.assign({n, p, q: m.qOf(p), r, labels: ["right", "wrong"]}, x || {});
+console.log(JSON.stringify([
+  m.KINDS["binom-exact"].solve(v(10, 0.59, 6)).answer,
+  m.KINDS["binom-atmost"].solve(v(6, 0.5, 4)).answer,
+  m.KINDS["binom-atleast"].solve(v(6, 0.7, 2)).answer,
+  m.KINDS["binom-sd"].solve(v(6, 0.7)).answer,
+  m.KINDS["binom-mean"].solve(v(6, 0.7)).answer,
+  m.KINDS["binom-order"].solve(v(3, 0.25, null, {k: 2, seq: "right, right, wrong"})).answer,
+  m.KINDS["binom-count"].solve(v(10, 0.5, 6)).answer,
+  m.KINDS["binom-atleast1"].solve(v(4, 0.1)).answer]));"""))
+        expected = [0.2503, 0.8906, 0.9891, 1.1225, 4.2, 0.046875, 210, 0.3439]
+        for got, want in zip(out, expected):
+            self.assertAlmostEqual(got, want, places=4)

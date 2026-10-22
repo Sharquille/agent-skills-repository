@@ -201,8 +201,64 @@ Authoring rules (the builder rejects the first three):
   style per deck keeps review clear and makes "all cards mature" mean the
   chapter is done. Rebuild such a chapter as a fresh manifest (no retired rows)
   after the learner deletes the old deck in Anki. Math courses are the
-  exception: they pair method-choice mcq cards with calculation cards. The
+  exception: they pair method-choice mcq cards with calc cards (below), and
+  those replace the recall cards for the sections they cover. The
   two-cards-per-topic cap counts mcq cards too.
+
+## Calculation cards
+
+`"type": "calc"` makes a card that draws fresh numbers on every review: the
+learner works the problem, types a number, and the back checks it, names the
+slip when the number matches a common wrong answer, and shows the worked steps
+with that review's numbers. Use it for any section where the test makes you
+produce a number (MA-235 binomial work); pair it with mcq cards for the
+"which method?" decisions.
+
+```json
+{
+  "id": "ma-235.6-2.core-10.seeds.calc",
+  "objective": "6.2 Core 10 · Worked example: tomato seeds (Example 5)",
+  "type": "calc",
+  "kind": "binom-atleast",
+  "params": {"n": [5, 8], "p": [0.6, 0.65, 0.7, 0.75, 0.8]},
+  "prompt": "A hybrid tomato's seeds germinate with probability {p}. A biologist plants {n} seeds. What is the probability that at least {r} germinate?",
+  "answer": "At least m: add P(m) through P(n), or compute 1 − [P(0) + … + P(m − 1)].",
+  "source": "Chapter-Kits/Chapter-06/6.2/MA-235_Ch6.2_Study-Notes.md#10. Worked example: tomato seeds (Example 5)",
+  "revision": 1,
+  "status": "active",
+  "tags": ["ma-235", "ch06"]
+}
+```
+
+- `kind` picks the solver in `assets/study-calc/calc.js`: `binom-order` (one
+  named order, 4 places), `binom-count` (C(n,r), whole number), `binom-exact`,
+  `binom-atmost`, `binom-atleast`, `binom-atleast1` (3 places), `binom-mean`,
+  `binom-sd` (2 places). The card prints the rounding instruction itself.
+- `params`: `n` is a `[low, high]` range (at most 20 for probability kinds, the
+  table's range); `p` lists the probabilities to draw from; optional `r` is a
+  `[low, high]` range where a negative bound counts back from n; `binom-order`
+  also needs `labels`, the success and failure words.
+- `prompt` placeholders: `{n}`, `{p}`, `{q}`, `{r}`, `{pct}` (p as a percent),
+  `{inv}` (1/p, such as the number of answer choices), `{seq}` (the drawn order).
+  The builder rejects unknown placeholders and a prompt missing the ones its
+  kind needs.
+- `answer` is the card's own method line, shown on the back below the kind's
+  "How to solve it" box (formula, when to use it, why it works; `HOW` in
+  calc.js). It is not a number.
+- Range kinds show each kept P(r) worked with the binomial formula, not just a
+  table. A typed number near a slip's value but not equal to it (a slip plus an
+  early-rounded power) gets that slip named with a rounding warning.
+- Keep r near the middle of the distribution so answers aren't near zero, and
+  pick contexts where the four binomial features plainly hold.
+- Range kinds accept a sum built from three-place table values within 0.003,
+  since rounded table entries drift from the formula.
+
+The builder writes calc cards to `<output stem>-calc.tsv` for the **Study Calc**
+note type, in the same deck as the quiz cards. Install the note type once per
+Anki profile from `assets/study-calc-notetype.apkg`
+(`scripts/make_calc_notetype.py` rebuilds it; it inlines `calc.js` into both
+sides). A new kind needs the same entry in `calc.js` KINDS and the builder's
+CALC_KINDS; a test checks they match.
 
 ## Card quality
 
