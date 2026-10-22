@@ -234,7 +234,7 @@ case "${1:-}" in
     [ "${FAKE_MODELS_STATUS:-0}" -eq 0 ] || exit "$FAKE_MODELS_STATUS"
     printf '%s\n' \
       'opencode-go/kimi-k3' \
-      'opencode-go/deepseek-v4-flash' \
+      'opencode-go/deepseek-v4.1-flash' \
       'openrouter/deepseek/deepseek-v4-flash-0731' \
       'openrouter/xiaomi/mimo-v2.5-pro'
     ;;
@@ -400,7 +400,7 @@ selector_log="$TMP_ROOT/selector-calls.log"
 : >"$selector_log"
 selector_dry="$(PATH="$fake_bin:$PATH" CODEX_HOME="$fake_codex_home" FAKE_CALL_LOG="$selector_log" \
   "$selector" implement --dry-run --allow-write --scope allowed --no-plan-gate -- "bounded edit")"
-assert_contains "$selector_dry" "model=opencode-go/deepseek-v4-flash reasoning=max" "dry-run resolves Go DeepSeek/max as worker"
+assert_contains "$selector_dry" "model=opencode-go/deepseek-v4.1-flash reasoning=max" "dry-run resolves Go DeepSeek/max as worker"
 assert_contains "$selector_dry" "model=gpt-5.6-luna reasoning=max" "dry-run resolves Luna/max critic"
 assert_contains "$selector_dry" "model=gpt-5.6-sol reasoning=xhigh" "dry-run resolves Sol/xhigh overview"
 [ ! -s "$selector_log" ] && pass "selector dry-run makes no provider invocation" || fail "selector dry-run invoked a provider"
@@ -493,8 +493,8 @@ PATH="$fake_bin:$PATH" FAKE_CALL_LOG="$selector_log" FAKE_CONFIG_LOG="$config_lo
   "$SCRIPTS_DIR/opencode-implement.sh" --allow-write --cd "$worker_repo" --scope allowed --no-plan-gate --timeout 0 -- "bounded edit" >/dev/null 2>&1 || fail "default DeepSeek worker failed"
 worker_call="$(sed -n '1p' "$selector_log")"
 worker_config="$(sed -n '1p' "$config_log")"
-assert_contains "$worker_call" "--model opencode-go/deepseek-v4-flash" "direct worker defaults to Go DeepSeek V4 Flash"
-assert_contains "$worker_call" "--model opencode-go/deepseek-v4-flash#max" "direct worker selects the Go max reasoning variant"
+assert_contains "$worker_call" "--model opencode-go/deepseek-v4.1-flash" "direct worker defaults to Go DeepSeek V4 Flash"
+assert_contains "$worker_call" "--model opencode-go/deepseek-v4.1-flash#max" "direct worker selects the Go max reasoning variant"
 assert_contains "$worker_call" "run --standalone" "worker runs on a private server so its inline config applies"
 assert_not_contains "$worker_call" "--pure" "worker avoids the flag OpenCode 2 removed"
 assert_not_contains "$worker_call" "--dir" "worker avoids the flag OpenCode 2 removed"

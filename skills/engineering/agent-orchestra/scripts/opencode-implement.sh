@@ -45,7 +45,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 LANE_CODE="${ORCHESTRA_LANE_CODE:-opencode-go/kimi-k3}"
 LANE_REASONING="${ORCHESTRA_LANE_REASONING:-opencode-go/kimi-k3}"
-LANE_CONTEXT="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4-flash}"
+LANE_CONTEXT="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4.1-flash}"
 
 MODEL="${ORCHESTRA_IMPLEMENT_MODEL:-$LANE_CONTEXT}"
 DIR="$PWD"
@@ -157,7 +157,7 @@ REASONING="${REASONING:-$REASONING_DEFAULT}"
 if [ -n "$VARIANT" ] && [ -n "$REASONING" ]; then
   die "choose --reasoning or --variant, not both"
 fi
-if [ -z "$VARIANT" ] && [ "$MODEL" = "opencode-go/deepseek-v4-flash" ]; then
+if [ -z "$VARIANT" ] && [ "$MODEL" = "opencode-go/deepseek-v4.1-flash" ]; then
   case "$REASONING" in
     low|high|max) VARIANT="$REASONING" ;;
     xhigh) VARIANT="max" ;;

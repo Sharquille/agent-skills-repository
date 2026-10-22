@@ -9,7 +9,7 @@ CODEX_WRAPPER="$SCRIPT_DIR/codex-agent.sh"
 OPENCODE_CONSULT="$SCRIPT_DIR/consult-opencode.sh"
 OPENCODE_IMPLEMENT="$SCRIPT_DIR/opencode-implement.sh"
 
-DEFAULT_WORKER_MODEL="${ORCHESTRA_WORKER_MODEL:-opencode-go/deepseek-v4-flash}"
+DEFAULT_WORKER_MODEL="${ORCHESTRA_WORKER_MODEL:-opencode-go/deepseek-v4.1-flash}"
 DEFAULT_WORKER_REASONING="${ORCHESTRA_WORKER_REASONING:-max}"
 DEFAULT_CONSULT_MODEL="${ORCHESTRA_CONSULT_MODEL:-gpt-5.6-sol}"
 DEFAULT_CONSULT_REASONING="${ORCHESTRA_CONSULT_REASONING:-xhigh}"
@@ -75,7 +75,7 @@ normalize_model() {
 
 lane_model() {
   case "$1" in
-    context) printf 'opencode-go/deepseek-v4-flash' ;;
+    context) printf 'opencode-go/deepseek-v4.1-flash' ;;
     code) printf 'opencode-go/kimi-k3' ;;
     reasoning) printf 'opencode-go/kimi-k3' ;;
     prose) printf 'openrouter/xiaomi/mimo-v2.5-pro' ;;
@@ -107,7 +107,7 @@ Codex aliases
   luna  -> gpt-5.6-luna
 
 OpenCode lanes
-  context   -> opencode-go/deepseek-v4-flash
+  context   -> opencode-go/deepseek-v4.1-flash
   fallback  -> openrouter/deepseek/deepseek-v4-flash-0731 (explicit/manual)
   code      -> opencode-go/kimi-k3
   reasoning -> opencode-go/kimi-k3 (task-shape alias)

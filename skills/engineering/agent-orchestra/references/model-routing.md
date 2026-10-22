@@ -15,7 +15,7 @@ user's effective cost and limits, not provider list price.
 | `gpt-5.6-sol` | No | 9 | 9 (prov.) | 5 (prov.) | Codex CLI / selector alias `sol` | **Primary consultant** and default overviewer at `xhigh`: strategic architecture, final engineering overview, and adjudication |
 | `gpt-5.6-terra` | No | 9 | 8 (prov.) | 5 (prov.) | Codex CLI / selector alias `terra` | Available per-call alternate; no default stage |
 | `gpt-5.6-luna` | No | 10 | 7 (prov.) | 4 (prov.) | Codex CLI / selector alias `luna` | **Default supervisor/critiquer** at `max`: independent review of DeepSeek implementation and diffs |
-| `opencode-go/deepseek-v4-flash` | No | 10 | 9 (prov.) | 5 | OpenCode `--lane context` | **Default implementation worker** at `max`; rolling latest Go Flash route for high-volume coding and context work |
+| `opencode-go/deepseek-v4.1-flash` | No | 10 | 9 (prov.) | 5 | OpenCode `--lane context` | **Default implementation worker** at `max`; rolling latest Go Flash route for high-volume coding and context work |
 | `openrouter/deepseek/deepseek-v4-flash-0731` | No | 7 | 9 (vendor eval) | 5 | Explicit OpenCode `--model` | Pinned reproducible fallback when Go is unavailable or provider control is required |
 | `opencode-go/kimi-k3` | No | 8 | 8 (prov.) | 6 | OpenCode `--lane code|reasoning` | **Independent consult specialist** beside Sol for strategic consults; targeted technical checks and hard bounded briefs; not an implementation stage |
 | `xiaomi/mimo-v2.5-pro` | No | 8 | 6 | 7 | OpenCode `--lane prose` | Prose, readability, naming, docs polish, portfolio fit |
@@ -112,7 +112,7 @@ standard lanes (override via `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
   for hard bounded briefs. This direct lane selects only the specialist; the
   unified selector's default consult runs Sol and Kimi independently. Kimi is
   not an automatic fourth implementation stage.
-- `--lane context` → `opencode-go/deepseek-v4-flash`: OpenCode Go's rolling
+- `--lane context` → `opencode-go/deepseek-v4.1-flash`: OpenCode Go's rolling
   latest Flash route for implementation and ~1M-context sweeps. Implementation
   defaults to the `max` provider variant; read-only context consults retain the
   provider default unless reasoning is selected.

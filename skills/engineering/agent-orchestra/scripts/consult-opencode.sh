@@ -6,7 +6,7 @@
 #   --lane LANE         Shortcut for the standard delegation lanes:
 #                         code      -> opencode-go/kimi-k3
 #                         reasoning -> opencode-go/kimi-k3 (task-shape alias)
-#                         context   -> opencode-go/deepseek-v4-flash (~1M ctx)
+#                         context   -> opencode-go/deepseek-v4.1-flash (~1M ctx)
 #                         prose     -> openrouter/xiaomi/mimo-v2.5-pro
 #                       Override per-lane via ORCHESTRA_LANE_CODE / _REASONING /
 #                       _CONTEXT / _PROSE.
@@ -44,7 +44,7 @@ set -uo pipefail
 LANE_CODE="${ORCHESTRA_LANE_CODE:-opencode-go/kimi-k3}"
 LANE_PROSE="${ORCHESTRA_LANE_PROSE:-openrouter/xiaomi/mimo-v2.5-pro}"
 LANE_REASONING="${ORCHESTRA_LANE_REASONING:-opencode-go/kimi-k3}"
-LANE_CONTEXT="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4-flash}"
+LANE_CONTEXT="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4.1-flash}"
 
 MODEL="${OPENCODE_CONSULT_MODEL:-}"
 REASONING=""
@@ -184,7 +184,7 @@ REASONING="${REASONING:-$REASONING_DEFAULT}"
 if [ -n "$VARIANT" ] && [ -n "$REASONING" ]; then
   die "choose --reasoning or --variant, not both"
 fi
-if [ -z "$VARIANT" ] && [ "$MODEL" = "opencode-go/deepseek-v4-flash" ]; then
+if [ -z "$VARIANT" ] && [ "$MODEL" = "opencode-go/deepseek-v4.1-flash" ]; then
   case "$REASONING" in
     low|high|max) VARIANT="$REASONING" ;;
     xhigh) VARIANT="max" ;;

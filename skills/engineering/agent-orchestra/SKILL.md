@@ -271,7 +271,7 @@ Lane defaults (override with `ORCHESTRA_LANE_CODE`, `ORCHESTRA_LANE_REASONING`,
   alone; for normal architecture/design consultation use the unified selector's
   Sol + Kimi panel. Do not add Kimi automatically to the implementation
   pipeline.
-- `context` → `opencode-go/deepseek-v4-flash` — OpenCode Go's rolling latest
+- `context` → `opencode-go/deepseek-v4.1-flash` — OpenCode Go's rolling latest
   Flash route and default implementation worker at `max`; inexpensive and
   suited to ~1M-context sweeps. Read-only context consults do not force an
   effort unless selected. Use the pinned OpenRouter 0731 route explicitly

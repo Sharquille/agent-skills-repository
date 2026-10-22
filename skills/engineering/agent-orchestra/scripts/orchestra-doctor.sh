@@ -85,7 +85,7 @@ codex_cfg="${CODEX_HOME:-$HOME/.codex}/config.toml"
 lane_code="${ORCHESTRA_LANE_CODE:-opencode-go/kimi-k3}"
 lane_prose="${ORCHESTRA_LANE_PROSE:-openrouter/xiaomi/mimo-v2.5-pro}"
 lane_reasoning="${ORCHESTRA_LANE_REASONING:-opencode-go/kimi-k3}"
-lane_context="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4-flash}"
+lane_context="${ORCHESTRA_LANE_CONTEXT:-opencode-go/deepseek-v4.1-flash}"
 
 codex_agents_block() {
   [ -f "$codex_cfg" ] || return 0
