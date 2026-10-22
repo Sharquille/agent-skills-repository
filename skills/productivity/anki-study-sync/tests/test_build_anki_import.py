@@ -435,11 +435,14 @@ class CalcScriptTests(unittest.TestCase):
 
     def test_kinds_match_the_builder(self) -> None:
         sys.path.insert(0, str(SCRIPT.parent))
-        from build_anki_import import CALC_KINDS
+        from build_anki_import import CALC_DATA_KINDS, CALC_KINDS
         kinds = json.loads(self.run_node("console.log(JSON.stringify(Object.keys(m.KINDS)))"))
-        self.assertEqual(sorted(kinds), sorted(CALC_KINDS))
-        how = json.loads(self.run_node("console.log(JSON.stringify(Object.keys(m.HOW)))"))
-        self.assertEqual(sorted(how), sorted(CALC_KINDS))  # every kind explains its formula
+        self.assertEqual(sorted(kinds), sorted(set(CALC_KINDS) | set(CALC_DATA_KINDS)))
+        # every kind explains its formula, for each thing it can ask
+        missing = self.run_node("""
+const asks = [undefined, "s", "s2", "sigma", "q1", "q3", "iqr", "p", "not", "mean", "sd"];
+console.log(Object.keys(m.KINDS).filter(k => asks.some(a => { const h = m.howFor(k, {ask: a}); return !h || h.length !== 3; })).join(","));""")
+        self.assertEqual(missing, "")
 
     def test_matches_worked_examples(self) -> None:
         out = json.loads(self.run_node("""
@@ -456,3 +459,32 @@ console.log(JSON.stringify([
         expected = [0.2503, 0.8906, 0.9891, 1.1225, 4.2, 0.046875, 210, 0.3439]
         for got, want in zip(out, expected):
             self.assertAlmostEqual(got, want, places=4)
+
+
+class DataCalcTests(CalcTests):
+    def test_data_kind_builds(self) -> None:
+        card = {"kind": "sd", "params": {"n": [5, 6], "x": [1, 12], "ask": "s"},
+                "prompt": "A sample of commute times, in minutes: {data}. Find the sample standard deviation."}
+        result = self.build(self.calc_manifest(**card))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calc = (self.vault / "_study" / "anki" / "chapter-1-calc.tsv").read_text(encoding="utf-8")
+        self.assertIn("\tsd\t", calc)
+
+    def test_data_kind_rejects_bad_params(self) -> None:
+        base = {"kind": "sd", "prompt": "Data: {data}. Find s."}
+        self.assertIn("must be one of: s, s2, sigma", self.build(self.calc_manifest(params={"ask": "sd"}, **base)).stderr)
+        self.assertIn("unknown keys: p", self.build(self.calc_manifest(params={"p": [0.5]}, **base)).stderr)
+        self.assertIn("must show {data}", self.build(self.calc_manifest(kind="mean", params={}, prompt="Find the mean.")).stderr)
+
+    def test_data_kinds_solve_worked_examples(self) -> None:
+        out = json.loads(CalcScriptTests.run_node(self, """
+const K = m.KINDS;
+console.log(JSON.stringify([
+  K["sd"].solve({xs: [2, 3, 3, 8, 10, 10], ask: "s2"}).answer,
+  K["dist"].solve({xs: [1, 2, 3, 4, 5], ps: [0.27, 0.31, 0.18, 0.09, 0.15], ask: "sd"}).answer,
+  K["combo"].solve({m1: 2.54, s1: 1.367, m2: 2.54, s2: 1.367, a: 1, b: 1, ask: "sd"}).answer,
+  K["class-width"].solve({lo: 1, hi: 47, k: 6}).answer,
+  K["conditional-table"].solve({rows: ["F", "S"], cols: ["Fe", "M"], cells: [[9, 6], [3, 5]], i: 1, j: 1}).answer,
+  K["quartiles"].solve({xs: [111,131,147,151,151,182,182,190,197,201,209,234,286,294,295,310,319,342,353,377,377,439], ask: "iqr"}).answer]));"""))
+        for got, want in zip(out, [14, 1.3669, 1.9332, 8, 0.625, 137]):
+            self.assertAlmostEqual(got, want, places=3)

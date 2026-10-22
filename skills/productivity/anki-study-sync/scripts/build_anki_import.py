@@ -50,7 +50,41 @@ CALC_KINDS: dict[str, tuple[frozenset[str], tuple[int, int] | None]] = {
     "binom-sd": (frozenset({"n"}), None),
 }
 CALC_PLACEHOLDERS = {"n", "p", "q", "r", "pct", "inv", "seq"}
-PLACEHOLDER = re.compile(r"\{([a-z]+)\}")
+PLACEHOLDER = re.compile(r"\{([a-z0-9]+)\}")
+
+# Kinds that build their own data or table each review: the placeholders the prompt
+# must use, and each param's type ("?" marks it optional). Every kind also takes an
+# optional "d", the decimal places, to override its default.
+_FREQ = {"k": "?pair", "width": "?pair", "start": "?pair", "f": "?pair"}
+CALC_DATA_KINDS: dict[str, tuple[frozenset[str], dict[str, str]]] = {
+    "class-width": (frozenset({"min", "max", "k"}), {"k": "?nums", "min": "?pair", "spread": "?pair"}),
+    "class-midpoint": (frozenset({"lower", "upper"}), {"lower": "?pair", "width": "?pair"}),
+    "rel-freq": (frozenset({"table", "cls"}), _FREQ),
+    "cum-freq": (frozenset({"table", "cut"}), _FREQ),
+    "grouped-mean": (frozenset({"table"}), _FREQ),
+    "mean": (frozenset({"data"}), {"n": "?pair", "x": "?pair"}),
+    "median": (frozenset({"data"}), {"n": "?pair", "x": "?pair"}),
+    "middle-position": (frozenset({"n"}), {"n": "?pair"}),
+    "weighted-avg": (frozenset({"table"}), {"items": "?strs", "x": "?pair"}),
+    "trimmed-mean": (frozenset({"data"}), {"n": "?pair", "x": "?pair", "outlier": "?pair"}),
+    "range": (frozenset({"data"}), {"n": "?pair", "x": "?pair"}),
+    "sd": (frozenset({"data"}), {"n": "?pair", "x": "?pair", "ask": "?s|s2|sigma"}),
+    "quartiles": (frozenset({"data"}), {"n": "?pair", "x": "?pair", "ask": "?q1|q3|iqr", "parity": "?odd|even"}),
+    "prob-relfreq": (frozenset({"n", "f"}), {"n": "?pair", "share": "?pair"}),
+    "prob-equal": (frozenset({"counts", "target"}), {"labels": "?strs", "c": "?pair", "ask": "?p|not"}),
+    "mult-indep": (frozenset({"pa", "pb"}), {"pa": "?probs", "pb": "?probs"}),
+    "mult-dep": (frozenset({"a", "b"}), {"a": "?pair", "b": "?pair"}),
+    "conditional-table": (frozenset({"table", "given", "event"}), {"rows": "?strs", "cols": "?strs", "c": "?pair"}),
+    "add-general": (frozenset({"pa", "pb", "pab"}), {"pa": "?probs", "pb": "?probs", "pab": "?probs"}),
+    "add-exclusive": (frozenset({"table", "a", "b"}), {"labels": "?strs", "min": "?int", "head": "?str"}),
+    "share-table": (frozenset({"table", "target"}), {"labels": "?strs", "c": "?pair", "head": "?str"}),
+    "dist": (frozenset({"table"}), {"x": "?nums", "min": "?int", "ask": "?mean|sd"}),
+    "linear": (frozenset({"expr"}), {"mu": "?nums", "sigma": "?nums", "a": "?nums", "b": "?nums", "ask": "?mean|sd"}),
+    "combo": (frozenset({"expr"}), {"mu1": "?nums", "s1": "?nums", "mu2": "?nums", "s2": "?nums", "a": "?nums", "b": "?nums", "ask": "?mean|sd"}),
+}
+# Placeholders a data kind may show besides the required ones.
+CALC_DATA_EXTRA = {"n", "total", "cut", "cls", "target", "given", "event", "mu", "sigma", "a", "b",
+                   "mu1", "s1", "mu2", "s2", "f", "min", "max", "k", "lower", "upper", "pa", "pb", "pab", "counts"}
 NON_BASIC = {"mcq", "calc"}
 
 
@@ -264,11 +298,61 @@ def _int_pair(value: object, label: str) -> tuple[int, int]:
     return value[0], value[1]
 
 
+def _check_param(value: object, kind: str, label: str) -> None:
+    def number(x: object) -> bool:
+        return isinstance(x, (int, float)) and not isinstance(x, bool)
+    if kind == "pair":
+        lo, hi = _int_pair(value, label)
+        if lo > hi:
+            raise ManifestError(f"{label} must have low <= high")
+    elif kind in {"nums", "probs"}:
+        if not isinstance(value, list) or not value or not all(number(x) for x in value):
+            raise ManifestError(f"{label} must be a non-empty list of numbers")
+        if kind == "probs" and not all(0 < x < 1 for x in value):
+            raise ManifestError(f"{label} must hold probabilities strictly between 0 and 1")
+    elif kind == "strs":
+        if not isinstance(value, list) or len(value) < 2 or any(not isinstance(x, str) or not x.strip() for x in value):
+            raise ManifestError(f"{label} must list at least two labels")
+    elif kind == "int":
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ManifestError(f"{label} must be a whole number")
+    elif kind == "str":
+        if not isinstance(value, str) or not value.strip():
+            raise ManifestError(f"{label} must be text")
+    elif value not in kind.split("|"):
+        raise ManifestError(f"{label} must be one of: {kind.replace('|', ', ')}")
+
+
+def validate_data_calc(raw: dict, label: str, kind: str) -> tuple[str, str]:
+    needed, spec = CALC_DATA_KINDS[kind]
+    params = raw["params"]
+    if not isinstance(params, dict):
+        raise ManifestError(f"{label}.params must be an object")
+    unknown = set(params) - set(spec) - {"d"}
+    if unknown:
+        raise ManifestError(f"{label}.params has unknown keys: {', '.join(sorted(unknown))}")
+    for key, typ in spec.items():
+        if key in params:
+            _check_param(params[key], typ.lstrip("?"), f"{label}.params.{key}")
+        elif not typ.startswith("?"):
+            raise ManifestError(f"{label}.params.{key} is required")
+    if "d" in params and (not isinstance(params["d"], int) or isinstance(params["d"], bool) or not 0 <= params["d"] <= 4):
+        raise ManifestError(f"{label}.params.d must be 0 to 4 decimal places")
+    used = set(PLACEHOLDER.findall(str(raw["prompt"])))
+    if used - needed - CALC_DATA_EXTRA:
+        raise ManifestError(f"{label}.prompt uses unknown placeholders: {', '.join(sorted(used - needed - CALC_DATA_EXTRA))}")
+    if needed - used:
+        raise ManifestError(f"{label}.prompt must show {', '.join('{' + x + '}' for x in sorted(needed - used))}")
+    return kind, html.escape(json.dumps(params, separators=(",", ":"), sort_keys=True))
+
+
 def validate_calc(raw: dict, label: str) -> tuple[str, str]:
     """Check a calc card's kind, params, and prompt placeholders; return (kind, params JSON)."""
     kind = scalar(raw["kind"], f"{label}.kind")
+    if kind in CALC_DATA_KINDS:
+        return validate_data_calc(raw, label, kind)
     if kind not in CALC_KINDS:
-        raise ManifestError(f"{label}.kind must be one of: {', '.join(sorted(CALC_KINDS))}")
+        raise ManifestError(f"{label}.kind must be one of: {', '.join(sorted(CALC_KINDS) + sorted(CALC_DATA_KINDS))}")
     needed, default_r = CALC_KINDS[kind]
     params = raw["params"]
     if not isinstance(params, dict) or not set(params) <= {"n", "p", "r", "labels"} or "n" not in params:

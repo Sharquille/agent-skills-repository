@@ -230,10 +230,22 @@ produce a number (MA-235 binomial work); pair it with mcq cards for the
 }
 ```
 
-- `kind` picks the solver in `assets/study-calc/calc.js`: `binom-order` (one
-  named order, 4 places), `binom-count` (C(n,r), whole number), `binom-exact`,
-  `binom-atmost`, `binom-atleast`, `binom-atleast1` (3 places), `binom-mean`,
-  `binom-sd` (2 places). The card prints the rounding instruction itself.
+- `kind` picks the solver in `assets/study-calc/calc.js`. Binomial kinds draw
+  n, p, and r: `binom-order` (one named order, 4 places), `binom-count` (C(n,r),
+  whole number), `binom-exact`, `binom-atmost`, `binom-atleast`,
+  `binom-atleast1` (3 places), `binom-mean`, `binom-sd` (2 places).
+- Data kinds build a fresh data set or table each review and fill their own
+  placeholders (`{data}`, `{table}`, and kind-specific ones such as `{cls}`,
+  `{cut}`, `{given}`, `{event}`, `{expr}`): `class-width`, `class-midpoint`,
+  `rel-freq`, `cum-freq`, `grouped-mean` (frequency tables); `mean`, `median`,
+  `middle-position`, `weighted-avg`, `trimmed-mean`, `range`, `sd` (`ask`: s,
+  s2, sigma), `quartiles` (`ask`: q1, q3, iqr; `parity`: odd, even);
+  `prob-relfreq`, `prob-equal` (`ask`: p, not), `mult-indep`, `mult-dep`,
+  `conditional-table`, `add-general`, `add-exclusive`; `share-table`, `dist`
+  (`ask`: mean, sd), `linear` and `combo` (`ask`: mean, sd). The builder's
+  CALC_DATA_KINDS lists each kind's required placeholders and param types; any
+  kind takes an optional `d` to change its decimal places. The card prints the
+  rounding instruction itself.
 - `params`: `n` is a `[low, high]` range (at most 20 for probability kinds, the
   table's range); `p` lists the probabilities to draw from; optional `r` is a
   `[low, high]` range where a negative bound counts back from n; `binom-order`
