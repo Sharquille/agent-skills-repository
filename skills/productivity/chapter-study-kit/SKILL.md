@@ -10,8 +10,8 @@ description: >-
   expand a course's overall map, or wants kit notebooks rebuilt or restyled.
   Do not use for week-folder bootstrap (continue-study-week), testing the
   learner on finished kits (chapter-competency-loop), ELI5 pages
-  (eli5-explainer), Obsidian visualize-study-chapter, or graded submission
-  writing. Every section build gets a read-only Sol review; other consult
+  (eli5-explainer), Obsidian visualize-study-chapter, or graded assignment
+  workspaces and submission coaching (assignment-workspace). Every section build gets a read-only Sol review; other consult
   panels run only when this turn names one.
 # --- provenance ---
 category: productivity
@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.19.1**. Read the canonical version before executing a synced copy.
+Workflow version: **2.19.2**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -82,6 +82,7 @@ manifest, synced copies, Mermaid bump):
 | Open a week folder, "bootstrap week N" | `continue-study-week` (a Cursor skill in `Education/.cursor/skills`; if it is not available here, say so instead of improvising) |
 | "Test me", "am I ready", practice exam on finished sections | `chapter-competency-loop` (reads this kit's Core, ledger, `practice-plan.md`, and `study-log.md`) |
 | ELI5 or picture-first page for one section | `eli5-explainer` (an optional view, not a kit file) |
+| A graded assignment, essay, reflection, or discussion: workspace page, highlighting reader, paragraph or Doc checks | `assignment-workspace` (reuses this kit's OCR and ledger for the reader; the kit itself never answers graded work) |
 | Sol review of every section build | [references/sol-review.md](references/sol-review.md); always, before the notebook |
 | A named consult panel | [references/consult-panel.md](references/consult-panel.md); skip it on a routine drop |
 | Anki recall cards from a built chapter's Core notes | `anki-study-sync` (chapter-kit source); `Practice.md` never becomes cards |

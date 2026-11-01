@@ -1,6 +1,6 @@
 {
   "files": {
-    "SKILL.md": "932702fa2d9b886ba37a962fe520e93e15d918ccfb8d0eb4d09ba2adde1bc1a8",
+    "SKILL.md": "40fe55e8329f432b3ae02db02ca6e25e4195d159c880f303b7fb515d8969506b",
     "references/consult-panel.md": "5b7fcdf21baf26022751e3455a97ef5ae7b761bde6ce28896c2baf155bbbe8c2",
     "references/course-profiles.md": "41de7409ad543387bc96688c828b0798d12b15b0f72c151e2116105db08af2d5",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
@@ -24,5 +24,5 @@
     "scripts/validate_kit.py": "0401ab9de13a3e5de98a1d5898d2518aa857992e74432acfcaa890ec0032e500",
     "tests/test_kit.py": "9d6b19f791fd9b1153024cb0f192b7e5685352f2eafff8380b237390797dd316"
   },
-  "version": "2.19.1"
+  "version": "2.19.2"
 }
