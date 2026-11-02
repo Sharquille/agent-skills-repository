@@ -158,7 +158,14 @@ does not change deck options.
 
 `"type": "mcq"` makes a tap-to-answer quiz card for a decision between
 look-alikes. It adds one field, `choices`: exactly four options with the
-**correct one first**. `answer` holds the one-line reason shown on the back.
+**correct one first**. `answer` holds the one-line reason shown on the back,
+in the form "answer: reason". Do not write "X wins because", and do not end by
+commenting on the other options ("while the others / near misses ..."); a
+contrast with one named option is a lesson and may stay. One retrieval target
+gets one card: a reworded question with the same correct option and three or
+more of the same options is a repeat, so retire it rather than adding it to
+another chapter. The build rejects the first two; the course lint warns on the
+third (tag a reviewed pair `overlap-ok`).
 
 ```json
 {

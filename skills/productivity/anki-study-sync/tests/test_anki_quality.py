@@ -99,3 +99,52 @@ class OfficialAcronymTests(unittest.TestCase):
         self.assertTrue(overlap_warnings(decks))
         decks["ch06.json"] = [c("d", "What does ARP stand for?", "Address resolution protocol, for mapping IPs.")]
         self.assertTrue(any("both define 'arp'" in w for w in overlap_warnings(decks, official)))
+
+
+class ExplanationNoiseTests(unittest.TestCase):
+    def _card(self, answer, **extra):
+        return dict({"id": "c1", "status": "active", "prompt": "Which property failed?",
+                     "answer": answer, "tags": []}, **extra)
+
+    def test_wins_formula_is_an_error(self):
+        from anki_quality import quality_errors
+        errors = quality_errors([self._card("Integrity wins because data must stay as intended.")])
+        self.assertTrue(any("wins because" in e for e in errors))
+
+    def test_precedence_wins_is_allowed(self):
+        from anki_quality import quality_errors
+        self.assertEqual(quality_errors([self._card(
+            "The last applied GPO wins, and the OU is closer than the domain, so 5 minutes applies.")]), [])
+
+    def test_distractor_commentary_tail_is_an_error(self):
+        from anki_quality import quality_errors
+        errors = quality_errors([self._card(
+            "User Account Control is the expansion, while the near misses swap Account for Access.")])
+        self.assertTrue(any("other options" in e for e in errors))
+
+    def test_contrast_with_one_named_option_passes(self):
+        from anki_quality import quality_errors
+        self.assertEqual(quality_errors([self._card(
+            "A logic bomb waits for an event, while a time bomb waits for a date.")]), [])
+
+
+class ReworderRepeatTests(unittest.TestCase):
+    def test_same_answer_and_options_flagged_across_decks(self):
+        from anki_quality import overlap_warnings
+        opts = ["Confidentiality", "Integrity", "Availability", "Non-repudiation"]
+        w = overlap_warnings({
+            "ch01.json": [{"id": "a", "status": "active", "prompt": "An employee reads a salary file without permission. Which goal was harmed?",
+                           "answer": "Confidentiality: only authorized people read data.", "choices": opts, "tags": []}],
+            "ch04.json": [{"id": "b", "status": "active", "prompt": "Someone unauthorized opens a protected record. Which property failed?",
+                           "answer": "Confidentiality: unauthorized reading breaks it.", "choices": opts, "tags": []}],
+        })
+        self.assertTrue(any("same correct option" in x for x in w))
+
+    def test_same_options_different_answer_is_not_a_repeat(self):
+        from anki_quality import overlap_warnings
+        a = ["Site-to-site", "Client-to-site", "Host-to-host", "Clientless gateway"]
+        b = ["Client-to-site", "Site-to-site", "Host-to-host", "Clientless gateway"]
+        w = overlap_warnings({"ch04.json": [
+            {"id": "a", "status": "active", "prompt": "Two branch routers build a tunnel. Which topology?", "answer": "Site-to-site.", "choices": a, "tags": []},
+            {"id": "b", "status": "active", "prompt": "A hotel laptop runs a VPN app. Which topology?", "answer": "Client-to-site.", "choices": b, "tags": []}]})
+        self.assertFalse(any("same correct option" in x for x in w))

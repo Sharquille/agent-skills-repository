@@ -24,6 +24,16 @@ LAB_NUMBER_PROMPT = re.compile(
 )
 
 
+# Explanation noise: "X wins because ..." and a closing clause about the wrong options.
+# A contrast with one named option ("while a time bomb waits for a date") is a lesson
+# and stays; only generic commentary on the other options is rejected.
+WINS_FORMULA = re.compile(r"(?i)^[^.]{1,120}?\bwins because\b")
+DISTRACTOR_TAIL = re.compile(
+    r"(?i)[,;] (?:while|whereas|unlike)\b[^.;]*\b(?:the others?|other (?:options?|choices|answers|items|sets|pairs)"
+    r"|near[- ]?miss(?:es)?|the rest|distractors?)\b[^;]*\.?\s*$"
+)
+
+
 def _normalize(value: object) -> str:
     if not isinstance(value, str):
         return ""
@@ -55,6 +65,18 @@ def quality_errors(cards: Sequence[object]) -> list[str]:
             if LAB_NUMBER_PROMPT.search(prompt):
                 errors.append(
                     f"{card_id}: prompt depends on a numbered lab or exercise"
+                )
+        answer = raw.get("answer")
+        if isinstance(answer, str):
+            if WINS_FORMULA.search(answer):
+                errors.append(
+                    f"{card_id}: answer uses the 'X wins because' formula; "
+                    "write 'Answer: reason' instead"
+                )
+            if DISTRACTOR_TAIL.search(answer):
+                errors.append(
+                    f"{card_id}: answer ends by commenting on the other options "
+                    "('while the others / near misses ...'); end on the reason"
                 )
         active.append((card_id, raw))
 
@@ -215,7 +237,9 @@ def overlap_warnings(decks: Mapping[str, Sequence[object]], official: frozenset[
             m = _DEFINE.search(prompt)
             term = _term_key((m.group("term") or m.group("term2"))) if m else ""
             acr = _ACRONYM.search(prompt)
+            choices = raw.get("choices") if isinstance(raw.get("choices"), list) else []
             cards.append({
+                "choices": [_term_key(str(c)) for c in choices],
                 "label": f"{raw.get('id') or f'cards[{index}]'} ({deck})", "prompt": prompt,
                 "answer": answer, "ok": "overlap-ok" in tags, "term": term,
                 "acronym": acr.group("acr") if acr else "", "words": _content(prompt + " " + answer),
@@ -228,6 +252,9 @@ def overlap_warnings(decks: Mapping[str, Sequence[object]], official: frozenset[
             reason = ""
             if a["term"] and a["term"] == b["term"]:
                 reason = f"both define {a['term']!r}"
+            elif (a["choices"] and b["choices"] and a["choices"][0] == b["choices"][0]
+                  and len(set(a["choices"]) & set(b["choices"])) >= 3):
+                reason = "same correct option and at least three shared options (a reworded repeat?)"
             else:
                 for x, y in ((a, b), (b, a)):
                     if x["acronym"] and x["acronym"].upper() not in {o.upper() for o in official} and re.search(rf"\b{re.escape(x['acronym'])}\b", y["prompt"] + " " + y["answer"]):
