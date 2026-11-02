@@ -12,6 +12,7 @@ import sys
 import tempfile
 from pathlib import Path, PurePosixPath
 
+from acronym_glossary import build_glossary, expand_answer, terms_line
 from anki_quality import quality_errors
 
 
@@ -393,7 +394,8 @@ def mcq_position(card_id: str) -> int:
     return sum(card_id.encode()) % MCQ_CHOICES
 
 
-def render_quiz(data: dict[str, object], cards: list[dict[str, object]]) -> str | None:
+def render_quiz(data: dict[str, object], cards: list[dict[str, object]],
+                glossary: dict[str, str] | None = None) -> str | None:
     """Multiple-choice cards as a Study MCQ import.
 
     A deck with no Basic cards at all is the chapter deck itself; a mixed deck keeps its
@@ -422,7 +424,12 @@ def render_quiz(data: dict[str, object], cards: list[dict[str, object]]) -> str 
         tags = set(card["tags"]) | {"study-loop::mcq", f"study-loop::revision::{card['revision']}",
                                     f"study-loop::status::{card['status']}"}
         source = f"{card['objective']}"
-        lines.append("\t".join((str(card["prompt"]), *options, "ABCD"[position], str(card["answer"]),
+        prompt, answer = str(card["prompt"]), str(card["answer"])
+        if glossary:
+            front = prompt + " " + " ".join(choices)
+            answer = expand_answer(answer, front, glossary)
+            prompt += terms_line(prompt, choices, glossary)
+        lines.append("\t".join((prompt, *options, "ABCD"[position], answer,
                                  source, str(card["id"]), " ".join(sorted(tags)))))
     return "\n".join(lines) + "\n"
 
@@ -537,7 +544,7 @@ def render_all(data: dict[str, object], vault: Path) -> tuple[str | None, str | 
             )
         )
     basic = "\n".join(lines) + "\n" if any(card["type"] not in NON_BASIC for card in cards) else None
-    return basic, render_quiz(data, cards), render_calc(data, cards)
+    return basic, render_quiz(data, cards, build_glossary(vault)), render_calc(data, cards)
 
 
 def atomic_write(path: Path, content: str) -> None:

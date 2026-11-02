@@ -167,6 +167,18 @@ more of the same options is a repeat, so retire it rather than adding it to
 another chapter. The build rejects the first two; the course lint warns on the
 third (tag a reviewed pair `overlap-ok`).
 
+Name the concept the explanation is about on the front: if the back says
+"Gait measures ...", the question says "gait". The build spells out
+non-obvious acronyms from the course's own notes (`Chapter-Kits/acronyms.md`,
+each section's Abbreviations table, and `**X**: full name` margin
+definitions): a small terms line under the question for acronyms in the
+question and options, and "(full name)" at the first mention of an acronym
+that appears only in the explanation. Everyday acronyms (Wi-Fi, USB, IP),
+acronyms with two meanings in the notes, "What does X stand for?" cards, full
+names already on the card, and option acronyms that would hint at the answer
+are skipped; a line holds at most four terms. Keep acronyms bare in the
+manifest; do not hand-write expansions there.
+
 ```json
 {
   "id": "it-100.3-1.core-16.latency.mcq",
