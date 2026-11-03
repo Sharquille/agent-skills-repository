@@ -148,3 +148,17 @@ class ReworderRepeatTests(unittest.TestCase):
             {"id": "a", "status": "active", "prompt": "Two branch routers build a tunnel. Which topology?", "answer": "Site-to-site.", "choices": a, "tags": []},
             {"id": "b", "status": "active", "prompt": "A hotel laptop runs a VPN app. Which topology?", "answer": "Client-to-site.", "choices": b, "tags": []}]})
         self.assertFalse(any("same correct option" in x for x in w))
+
+
+class DistractorSentenceTests(unittest.TestCase):
+    def test_semicolon_other_options_clause_is_an_error(self):
+        from anki_quality import quality_errors
+        card = {"id": "c1", "status": "active", "prompt": "What does PPTP stand for?", "tags": [],
+                "answer": "PPTP is Point-to-Point Tunneling Protocol; the other options swap Tunneling for Transport."}
+        self.assertTrue(any("other options" in e for e in quality_errors([card])))
+
+    def test_others_inside_a_sentence_is_fine(self):
+        from anki_quality import quality_errors
+        card = {"id": "c1", "status": "active", "prompt": "Why does it matter?", "tags": [],
+                "answer": "It protects others on the network; that is its purpose."}
+        self.assertEqual(quality_errors([card]), [])

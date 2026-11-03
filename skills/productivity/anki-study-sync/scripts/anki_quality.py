@@ -33,6 +33,12 @@ DISTRACTOR_TAIL = re.compile(
     r"|near[- ]?miss(?:es)?|the rest|distractors?)\b[^;]*\.?\s*$"
 )
 
+# The same commentary as its own closing clause: "...; the other options swap ...".
+DISTRACTOR_SENTENCE = re.compile(
+    r"(?i)[;.]\s*(?:the others?|the other (?:options?|choices|answers|lists|expansions|statements|sets|pairs)"
+    r"|other options?)\b[^.;]*\.?\s*$"
+)
+
 
 def _normalize(value: object) -> str:
     if not isinstance(value, str):
@@ -73,7 +79,7 @@ def quality_errors(cards: Sequence[object]) -> list[str]:
                     f"{card_id}: answer uses the 'X wins because' formula; "
                     "write 'Answer: reason' instead"
                 )
-            if DISTRACTOR_TAIL.search(answer):
+            if DISTRACTOR_TAIL.search(answer) or DISTRACTOR_SENTENCE.search(answer):
                 errors.append(
                     f"{card_id}: answer ends by commenting on the other options "
                     "('while the others / near misses ...'); end on the reason"
