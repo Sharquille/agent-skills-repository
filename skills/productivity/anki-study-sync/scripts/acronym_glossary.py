@@ -145,10 +145,27 @@ def terms_line(prompt: str, choices: list[str], glossary: dict[str, str]) -> str
     option_terms = list(dict.fromkeys(option_terms))
     # A correct-option acronym whose full name echoes the question would point at it.
     prompt_stems = _stems(prompt) - {s for t in prompt_terms for s in _stems(glossary[t])}
-    if any(_stems(glossary[t]) & prompt_stems for t in _acronyms(choices[0], glossary)):
+    if choices and any(_stems(glossary[t]) & prompt_stems for t in _acronyms(choices[0], glossary)):
         option_terms = []
-    prompt_terms = [t for t in prompt_terms if glossary[t].lower() not in card_text]
-    option_terms = [t for t in option_terms if glossary[t].lower() not in card_text]
+    def seq(text: str) -> list[str]:
+        return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in {"and", "of", "the", "a"}]
+
+    card_seq = " " + " ".join(seq(card_text)) + " "
+    option_words = [set(seq(c)) for c in choices]
+
+    def already_said(term: str) -> bool:
+        words = seq(glossary[term])
+        if not words or f"({term})" in prompt + " " + " ".join(choices):  # defined in brackets
+            return True
+        if " " + " ".join(words) + " " in card_seq:          # said as a phrase
+            return True
+        if any(set(words) <= o for o in option_words):        # one option spells it out
+            return True
+        single = [o for o in option_words if len(o) == 1 and o <= set(words)]
+        return len(single) >= 2                               # options are its parts (AAA)
+
+    prompt_terms = [t for t in prompt_terms if not already_said(t)]
+    option_terms = [t for t in option_terms if not already_said(t)]
     # Options are expanded all together or not at all, so the line never singles one out.
     if len(prompt_terms) + len(option_terms) > MAX_TERMS:
         option_terms = []

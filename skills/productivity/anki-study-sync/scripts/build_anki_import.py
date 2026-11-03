@@ -508,6 +508,7 @@ def render_all(data: dict[str, object], vault: Path) -> tuple[str | None, str | 
         raise ManifestError(
             "objectives without an active card: " + ", ".join(sorted(missing))
         )
+    glossary = build_glossary(vault)
     deck = scalar(data["deck"], "deck")
     notetype = scalar(data["notetype"], "notetype")
     chapter_id = scalar(data["chapter_id"], "chapter_id")
@@ -528,15 +529,19 @@ def render_all(data: dict[str, object], vault: Path) -> tuple[str | None, str | 
         card_tags.add(f"study-loop::{card['type']}")
         card_tags.add(f"study-loop::revision::{card['revision']}")
         card_tags.add(f"study-loop::status::{card['status']}")
+        prompt, answer = str(card["prompt"]), str(card["answer"])
+        if glossary:
+            answer = expand_answer(answer, prompt, glossary)
+            prompt += terms_line(prompt, [], glossary)
         back = (
-            f"{card['answer']}<br><br>"
+            f"{answer}<br><br>"
             f"<small><b>Objective:</b> {card['objective']}<br>"
             f"<b>Source:</b> {html.escape(str(card['source']))}</small>"
         )
         lines.append(
             "\t".join(
                 (
-                    str(card["prompt"]),
+                    prompt,
                     back,
                     str(card["id"]),
                     " ".join(sorted(card_tags)),
@@ -544,7 +549,7 @@ def render_all(data: dict[str, object], vault: Path) -> tuple[str | None, str | 
             )
         )
     basic = "\n".join(lines) + "\n" if any(card["type"] not in NON_BASIC for card in cards) else None
-    return basic, render_quiz(data, cards, build_glossary(vault)), render_calc(data, cards)
+    return basic, render_quiz(data, cards, glossary), render_calc(data, cards)
 
 
 def atomic_write(path: Path, content: str) -> None:

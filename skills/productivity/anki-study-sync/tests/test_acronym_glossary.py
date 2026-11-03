@@ -98,3 +98,29 @@ class InlineDefinitionTests(unittest.TestCase):
     def test_unrelated_parentheses_are_ignored(self):
         from acronym_glossary import _inline
         self.assertEqual(_inline("see the chart (Fig 2) and the rule (TEST MOVE)"), [])
+
+
+class BasicCardTests(unittest.TestCase):
+    G = {"CMC": "computer-mediated communication", "FTF": "face-to-face communication"}
+
+    def test_basic_front_gets_terms_line_without_options(self):
+        line = terms_line("What two approaches compare CMC with face-to-face (FTF) communication?", [], self.G)
+        self.assertIn("computer-mediated communication", line)
+        self.assertNotIn("FTF", line)  # its words are already on the card
+
+    def test_basic_back_spells_out_explanation_only_acronym(self):
+        out = expand_answer("The media deficit approach: CMC lacks nonverbal cues.", "What is filtered communication?", self.G)
+        self.assertIn("CMC (computer-mediated communication)", out)
+
+
+class AlreadySaidTests(unittest.TestCase):
+    def test_option_list_of_parts_is_a_giveaway(self):
+        g = {"AAA": "Authentication, Authorization, and Accounting"}
+        self.assertEqual(terms_line("A user enters a password. Which AAA step is happening?",
+                                    ["Authentication", "Authorization", "Accounting", "Identification"], g), "")
+
+    def test_scattered_words_do_not_count_as_said(self):
+        g = {"EFS": "Encrypted File System"}
+        line = terms_line("An operating system mounts an encrypted disk. Which design explains it?",
+                          ["A self-encrypting drive", "OS full-disk encryption", "Volume encryption software", "EFS file encryption"], g)
+        self.assertIn("Encrypted File System", line)
