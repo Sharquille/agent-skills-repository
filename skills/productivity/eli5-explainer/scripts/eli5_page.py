@@ -328,14 +328,19 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.out and len(args.spec) > 1:
         ap.error("--out takes a single spec")
+    # Run as a script, this file is __main__; register it as eli5_page so a spec's
+    # "from eli5_page import ..." shares this module and its LABEL_WARNINGS list.
+    sys.modules.setdefault("eli5_page", sys.modules[__name__])
     status = 0
     for spec in args.spec:
         try:
             LABEL_WARNINGS.clear()
-            path, summary = build(load_page(spec), root=args.root, out=args.out)
+            page = load_page(spec)
+            if LABEL_WARNINGS:
+                # A clipped or overflowing label can mislead an unsure reader; refuse before writing.
+                raise ValueError("labels would be clipped:\n  " + "\n  ".join(LABEL_WARNINGS))
+            path, summary = build(page, root=args.root, out=args.out)
             print(f"OK {path}: {summary}")
-            for warning in LABEL_WARNINGS:
-                print(f"WARN {warning}")
         except (ValueError, KeyError, OSError) as exc:
             print(f"FAIL {spec}: {exc}")
             status = 1

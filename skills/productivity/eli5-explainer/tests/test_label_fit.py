@@ -35,5 +35,28 @@ class EdgeFitTest(unittest.TestCase):
         self.assertEqual(ep.LABEL_WARNINGS, [])
 
 
+
+class BuilderRefusesClippedLabelsTest(unittest.TestCase):
+    def test_script_run_fails_and_writes_nothing(self):
+        # Run as a script: the spec's "from eli5_page import ..." must share the builder's warning list.
+        import subprocess
+        import sys
+        import tempfile
+        script = Path(__file__).resolve().parents[1] / "scripts" / "eli5_page.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = Path(tmp) / "spec.py"
+            spec.write_text(
+                "from eli5_page import svg, text\n"
+                "PIC = svg(text(36, 20, 'median still 25', 'sm', 'end'), 'a picture')\n"
+                "PAGE = dict(title='T', tag='t', h1='h', lede='l', hero=PIC, "
+                "steps=[dict(cls='s1', label='A', h2='a', svg=PIC, p=['x']), dict(cls='s2', label='B', h2='b', svg=PIC, p=['y'])], "
+                "recap=dict(h2='r', svg=PIC), footer=['f'])\n")
+            out = Path(tmp) / "page.html"
+            run = subprocess.run([sys.executable, str(script), str(spec), "--out", str(out)], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 1)
+            self.assertIn("labels would be clipped", run.stdout)
+            self.assertFalse(out.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
