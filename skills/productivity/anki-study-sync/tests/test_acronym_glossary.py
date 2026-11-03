@@ -85,3 +85,16 @@ class CapTests(unittest.TestCase):
         self.assertIn("AAA", line)
         for t in ("TACACS+", "RADIUS", "EAP", "PAP"):
             self.assertNotIn(t, line)
+
+
+class InlineDefinitionTests(unittest.TestCase):
+    def test_inline_full_name_with_matching_initials(self):
+        from acronym_glossary import _inline
+        self.assertEqual(_inline("Tukey called it exploratory data analysis (EDA) in 1977."),
+                         [("EDA", "exploratory data analysis")])
+        self.assertEqual(_inline("the National Institute of Standards and Technology (NIST) runs it"),
+                         [("NIST", "National Institute of Standards and Technology")])
+
+    def test_unrelated_parentheses_are_ignored(self):
+        from acronym_glossary import _inline
+        self.assertEqual(_inline("see the chart (Fig 2) and the rule (TEST MOVE)"), [])

@@ -25,10 +25,36 @@ COMMON = {
 _TOKEN = re.compile(r"(?<![\w+-])([A-Z][A-Za-z0-9]*[A-Z0-9][A-Za-z0-9]*\+?)(s)?(?![\w+-])")
 _ASKED = re.compile(r"(?i)\bwhat does (?:an? |the )?([A-Za-z0-9+-]{2,10}) stand for\b")
 _TABLE_ROW = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|")
+_INLINE = re.compile(r"([A-Za-z][A-Za-z' -]{2,80}?)\s*\(([A-Z][A-Za-z0-9]{1,6})\)")
+_SMALL = {"of", "and", "the", "for", "to", "in", "on", "a", "an", "or", "with", "by"}
 _MARGIN = re.compile(r"\*\*([A-Z][A-Za-z0-9+/-]{1,11})\*\*:\s*([^;.\n]+)")
 _WORD = re.compile(r"[a-z]{5,}")
 # More than this many expansions under one question is clutter, not help.
 MAX_TERMS = 4
+
+
+def _inline(text: str) -> list[tuple[str, str]]:
+    """'exploratory data analysis (EDA)' pairs whose initials spell the acronym."""
+    pairs = []
+    for m in _INLINE.finditer(text):
+        short = m.group(2)
+        letters = [ch for ch in short.upper() if ch.isalpha()]
+        words = re.findall(r"[A-Za-z]+", m.group(1))
+        picked: list[str] = []
+        need = list(letters)
+        for word in reversed(words):
+            if need and word[0].upper() == need[-1]:
+                picked.append(word)
+                need.pop()
+            elif word.lower() in _SMALL and picked and need:
+                picked.append(word)
+            else:
+                break
+            if not need:
+                break
+        if not need and picked:
+            pairs.append((short, " ".join(reversed(picked))))
+    return pairs
 
 
 def _caps(token: str) -> bool:
@@ -53,6 +79,7 @@ def build_glossary(vault: Path) -> dict[str, str]:
     kits = vault / "Chapter-Kits"
     official: dict[str, set[str]] = {}
     notes: dict[str, set[str]] = {}
+    inline: dict[str, set[str]] = {}  # fallback only: tables and margin notes win
     acronyms_md = kits / "acronyms.md"
     if acronyms_md.is_file():
         for line in acronyms_md.read_text(encoding="utf-8").splitlines():
@@ -78,6 +105,11 @@ def build_glossary(vault: Path) -> dict[str, str]:
                         in_table = False
                 for m in _MARGIN.finditer(line):
                     _add(notes, m.group(1), m.group(2))
+                for short, long in _inline(line):
+                    _add(inline, short, long)
+    for short, meanings in inline.items():
+        if short not in notes and short not in official:
+            notes[short] = meanings
     glossary: dict[str, str] = {}
     for short in set(official) | set(notes):
         if short.upper() in COMMON:
