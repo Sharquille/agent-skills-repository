@@ -36,6 +36,12 @@
   otherwise the handout page. A paragraph that crosses pages may use
   `"150–151"`; its citation tag takes the first page. **`pdf_page`** is the
   page in the PDF file, used for the "PDF p." links.
+- **`cite_format`** (optional) overrides the citation tag, with `{page}`
+  replaced by the block's page. APA courses use it, for example
+  `"(Parsons, 2023, slide {page})"`, or `"(Parsons, 2023)"` with no locator.
+  Without it the tag is MLA `(cite_author page)`.
+- **`page_word`** (optional) labels the page breaks: `"Slide"` or
+  `"Section"` instead of the default `"Page"`. Omit `pdf` for slide decks.
 - **Block ids** are unique across sources. Labels follow the text's own
   numbering (`¶7`) or list numbering (`12.`).
 - **Question ids** match the workspace section ids, so

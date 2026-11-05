@@ -34,6 +34,14 @@ class BuildReaderTests(unittest.TestCase):
         html = br.build(sample())
         self.assertNotIn("Jumps over </script>", html)
 
+    def test_apa_cite_format_and_page_word(self):
+        s = sample()
+        s["sources"][0]["cite_format"] = "(Author, 2023, slide {page})"
+        s["sources"][0]["page_word"] = "Slide"
+        html = br.build(s)
+        self.assertIn("(Author, 2023, slide {page})", html)
+        self.assertIn('src.page_word||"Page"', html)
+
     def test_missing_phrase_fails(self):
         s = sample()
         s["questions"]["q1"]["phrases"] = ["red fox"]

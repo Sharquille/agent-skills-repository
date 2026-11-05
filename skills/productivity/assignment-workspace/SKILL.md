@@ -16,7 +16,7 @@ evidence, and the learner's own writing, then coach the draft to submission.
 The learner writes every graded sentence. This skill builds the scaffolding,
 finds the evidence, and checks the work.
 
-Workflow version: **1.0.0**
+Workflow version: **1.1.0**
 
 ```text
 SKILL_DIR=/Users/sharquilleandrew/Documents/development/github-local/agent-skills-repository/skills/productivity/assignment-workspace
@@ -53,6 +53,7 @@ SKILL_DIR=/Users/sharquilleandrew/Documents/development/github-local/agent-skill
 | "Test me" on finished chapters | `chapter-competency-loop` |
 | Picture-first explainer for a concept | `eli5-explainer` |
 | The learner is lost on a concept mid-assignment | `teach-complex-concepts`, then return here |
+| Deadlines into Reminders and Calendar | `study-deadlines` |
 
 ## Workflow
 
@@ -63,6 +64,8 @@ SKILL_DIR=/Users/sharquilleandrew/Documents/development/github-local/agent-skill
 2. **Status table.** Tell the learner each deliverable, its due date and time
    zone, what's late, and the order to do it in (late and short first,
    biggest piece next, replies last).
+   Then record every deadline in the week's `deadlines.json` and sync it to
+   Reminders and Calendar with `study-deadlines`.
 3. **Plan from the learner's material.** For personal or reflective
    questions, ask for their story or context first. Build angles and beat
    lists from what they give and from this semester's texts they already

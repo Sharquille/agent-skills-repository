@@ -35,7 +35,7 @@ select{font:inherit;font-size:.9rem;padding:7px 10px;border-radius:8px;border:1p
 .src{font-size:.85rem;color:var(--muted)}.src a{color:var(--accent)}
 .blk{display:grid;grid-template-columns:3.2em 1fr;gap:8px;padding:8px 10px;border-radius:8px;margin:2px 0;scroll-margin-top:120px}
 .blk .n{font:700 .8rem/1.9 ui-monospace,Menlo,monospace;color:var(--muted);text-align:right}
-.blk p{margin:0;font:18px/1.7 Georgia,"Times New Roman",serif}
+.blk p{margin:0;font:18px/1.7 Georgia,"Times New Roman",serif;white-space:pre-line}
 .blk.spot{background:var(--spot);outline:1px solid var(--line)}
 .blk.dim{opacity:.55}
 .pg{font:700 .72rem/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 6px;border-top:1px dashed var(--line);padding-top:8px}
@@ -57,7 +57,7 @@ mark.flash{outline:3px solid var(--accent)}
 <main class="wrap">
   <div class="guide" id="guide" hidden></div>
   <p class="src" id="srcline"></p>
-  <p class="note">Transcribed from your course files for study. Before quoting, check the wording against the original page using the “PDF p.” links.</p>
+  <p class="note">Transcribed from your course files for study. Before quoting, check the wording against the original file.</p>
   <div id="text"></div>
 </main>
 <div class="toast" id="toast" role="status"></div>
@@ -74,11 +74,11 @@ function render(){
   $("srcline").innerHTML=esc(src.source_line)+(src.pdf?` · <a href="${esc(src.pdf)}" target="_blank" rel="noopener">open original PDF</a>`:"");
   let h="",last=null;
   for(const b of src.blocks){
-    if(String(b.page)!==String(last)){h+=`<div class="pg">Page ${esc(b.page)}`+(src.pdf&&b.pdf_page?` · <a href="${esc(src.pdf)}#page=${b.pdf_page}" target="_blank" rel="noopener">PDF p.${b.pdf_page}</a>`:"")+`</div>`;last=b.page}
+    if(String(b.page)!==String(last)){h+=`<div class="pg">${esc(src.page_word||"Page")} ${esc(b.page)}`+(src.pdf&&b.pdf_page?` · <a href="${esc(src.pdf)}#page=${b.pdf_page}" target="_blank" rel="noopener">PDF p.${b.pdf_page}</a>`:"")+`</div>`;last=b.page}
     let t=esc(b.text);
     if(spot.has(b.id))for(const p of phr){const e=esc(p);if(t.includes(e))t=t.split(e).join(`<mark data-p="${encodeURIComponent(p)}">${e}</mark>`)}
     const cls=spot.has(b.id)?"spot":(Qd&&$("dim").checked?"dim":"");
-    const c=`(${src.cite_author} ${String(b.page).split(/[–-]/)[0]})`;
+    const pg=String(b.page).split(/[–-]/)[0],c=src.cite_format?src.cite_format.split("{page}").join(pg):`(${src.cite_author} ${pg})`;
     h+=`<div class="blk ${cls}" id="${esc(b.id)}"><span class="n">${esc(b.label)}</span><p>${t}<button class="cite" type="button" data-c="${esc(c)}" title="Copy citation">${esc(c)}</button></p></div>`;
   }
   $("text").innerHTML=h;
