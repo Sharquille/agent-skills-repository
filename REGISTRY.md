@@ -37,6 +37,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [chapter-competency-loop](skills/productivity/chapter-competency-loop/) | productivity | Sharquille Andrew (self-authored on top of chapter-study-kit, teach-complex-concepts, eli5-explainer) | this repo | MIT | 2026-09-27 |
 | [eli5-explainer](skills/productivity/eli5-explainer/) | productivity | Sharquille Andrew (self-authored; feature list modeled on the ELI5 plugin description) | this repo | MIT | 2026-09-27 |
 | [assignment-workspace](skills/productivity/assignment-workspace/) | productivity | Sharquille Andrew (self-authored; built from the Fall 2026 EN-221 and IT-100 assignment pages) | this repo | MIT | 2026-11-01 |
+| [study-deadlines](skills/productivity/study-deadlines/) | productivity | Sharquille Andrew (self-authored; replaces the Raycast Study To-Do capture command) | this repo | MIT | 2026-11-04 |
 | [study-research-queries](skills/productivity/study-research-queries/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
 | [evidence-research-loop](skills/productivity/evidence-research-loop/) | productivity | Sharquille Andrew (self-authored on top of agent-orchestra) | this repo | MIT | 2026-07-06 |
 | [task-steps-ledger](skills/productivity/task-steps-ledger/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-28 |
