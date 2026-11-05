@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.19.2**. Read the canonical version before executing a synced copy.
+Workflow version: **2.20.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -86,6 +86,7 @@ manifest, synced copies, Mermaid bump):
 | Sol review of every section build | [references/sol-review.md](references/sol-review.md); always, before the notebook |
 | A named consult panel | [references/consult-panel.md](references/consult-panel.md); skip it on a routine drop |
 | Anki recall cards from a built chapter's Core notes | `anki-study-sync` (chapter-kit source); `Practice.md` never becomes cards |
+| Due dates in the drop: discussion posts and replies, assignments, homework, essays | `study-deadlines` (write the week's `deadlines.json`, then sync to Reminders and Calendar in the same session) |
 
 ## Workflow
 
@@ -100,6 +101,7 @@ manifest, synced copies, Mermaid bump):
 - [ ] 7. Sol review, then `validate_kit.py --kit` and the GoodNotes notebook PDF
 - [ ] 8. Chapter README + file into Chapter-Kits + GoodNotes folder rule
 - [ ] 9. Update the chapter's Anki deck (anki-study-sync); `validate_kit.py --kit` checks it
+- [ ] 10. If the drop shows due dates, sync them with study-deadlines (no suggestion; do it)
 ```
 
 ### 1. Register sources and batch state
