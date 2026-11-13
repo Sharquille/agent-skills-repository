@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.20.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.21.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -79,6 +79,7 @@ manifest, synced copies, Mermaid bump):
 | Request | Skill |
 | --- | --- |
 | Chapter or section sources, GoodNotes maps, expand the overall map, rebuild notebooks | this skill |
+| Notes or a notebook on one topic or slice of a chapter ("just the Linux part") | this skill: [Reuse before rebuild](#reuse-before-rebuild) |
 | Open a week folder, "bootstrap week N" | `continue-study-week` (a Cursor skill in `Education/.cursor/skills`; if it is not available here, say so instead of improvising) |
 | "Test me", "am I ready", practice exam on finished sections | `chapter-competency-loop` (reads this kit's Core, ledger, `practice-plan.md`, and `study-log.md`) |
 | ELI5 or picture-first page for one section | `eli5-explainer` (an optional view, not a kit file) |
@@ -87,6 +88,25 @@ manifest, synced copies, Mermaid bump):
 | A named consult panel | [references/consult-panel.md](references/consult-panel.md); skip it on a routine drop |
 | Anki recall cards from a built chapter's Core notes | `anki-study-sync` (chapter-kit source); `Practice.md` never becomes cards |
 | Due dates in the drop: discussion posts and replies, assignments, homework, essays | `study-deadlines` (write the week's `deadlines.json`, then sync to Reminders and Calendar in the same session) |
+
+### Reuse before rebuild
+
+A kit is written once from the supplied sources. Core notes feed the
+notebook and the Anki deck, so rewriting notes for one request would create a
+duplicate. When the learner asks for notes or a notebook on a topic or a slice
+of a chapter:
+
+1. Look up the chapter `README.md` table and each section's `state.json`.
+2. If the sections exist, hand over their notebooks from the week's `Work/`.
+   When the slice spans sections, join the existing PDFs in section order into
+   `<COURSE>_Ch<N>_<Topic>-Review_GoodNotes.pdf` in the same `Work/` folder
+   (macOS: `"/System/Library/Automator/Combine PDF Pages.action/Contents/MacOS/join" -o <out> <in...>`).
+   Check that the page count equals the sum of the inputs. A joined file adds
+   no content and is not a section; rebuild it from the section PDFs after any
+   section rebuild.
+3. Build only when a supplied source document has no section yet. Run the
+   normal workflow below on that document, so the exception produces the same
+   ledger, Core, Practice, notebook, Anki cards, and Sol review as any section.
 
 ## Workflow
 
