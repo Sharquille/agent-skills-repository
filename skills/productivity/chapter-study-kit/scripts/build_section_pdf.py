@@ -629,6 +629,7 @@ th, td {{ border: 1px solid var(--rule); padding: 3pt 5pt; text-align: left; ver
 th {{ background: var(--tint); }}
 code {{ font: 9pt Menlo, monospace; background: #F4F6F8; padding: 0 2pt; border-radius: 2pt; }}
 pre:not(.mermaid) {{ background: #F4F6F8; padding: 6pt; white-space: pre-wrap; break-inside: avoid; }}
+pre code {{ padding: 0; }}
 .edgeLabel, .edgeLabel p, .edgeLabel span, .edgeLabel div {{ color:#24313F !important; background:#FFFFFF !important; font-weight:600; }}
 .tex.display {{ display: block; margin: 6pt 0 8pt; text-align: center; }}
 /* full-height inline fractions need taller lines so stacked lines don't collide */

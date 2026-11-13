@@ -155,7 +155,18 @@ Write every Core heading for a reader who has never seen the textbook:
 3. **What it builds on**: a short tag naming the earlier Core heading, when
    there is one.
 4. **A worked example** when the topic involves a calculation (format below).
+   **A literal example** when it teaches something the reader would type, set,
+   or see: a command, option, setting, file entry, or log line. Every command
+   or option kept in Core gets one runnable line that uses it, either in an
+   **Example** column of its table or in a code block after the table.
 5. **TEST MOVE**: the clue in a question and the decision it points to.
+
+When the source prints no example, build one from earned options and values
+only (no option the ledger does not earn), label the block `Examples (built
+from the page's options)`, and list it under the ledger's **Derived in the
+notes**. Keep a printed source example word for word and cite it. Each
+example still states the item once: it shows the usage, it does not restate
+the definition.
 
 Assume nothing about the vocabulary:
 

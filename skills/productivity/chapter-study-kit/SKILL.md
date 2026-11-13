@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.21.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.22.0**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -278,7 +278,8 @@ own the detail. Order and non-negotiables:
    decision the visual cannot show, and definitions in margin TERMS boxes
    beside first use. Each heading follows the notes contract's explanation
    order (what it is, why it works when not already plain, a builds-on tag, a
-   worked example for a calculation, TEST MOVE as clue and decision).
+   worked example for a calculation, a literal example for anything the
+   reader would type, set, or see, TEST MOVE as clue and decision).
    Notation-heavy sections open with a Symbols table; math is `$...$`.
    Codes and labels are spelled out before use; every formula gets Read it
    aloud / Use it when / Don't use it when; several formulas get a Which rule
