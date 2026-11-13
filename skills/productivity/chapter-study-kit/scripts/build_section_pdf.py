@@ -92,6 +92,8 @@ MAP_SECTION = '<section class="map landscape">'
 ORIENT = re.compile(r'data-map="(\d+)"[^>]*data-orient="(portrait|landscape)"')
 GFM_ALERT = re.compile(
     r"(?im)^>[ \t]?\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(?:\n(?:>[ \t]*\n)*>[ \t]?)?")
+# An "Example(s) (...)" label paragraph followed by its code block.
+EXAMPLE_BLOCK = re.compile(r"(<p>Examples? \((?:(?!</p>).)*</p>\s*<pre>(?:(?!</pre>).)*</pre>)", re.S)
 
 
 def numeric_key(name: str) -> tuple[int, ...]:
@@ -349,6 +351,7 @@ def core_html(notes: Path) -> str:
     text, found = protect_math(text)
     body = restore_math(markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"]), found)
     body = body.replace("<p><strong>TEST MOVE:</strong>", '<p class="test"><strong>TEST MOVE:</strong>')
+    body = EXAMPLE_BLOCK.sub(r'<div class="example">\1</div>', body)  # keep a label with its block
     return body.replace("<h2>", '<h2 class="section">')
 
 
@@ -629,6 +632,7 @@ th, td {{ border: 1px solid var(--rule); padding: 3pt 5pt; text-align: left; ver
 th {{ background: var(--tint); }}
 code {{ font: 9pt Menlo, monospace; background: #F4F6F8; padding: 0 2pt; border-radius: 2pt; }}
 pre:not(.mermaid) {{ background: #F4F6F8; padding: 6pt; white-space: pre-wrap; break-inside: avoid; }}
+.example {{ break-inside: avoid; }}
 pre code {{ padding: 0; }}
 .edgeLabel, .edgeLabel p, .edgeLabel span, .edgeLabel div {{ color:#24313F !important; background:#FFFFFF !important; font-weight:600; }}
 .tex.display {{ display: block; margin: 6pt 0 8pt; text-align: center; }}

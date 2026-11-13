@@ -162,9 +162,13 @@ Write every Core heading for a reader who has never seen the textbook:
 5. **TEST MOVE**: the clue in a question and the decision it points to.
 
 When the source prints no example, build one from earned options and values
-only (no option the ledger does not earn), label the block `Examples (built
-from the page's options)`, and list it under the ledger's **Derived in the
-notes**. Keep a printed source example word for word and cite it. Each
+only (no option the ledger does not earn), label it (`Examples (built from
+the page's options)` for commands; `Example (built from the page, not printed
+on it)` for settings, records, and messages), and list it under the ledger's
+**Derived in the notes**. A conceptual heading needs no literal example; its
+TEST MOVE scenario already gives one. A setting example must be one a real
+system accepts (for example, a lockout duration no shorter than the counter
+reset). Keep a printed source example word for word and cite it. Each
 example still states the item once: it shows the usage, it does not restate
 the definition.
 
