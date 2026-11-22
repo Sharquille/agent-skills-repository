@@ -44,6 +44,7 @@ A personal registry of Claude Code skills collected from the internet and other 
 | [teach-complex-concepts](skills/productivity/teach-complex-concepts/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-20 |
 | [reasoning-moves](skills/productivity/reasoning-moves/) | productivity | Sharquille Andrew (self-authored on top of teach-complex-concepts) | this repo | MIT | 2026-08-08 |
 | [reasoning-gym](skills/productivity/reasoning-gym/) | productivity | Sharquille Andrew (self-authored on top of reasoning-moves and teach-complex-concepts) | this repo | MIT | 2026-08-08 |
+| [practice-playground](skills/productivity/practice-playground/) | productivity | Sharquille Andrew (self-authored; extracted from the Card Desk playground) | this repo | MIT | 2026-11-22 |
 | [undo-obsidian-study-loop](skills/productivity/undo-obsidian-study-loop/) | productivity | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-15 |
 | [vet-skill](skills/engineering/vet-skill/) | engineering | Sharquille Andrew (self-authored) | this repo | MIT | 2026-06-13 |
 | [security-best-practices](skills/engineering/security-best-practices/) | engineering | OpenAI (openai/skills) | [github.com/openai/skills](https://github.com/openai/skills/tree/main/skills/.curated/security-best-practices) | Apache-2.0 | 2026-06-13 |
