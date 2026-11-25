@@ -1,0 +1,31 @@
+[Template from M LAB. Replace the domain lines (data, IDs, constraints) for the new subject.]
+You are drafting ONE module of "M LAB", a Power Query M learning workspace for an experienced Excel VBA developer who is rebuilding [the real tool or project] ("[Project]") with Power Query, Excel and Power BI. Read content.js first: copy the exact data format of Module 1 and 2 lessons, EX entries, LABS.lab1/lab2, ARENA items, COMPS keys and TIERS. Also read ref.js for function facts.
+
+OUTPUT: only JavaScript source (no Markdown fences, no prose before or after), exactly one call:
+REG(<module number>, {
+  module: { level: "<one word>", lessons: [ ... ] },
+  ex: { ... },
+  lab: { ... },
+  arena: [ ... ],
+});
+
+FORMAT RULES
+- Every code block uses M`...` (String.raw template, already defined). Never put a backtick or ${ inside code. Tables use T([cols], [rows]) (already defined). Use null, true, false, numbers and "text" in table rows.
+- Lesson object fields, exactly: id ("N.k"), title, tier (1 or 2), contracts ([[function or expression, input, output], ...] precise types incl. null/error behaviour), comp (a key from COMPS), mins (brief reading minutes, 1-3), concept (max 3 sentences), model (max 2 sentences: how to reason about it), syntax (M code), vba ({ vba: VBA code, m: M code, note: one sentence } — the closest VBA idea), example ({ title, code: a SELF-CONTAINED runnable M query using #table / lists / records / text literals that returns its last step, steps: [[stepName, T(cols, rows)], ...] with the EXACT values Power Query returns; for a scalar step use T(["Value"], [[x]]) }), micro (an ex id), failure ({ code, what: what breaks and why, 1-3 sentences }), deeper (short HTML string: 1-2 <p>), check ([2-3 ex ids]).
+- Tier 1 topics get full lessons (group related topics: 3-5 lessons per module). Tier 2 topics get a short lesson (tier: 2, mins 1, one check) or fold into a Tier 1 lesson. Tier 3 topics get NO lesson.
+- Exercises (in ex):
+  mc: { comp, type: "mc", diff: 1|2|3, q, code?, opts: [[text, 1|0, reason], ...] with EXACTLY ONE correct (1), 4 options, every option has a teaching reason, hints?: [..] }
+  fill: { comp, type: "fill", diff, q, code containing ▢ once, answers: [exact accepted strings; M is case-sensitive; text literals include their double quotes], hints: [..], why }
+  multi: { comp, type: "multi", diff, q, code?, opts: [[text, 1|0, reason]] with 2+ correct and at least one plausible-but-valid distractor, why }
+- Lab fields: title ("Lab N: ..."), module, comps [comp keys], scenario, objectives [..], vba? (VBA being replaced, optional), given? (M input, optional), predict? ([ex ids], optional), requirements [..], constraints [..], edges [..], starter (COMPLETE runnable M with synthetic data and a clear placeholder step), expected (T(...) = EXACT output of the solution, including column order and row order — sort explicitly in the solution if order matters), scalar: true only if the result is one value, tests [..], hints [4 progressive], solution (COMPLETE runnable M query that produces exactly expected), alternatives [..], review (the technical point of the lab), goals [..].
+- Arena (6-8 items): each mc/fill/multi plus id ("aN-1"...), kind (one of: "Predict the output", "Complete the expression", "Debug broken code", "Refactor", "Detect silent corruption", "Review AI-generated code", "Select the strategy", "Handle unexpected data", "Identify the flaw"). Include at least one "Review AI-generated code" multi with a plausible flawed AI query.
+- IDs: lessons "N.1".., ex "mN-<word>", lab predict items "lN-<letter>", arena "aN-1"...
+
+ACCURACY RULES (critical)
+- Only real, documented Power Query M functions, parameters and options. Every result you show must be what Power Query actually returns. If unsure, choose a simpler example you are sure of.
+- Zero-based list/text positions. Text comparison is case-sensitive. null propagates through arithmetic and &; Text.Combine skips nulls. List.Sum ignores nulls (null if all null). Number.Round defaults to RoundingMode.ToEven. Table.Group output order is not guaranteed: sort explicitly. Date.FromText(text, [Format = "...", Culture = "..."]). Type ascription in Table.AddColumn does not convert. Table.Distinct without columns compares whole rows. A nested join then full expansion multiplies rows on duplicate keys. Errors and nulls differ.
+- All data is synthetic: MIDs are 9-digit text like "000104512", TIDs "T01", batches "0007", amounts like 125.50. Never present a synthetic layout as a real [processor] specification; label report formats "synthetic".
+- Respect workplace constraints: no Python, no admin installs, Access database read-only.
+
+STYLE
+- Plain, concise, explain why not just how; no filler. About 15% theory, 85% applied. The learner knows programming; teach how M does it differently. Prioritize function contracts, input/output structures, composition, data integrity, debugging, modular architecture.
