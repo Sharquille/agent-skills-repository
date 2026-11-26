@@ -133,9 +133,35 @@ office).
 | HTTPS | padlock on the cargo | the data stream is encrypted |
 | Certificate | a license framed on the Web server | helps the browser verify the site; it belongs to the site, not the delivery |
 
+**Pick an object that passes the intuitiveness test.** The truck works
+because a beginner can guess most mappings before reading a label. Check every
+candidate object against these three questions before drawing:
+
+1. Has everyone used it? (a car, a taxi, a bus, a post office, an apartment
+   building, a self-storage unit; not a library card catalog or a stand mixer)
+2. Does its physical arrangement already show the relation: stacking (road
+   under wheels under cargo), passing through (a lobby, then a door), or who
+   does the work (you drive, a driver drives, you ride)?
+3. Could the learner guess most part mappings from the picture alone?
+
+A grid of boxes, an index card, or a kitchen tool that needs its label to make
+sense fails. Propose two or three objects to the learner, with the part mapping
+for each, and let them pick before anything is drawn; the object is their
+call.
+
+Accepted objects so far: the Web as a delivery truck (4.1), email as the post
+(5.1), file storage as a self-storage facility (6.5: your list = folders, the
+front-desk ledger = file system, floors and units = tracks and sectors, a block
+of units = a cluster, cleaners = the shredder), IaaS/PaaS/SaaS as a rental car,
+a taxi, and a bus (Sec+ 10.4), and share vs NTFS permissions as a lobby doorman
+and an apartment door (Sec+ 8.2). Rejected as unintuitive: a library shelf
+grid, a bakery with a mixer for "platform", a turnstile with a clipboard.
+
 Build it in the Teaching-with-Analogies order (Glynn): the target idea is
 already in the text, the picture is the familiar object, the labels map each
-part, and one line states where the picture stops.
+part, and one line states where the picture stops. Draw real details (doors,
+windows, steering wheels, stick figures with round heads) so the object reads
+without labels.
 
 - **Replace, don't add.** When the section already has a plain figure of the
   same path, the analogy picture replaces it; carry over any earned fact the
