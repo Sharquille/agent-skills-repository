@@ -39,6 +39,24 @@ pattern): `VAR --> VT` and `VAR --> DS`. Ordered steps are a chain with one
 exit. Lookup facts can hang off a step with a dotted edge so they do not look
 like the next step.
 
+**Map layout checks.** The 4.1 HTTPS map printed as a thin strip with a
+floating box and a lock that seemed to come from "James decrypts". Avoid all
+three:
+
+- **Ordered steps go top-down.** A chain of more than four steps is
+  `flowchart TD` (concept maps stay LR). An LR chain prints as a strip across a
+  portrait page and leaves it mostly blank.
+- **One root.** Every node hangs off the map's one root. A box with no edge in
+  is a second job; give it its own map or attach it to the hub it belongs to.
+- **An edge claims a cause.** Draw an arrow only where the notes say one thing
+  leads to the other. A result that needs two ideas (lock = encrypted data +
+  valid certificate) gets an edge from each hub, never from the last step of
+  one chain.
+
+`validate_kit.py` warns on a long LR chain in a non-concept map and on a map
+with more than one starting node. Render the map page and look at it before
+release.
+
 ## Figures in Core
 
 Maps name the ideas; a Core figure shows how one idea works, right after the
@@ -90,6 +108,69 @@ definition or an argument in prose; a literature section may need none.
 
    Use `**RECALL:**` for a list to write from memory. The notebook prints it in
    the writing margin; Obsidian shows a tip callout.
+
+### Analogy picture (only when the source shows layers)
+
+When one idea runs on another, draw a real, everyday object whose parts depend
+on each other the same way, and label each part with the course term. A vehicle
+on a road fits network topics; another familiar object (a building, a
+container, a machine) fits other topics. Draw one **only where it is
+needed**: the dependency is earned, the section is hard to picture without it,
+and no plainer figure already shows it. Most sections need none.
+
+Patterns: `it-4.1-fig-web-vehicle.svg` (a delivery truck on a road between the
+Web server and your browser) and `it-5.1-fig-email-vehicle.svg` (an SMTP van
+to a post-office email server, then a POP3/IMAP pickup to your client, on the
+same road and wheels; the source itself calls the email server a central post
+office).
+
+| Course term | Part drawn | Why that part |
+| --- | --- | --- |
+| Internet | road | everything travels on it |
+| TCP/IP | wheels | the delivery and addressing rules that move the load |
+| HTTP | truck | delivers the page elements |
+| Web page | cargo | what is delivered |
+| HTTPS | padlock on the cargo | the data stream is encrypted |
+| Certificate | a license framed on the Web server | helps the browser verify the site; it belongs to the site, not the delivery |
+
+Build it in the Teaching-with-Analogies order (Glynn): the target idea is
+already in the text, the picture is the familiar object, the labels map each
+part, and one line states where the picture stops.
+
+- **Replace, don't add.** When the section already has a plain figure of the
+  same path, the analogy picture replaces it; carry over any earned fact the
+  old figure held (as a callout or the "where it stops" line).
+- **No label on the part that repeats its callout** (no "HTTP" painted on the
+  cab when a callout already says HTTP = the truck).
+- **Attach each role to its owner and show who asks.** A credential sits on the side that owns it (the site's certificate on the server), and a picture of a delivery shows the request that started it (the browser's request in the far lane of the road).
+- **Label the part, beside the part.** Each callout reads
+  `**Course term** = part: what it does`, with a short leader line to the part
+  it names. Leader lines never cross each other or a label. The course term is
+  bold; the analogy word is plain.
+- **Bottom-up order stays visible.** The base sits at the bottom of the drawing
+  (road, then wheels, then body, then load), so the picture still reads as the
+  dependency stack.
+- **Map only earned roles.** Each drawn part needs a ledger item in this
+  section or a Builds on to an earlier one. Add a role such as the license
+  plate only when the section teaches it (certificates in 4.1). Leave a part
+  undrawn when nothing earns it, and don't add detail the source doesn't
+  teach.
+- **One "Where the picture stops" line** follows the figure. It names the
+  first way the analogy misleads, and that fact must be earned too (4.1: one
+  truck carries the whole page, but TCP/IP splits it into packets on different
+  routes, Section 3.1).
+- **Put it on the heading where the last mapped part is taught** (4.1 Core 39,
+  certificates). It is the only drawing of that dependency; don't add a second
+  plain stack of the same layers.
+- **Reuse across the course.** A later section that shares the lower layers
+  keeps the same road and wheels and draws its own vehicle (email can be a
+  different vehicle on the same road once its section is earned).
+- Skip it for a list, a taxonomy, or a sequence; those keep their own shapes.
+
+Draw it with the `svg_figure.py` analogy parts: `road()`, `truck()` (returns
+anchor points for the cargo, cab, wheels, and rear plate), `padlock()`,
+`envelope()`, `callout()`, and `leader()`, on a 470-wide canvas with the road
+top at y 214, palette colours only, labels 10 or larger. Render it and check that no label overlaps a line or another label.
 
 Build figures with `scripts/svg_figure.py` (palette, labels, boxes, circles,
 arrows, accessible `<svg>`), save each as `<prefix>-<section>-fig-<idea>.svg`

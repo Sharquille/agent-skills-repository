@@ -210,6 +210,16 @@ class KitTests(unittest.TestCase):
         self.assertIn('1.1-concept-map.mmd must be flowchart LR', errors)
         self.assertIn('1.1-error-flow.mmd must be flowchart TD', errors)
 
+    def test_map_layout_warnings(self):
+        (self.section / '1.1-steps-flow.mmd').write_text(
+            'flowchart LR\nA --> B\nB --> C\nC --> D\nD --> E\nX -.-> E\n')
+        warnings = '\n'.join(validate.map_layout_warnings(self.section))
+        self.assertIn('5-step chain in flowchart LR', warnings)
+        self.assertIn('2 starting nodes (A, X)', warnings)
+        (self.section / '1.1-steps-flow.mmd').write_text(
+            'flowchart TD\nR --> A\nR --> X\nA --> B\nB --> C\nC --> D\nD --> E\nX --> E\n')
+        self.assertEqual(validate.map_layout_warnings(self.section), [])
+
     def test_section_check_ignores_other_sections(self):
         self.fill_live_contract()
         (self.kit / 'Chapter-02' / '2.1').mkdir(parents=True)

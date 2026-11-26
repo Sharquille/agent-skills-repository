@@ -439,6 +439,47 @@ def figure_size_warnings(folder: Path) -> list[str]:
     return warnings
 
 
+MAP_EDGE = re.compile(r"^\s*([A-Za-z_][\w]*)\s*(-->|---|-\.->|-\.-|==>)\s*(?:\|[^|]*\|\s*)?([A-Za-z_][\w]*)\s*;?\s*$")
+LR_CHAIN_MAX = 4
+
+
+def map_layout_warnings(folder: Path) -> list[str]:
+    """Catch the two layouts that printed badly (4.1 HTTPS map, Nov 2026).
+
+    A long left-to-right chain prints as a thin strip across a portrait page,
+    and a second starting node means a second job bolted onto the map.
+    """
+    warnings = []
+    for path in sorted(folder.glob("*.mmd")):
+        solid, incoming, nodes = {}, set(), set()
+        for line in path.read_text().splitlines():
+            match = MAP_EDGE.match(line)
+            if not match:
+                continue
+            a, kind, b = match.groups()
+            nodes |= {a, b}
+            incoming.add(b)
+            if kind in {"-->", "---", "==>"}:
+                solid.setdefault(a, []).append(b)
+        if not nodes:
+            continue
+        roots = sorted(nodes - incoming)
+        if len(roots) > 1:
+            warnings.append(f"map {path.name}: {len(roots)} starting nodes ({', '.join(roots)}); "
+                            "one job per map: hang every idea off one root or split the map")
+
+        def longest(node: str, seen: frozenset) -> int:
+            nxt = [n for n in solid.get(node, []) if n not in seen]
+            return 1 + max((longest(n, seen | {n}) for n in nxt), default=0)
+
+        if map_direction(path) == "LR" and roots and not path.stem.lower().endswith("concept-map"):
+            chain = max(longest(r, frozenset({r})) for r in roots)
+            if chain > LR_CHAIN_MAX:
+                warnings.append(f"map {path.name}: a {chain}-step chain in flowchart LR prints as a thin strip; "
+                                "draw ordered steps flowchart TD")
+    return warnings
+
+
 ACRONYM_ROW = re.compile(r"^\|\s*([A-Za-z0-9][A-Za-z0-9&/.+\- ]*?)\s*\|([^|]+)\|([^|]*)\|\s*$")
 
 
@@ -825,6 +866,7 @@ def kit_warnings(kit: Path) -> list[str]:
             warnings.append(f"{rel}: Sol review pending (references/sol-review.md)")
         warnings += [f"{rel}: {w}" for w in profile_warnings(folder, profile)]
         warnings += [f"{rel}: {w}" for w in figure_size_warnings(folder)]
+        warnings += [f"{rel}: {w}" for w in map_layout_warnings(folder)]
         ledger = folder / "ledger.md"
         if ledger.is_file() and not SOURCE_ROW.search(ledger.read_text()):
             warnings.append(

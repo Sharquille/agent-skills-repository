@@ -23,7 +23,7 @@ retrieved: 2026-09-23
 
 # Chapter study kit
 
-Workflow version: **2.23.0**. Read the canonical version before executing a synced copy.
+Workflow version: **2.26.1**. Read the canonical version before executing a synced copy.
 
 Turn one **section** into a kit: maps + Core notes, Obsidian `Practice.md`
 for self-test, and one GoodNotes notebook PDF that holds the maps and Core. Grow the overall course map only with
@@ -299,7 +299,9 @@ own the detail. Order and non-negotiables:
    per figure after the text it shows, built with `scripts/svg_figure.py`,
    saved beside the notes, embedded as `![idea](file.svg)`; one
    `> [!TIP]` **SKETCH:** or **RECALL:** margin prompt per level-2 group.
-   Render and inspect each figure page before release.
+   Render and inspect each figure page before release. When the source shows
+   one idea running on another and a picture is needed, draw the analogy picture
+   ([visual-language.md](references/visual-language.md#analogy-picture-only-when-the-source-shows-layers)).
 3. **Quiz why** (disk only) explains why printed official answers are right.
    If the ledger has no official quiz, omit it; never synthesize one.
 4. Write `$SECTION/practice-plan.md` before `Practice.md`: atomic source-backed

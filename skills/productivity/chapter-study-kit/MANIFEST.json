@@ -1,6 +1,6 @@
 {
   "files": {
-    "SKILL.md": "2eec0c323bfa1f2a2f4122e56f16feadf8bfb3762c23604c759318f7f7b52415",
+    "SKILL.md": "bdac537b0298b875a02557b88c31dc63d8ec0454a9af6cfb86bd49e835987acf",
     "references/consult-panel.md": "5b7fcdf21baf26022751e3455a97ef5ae7b761bde6ce28896c2baf155bbbe8c2",
     "references/course-profiles.md": "41de7409ad543387bc96688c828b0798d12b15b0f72c151e2116105db08af2d5",
     "references/expanding-map.md": "e5cd65fa3181f418f2a1b9312289f83b472d259d57ebfdd7a446dfa7d8a2cb62",
@@ -11,7 +11,7 @@
     "references/relevance-research.md": "180833457800494ec739925ab1647aa231a1ce4aab4466bbe47c537f0b71a1b3",
     "references/sol-review.md": "30226fb0a4f27937d136a90bf41f3bd66d0b6f48e7582ad086e4b965af21d67f",
     "references/source-and-batch-contract.md": "e446ac77e863196bb5d90952d0129abc3c56cce69b537b9e53a7c89127581396",
-    "references/visual-language.md": "e123c46bd3af2d232135cf95498368e38cbb3f8214f16196061e016a09c30a1e",
+    "references/visual-language.md": "7aa4a0f7a310aa5387f45f31f36f7534a53b8a7c7cdba2316044a525a212da01",
     "scripts/acronym_map.py": "ee959007b2f6262e2b2de49348a4f05d7b71c61b37e01febe1d7ea47db34d79f",
     "scripts/audit_rewrite.py": "b9e997e9fa70286b915fe42fc4c23b6066aa79ae1b9124b78ccd335ed02ef6bb",
     "scripts/build_section_pdf.py": "1378c037cfb1d121d3c73c2376f805bfd31075ef3f04ee267deab43a5dd275f3",
@@ -19,10 +19,10 @@
     "scripts/new_section.py": "438e68d07018b15dc8db11ce8facc259507d5ba9216e4f6e3addfdfabf9cb1b3",
     "scripts/ocr_pdf.swift": "9ca7fc099e5326f879d19d307034e777b6bb0030c9bf2bf03ec7f7ca925f6524",
     "scripts/review_brief.py": "2c76127f441ae5e64702a9243c48c44809c6926a46e2afe9d457071e8fb4bbcc",
-    "scripts/svg_figure.py": "958af25c274b5529b67339d99a5d61c7430318c91dd4856654bf600a9d8a8962",
+    "scripts/svg_figure.py": "d1108a0ae5da289e068ea36f79572bb5d2e192d11f2bc4a1b0d4e6bbada6ad45",
     "scripts/sync_skill.py": "aa42424eb86465910f93f23f62df191fd651a0657edf0768629538d379134a61",
-    "scripts/validate_kit.py": "0401ab9de13a3e5de98a1d5898d2518aa857992e74432acfcaa890ec0032e500",
-    "tests/test_kit.py": "9d6b19f791fd9b1153024cb0f192b7e5685352f2eafff8380b237390797dd316"
+    "scripts/validate_kit.py": "c8c53ddf41708ad795eea8236c667cc29515fedc070e595177cfde314c379c8d",
+    "tests/test_kit.py": "415e25e53db2ab38612bd3332c20b356f047e98b68ce2aca7093d25a99ca0ce8"
   },
-  "version": "2.23.0"
+  "version": "2.26.1"
 }
